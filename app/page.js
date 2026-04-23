@@ -159,7 +159,7 @@ export default function PremiumCourtApp() {
       <div 
         className="min-h-screen flex items-center justify-center relative bg-cover bg-center bg-no-repeat z-[150]"
         // CHÚ Ý: Đổi 'bg-login.jpg' bằng tên file ảnh nền của bạn trong thư mục public
-        style={{ backgroundImage: "url('/bg-login.jpg')", backgroundColor: "#1e3a8a" }} // CÓ MÀU BACKUP NẾU ẢNH LỖI
+        style={{ backgroundImage: "url('/toaan.jpg')", backgroundColor: "#1e3a8a" }} // CÓ MÀU BACKUP NẾU ẢNH LỖI
       >
         <div className="absolute inset-0 bg-black/40"></div>
 
