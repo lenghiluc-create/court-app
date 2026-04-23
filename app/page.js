@@ -25,11 +25,14 @@ export default function PremiumCourtApp() {
 
   const initialForm = {
     datetime: "", room: "Trụ sở", caseType: "Hình sự", trialCount: "Lần 1", caseName: "", 
-    plaintiff: "", defendant: "", 
-    judge: "", clerk: "", juror1: "", juror2: "", 
+    plaintiff: "", defendant: "", judge: "", clerk: "", juror1: "", juror2: "", 
     prosecutor: "", status: "pending"
   };
   const [form, setForm] = useState(initialForm);
+
+  // CẤU HÌNH ĐỒNG NHẤT TOÀN BỘ CỠ CHỮ 16PX
+  const commonTextStyle = "text-[16px] font-bold text-gray-800";
+  const inputBase = `w-full border-2 border-gray-200 p-4 rounded-2xl bg-gray-50 outline-none focus:border-blue-600 focus:bg-white transition-all ${commonTextStyle}`;
 
   const showToast = (message, type = "success") => {
     setToast({ show: true, message, type });
@@ -73,7 +76,7 @@ export default function PremiumCourtApp() {
     try {
       await signInWithEmailAndPassword(auth, loginEmail, loginPass);
       showToast("Đăng nhập thành công!", "success");
-    } catch (err) { showToast("Lỗi đăng nhập", "error"); } finally { setLoading(false); }
+    } catch (err) { showToast("Sai tài khoản hoặc mật khẩu", "error"); } finally { setLoading(false); }
   };
 
   const handleSubmit = async () => {
@@ -84,30 +87,28 @@ export default function PremiumCourtApp() {
     try {
       if (editingId) {
         await updateDoc(doc(db, "schedule", editingId), logData);
-        showToast("💾 Cập nhật thành công!", "success");
+        showToast("💾 Đã cập nhật hồ sơ!", "success");
       } else {
         await addDoc(collection(db, "schedule"), { ...logData, createdAt: moment().toISOString(), createdBy: user.email });
-        showToast("✅ Thêm mới thành công!", "success");
+        showToast("✅ Lưu thành công!", "success");
       }
       setForm(initialForm); setEditingId(null); loadData();
     } catch (err) { showToast("Lỗi khi lưu", "error"); }
   };
 
-  const isRoomConflict = schedule.some(item => item.datetime === form.datetime && item.room === form.room && item.id !== editingId);
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-2xl text-blue-900 animate-pulse">Hệ thống đang khởi động...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-blue-900">HỆ THỐNG ĐANG KHỞI TẠO...</div>;
 
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center relative bg-cover bg-center" style={{ backgroundImage: "url('/toaan.jpg')" }}>
-        <div className="absolute inset-0 bg-black/40"></div>
-        <div className="relative z-10 w-full max-w-[480px] bg-black/60 backdrop-blur-md p-10 shadow-2xl text-white text-center rounded-xl border border-white/10">
-          <img src="/logo-toaan.png" alt="Logo" className="w-28 h-28 mx-auto mb-4" />
-          <h1 className="text-2xl font-black uppercase mb-8 tracking-tighter">TAND Khu Vực 9</h1>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <input type="email" placeholder="Email..." value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="w-full px-4 py-3 bg-white text-black rounded text-lg outline-none shadow-inner" required />
-            <input type="password" placeholder="Mật khẩu..." value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full px-4 py-3 bg-white text-black rounded text-lg outline-none shadow-inner" required />
-            <button type="submit" className="w-full bg-blue-700 py-4 rounded font-black uppercase hover:bg-blue-600 text-lg transition-all shadow-lg">Đăng Nhập</button>
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+        <div className="relative z-10 w-full max-w-[480px] p-10 bg-white/10 backdrop-blur-md rounded-[40px] border border-white/20 text-white text-center shadow-2xl">
+          <img src="/logo-toaan.png" alt="Logo" className="w-32 h-32 mx-auto mb-8 drop-shadow-2xl" />
+          <h1 className="text-3xl font-black uppercase mb-10 tracking-tight">TAND KHU VỰC 9</h1>
+          <form onSubmit={handleLogin} className="space-y-6">
+            <input type="email" placeholder="Email..." value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="w-full px-6 py-4 bg-white text-black rounded-2xl outline-none text-xl font-bold" required />
+            <input type="password" placeholder="Mật khẩu..." value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full px-6 py-4 bg-white text-black rounded-2xl outline-none text-xl font-bold" required />
+            <button type="submit" className="w-full bg-blue-600 py-5 rounded-2xl font-black uppercase hover:bg-blue-500 text-xl transition-all shadow-xl shadow-blue-900/40">ĐĂNG NHẬP</button>
           </form>
         </div>
       </div>
@@ -117,184 +118,165 @@ export default function PremiumCourtApp() {
   const canEdit = userRole === 'admin' || userRole === 'thuky';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex font-sans text-gray-800 relative">
+    <div className="min-h-screen bg-gray-100 flex text-gray-900">
       {/* Sidebar */}
-      <aside className="w-72 bg-blue-900 text-white hidden xl:flex flex-col fixed h-screen shadow-2xl">
-        <div className="p-8 text-center border-b border-blue-800">
-          <span className="text-5xl block mb-4">⚖️</span>
-          <h2 className="font-black text-2xl uppercase tracking-widest leading-tight">TAND<br/>KV9</h2>
+      <aside className="w-80 bg-blue-950 text-white hidden xl:flex flex-col fixed h-screen shadow-2xl border-r border-blue-900">
+        <div className="p-12 text-center border-b border-white/5">
+          <div className="text-5xl mb-4">⚖️</div>
+          <h2 className="font-black text-2xl uppercase tracking-tighter">TAND KV9</h2>
         </div>
-        <div className="p-6 flex-1">
-          <div className="bg-blue-800 px-6 py-4 rounded-xl font-bold text-lg border border-blue-700 shadow-inner">📅 Lịch xét xử</div>
+        <div className="p-8 flex-1">
+          <div className="bg-blue-600 px-6 py-4 rounded-2xl font-black text-xl shadow-lg shadow-blue-900/50">📅 LỊCH XÉT XỬ</div>
         </div>
-        <div className="p-6 border-t border-blue-800">
-          <p className="text-[10px] text-blue-400 font-black uppercase mb-1">Quyền: {userRole}</p>
-          <p className="text-sm truncate mb-6 opacity-80">{user.email}</p>
-          <button onClick={() => signOut(auth)} className="w-full bg-red-600 py-3 rounded-lg font-bold uppercase hover:bg-red-700 transition-colors shadow-md text-sm">Đăng xuất</button>
+        <div className="p-8 border-t border-white/5 bg-black/10">
+          <p className="text-[10px] text-blue-400 font-black uppercase mb-2 tracking-widest">Tài khoản: {userRole}</p>
+          <p className="text-sm font-bold truncate mb-6 opacity-70">{user.email}</p>
+          <button onClick={() => signOut(auth)} className="w-full bg-red-600 hover:bg-red-700 py-4 rounded-2xl font-black uppercase text-xs transition-all shadow-lg">Đăng xuất</button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 xl:ml-72 flex flex-col min-h-screen">
-        <header className="bg-white h-20 shadow-sm border-b flex items-center px-8 sticky top-0 z-10 justify-between">
-          <h1 className="font-black text-2xl uppercase text-blue-900 tracking-tight">Hệ thống quản lý lịch trực tuyến</h1>
+      <main className="flex-1 xl:ml-80 flex flex-col min-h-screen">
+        <header className="bg-white h-24 shadow-sm flex items-center px-12 sticky top-0 z-10 justify-between border-b">
+          <h1 className="font-black text-2xl uppercase text-blue-950">Quản lý lịch trực tuyến</h1>
+          <div className="bg-blue-50 text-blue-700 px-6 py-3 rounded-2xl font-black text-sm border border-blue-100 uppercase tracking-widest">Cần Thơ: {moment().format("DD/MM/YYYY")}</div>
         </header>
 
-        <div className="p-8 lg:p-10 flex-1">
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
+        <div className="p-12 flex-1">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-12">
             
-            {/* CỘT TRÁI: FORM ĐĂNG KÝ */}
+            {/* FORM NHẬP LIỆU */}
             {canEdit && (
               <div className="xl:col-span-4">
-                <div className="bg-white p-8 rounded-3xl border shadow-xl sticky top-28 border-gray-100">
-                  <h2 className="font-black text-2xl text-blue-900 uppercase mb-8 border-b-4 border-blue-600 w-fit pb-2">
-                    {editingId ? "✏️ Cập nhật" : "➕ Đăng ký lịch"}
+                <div className="bg-white p-10 rounded-[40px] border shadow-2xl sticky top-36">
+                  <h2 className="font-black text-2xl text-blue-950 uppercase mb-10 flex items-center gap-4">
+                    <span className="w-2 h-10 bg-blue-600 rounded-full"></span>
+                    {editingId ? "Cập nhật hồ sơ" : "Đăng ký lịch"}
                   </h2>
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-8">
+                    <div className="grid grid-cols-1 gap-6">
                       <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase mb-2">Ngày giờ xử</label>
-                        <input type="datetime-local" value={form.datetime} onChange={e => setForm({...form, datetime: e.target.value})} className="w-full border-2 border-gray-100 p-3 rounded-xl bg-gray-50 text-base font-black outline-none focus:border-blue-500 transition-all" />
+                        <label className="block text-xs font-black text-gray-400 uppercase mb-3 ml-2">Thời gian xét xử</label>
+                        <input type="datetime-local" value={form.datetime} onChange={e => setForm({...form, datetime: e.target.value})} className={inputBase} />
                       </div>
                       <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase mb-2">Nơi xét xử</label>
-                        <select value={form.room} onChange={e => setForm({...form, room: e.target.value})} className="w-full border-2 border-gray-100 p-3 rounded-xl bg-gray-50 text-base font-black outline-none focus:border-blue-500">
-                          <option value="Trụ sở">🏢 Trụ sở</option>
-                          <option value="Chi nhánh">🏠 Chi nhánh</option>
-                          <option value="Dự phòng">🔄 Dự phòng</option>
+                        <label className="block text-xs font-black text-gray-400 uppercase mb-3 ml-2">Phòng xử / Địa điểm</label>
+                        <select value={form.room} onChange={e => setForm({...form, room: e.target.value})} className={inputBase}>
+                          <option value="Trụ sở">🏢 TRỤ SỞ</option>
+                          <option value="Chi nhánh">🏢 CHI NHÁNH</option>
+                          <option value="Dự phòng">⚠️ DỰ PHÒNG</option>
                         </select>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-6">
                       <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase mb-2">Loại vụ việc</label>
-                        <select value={form.caseType} onChange={e => setForm({...form, caseType: e.target.value})} className="w-full border-2 border-gray-100 p-3 rounded-xl text-base font-black outline-none focus:border-blue-500">
-                          <option value="Hình sự">🚨 Hình sự</option>
-                          <option value="Dân sự">🤝 Dân sự</option>
-                          <option value="Hành chính">🏢 Hành chính</option>
-                          <option value="Hôn nhân & GĐ">💍 Hôn nhân & GĐ</option>
-                          <option value="Kinh tế">💰 Kinh tế</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase mb-2">Lần xét xử</label>
-                        <select value={form.trialCount} onChange={e => setForm({...form, trialCount: e.target.value})} className="w-full border-2 border-blue-100 p-3 rounded-xl text-base font-black outline-none bg-blue-50 text-blue-900 focus:border-blue-500">
-                          <option value="Lần 1">Lần 1</option>
-                          <option value="Lần 2">Lần 2</option>
-                          <option value="Mở lại phiên tòa">🔄 Mở lại phiên tòa</option>
-                        </select>
+                        <label className="block text-xs font-black text-gray-400 uppercase mb-3 ml-2">Loại án & Lần xử</label>
+                        <div className="flex gap-4">
+                            <select value={form.caseType} onChange={e => setForm({...form, caseType: e.target.value})} className={inputBase}>
+                                <option value="Hình sự">🚨 Hình sự</option>
+                                <option value="Dân sự">🤝 Dân sự</option>
+                                <option value="Hành chính">🏢 Hành chính</option>
+                                <option value="Hôn nhân & GĐ">💍 Hôn nhân</option>
+                                <option value="Kinh tế">💰 Kinh tế</option>
+                            </select>
+                            <select value={form.trialCount} onChange={e => setForm({...form, trialCount: e.target.value})} className={`${inputBase} w-1/2 bg-blue-50/50`}>
+                                <option value="Lần 1">Lần 1</option>
+                                <option value="Lần 2">Lần 2</option>
+                                <option value="Mở lại">Mở lại</option>
+                            </select>
+                        </div>
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-black text-gray-400 uppercase mb-2">Tên vụ án / Tội danh</label>
-                      <textarea value={form.caseName} onChange={e => setForm({...form, caseName: e.target.value})} className="w-full border-2 border-gray-100 p-4 rounded-xl text-lg font-black outline-none focus:border-blue-500 transition-all" rows="2" />
+                      <label className="block text-xs font-black text-gray-400 uppercase mb-3 ml-2">Vụ án / Tội danh</label>
+                      <textarea value={form.caseName} onChange={e => setForm({...form, caseName: e.target.value})} className={inputBase} rows="4" placeholder="Nhập tên vụ việc..." />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                      <input placeholder="Nguyên đơn..." value={form.plaintiff} onChange={e => setForm({...form, plaintiff: e.target.value})} className="border-2 p-3 rounded-xl text-sm font-bold outline-none focus:border-blue-500" />
-                      <input placeholder="Bị đơn..." value={form.defendant} onChange={e => setForm({...form, defendant: e.target.value})} className="border-2 p-3 rounded-xl text-sm font-bold outline-none focus:border-blue-500" />
+                      <input placeholder="Nguyên đơn..." value={form.plaintiff} onChange={e => setForm({...form, plaintiff: e.target.value})} className={inputBase} />
+                      <input placeholder="Bị đơn..." value={form.defendant} onChange={e => setForm({...form, defendant: e.target.value})} className={inputBase} />
                     </div>
 
-                    <div className="bg-blue-50 p-6 rounded-3xl space-y-4 border-2 border-blue-100 shadow-inner">
-                      <p className="text-[10px] font-black text-blue-900 uppercase text-center tracking-widest border-b border-blue-200 pb-2">Hội đồng xét xử & Thư ký</p>
-                      <input placeholder="Thẩm phán chủ tọa" value={form.judge} onChange={e => setForm({...form, judge: e.target.value})} className="w-full p-3 border-2 border-white rounded-xl text-base font-black outline-none focus:border-blue-500 shadow-sm" />
-                      <div className="grid grid-cols-2 gap-3">
-                        <input placeholder="Hội thẩm 1" value={form.juror1} onChange={e => setForm({...form, juror1: e.target.value})} className="p-3 border-2 border-white rounded-xl text-sm font-bold outline-none focus:border-blue-500" />
-                        <input placeholder="Hội thẩm 2" value={form.juror2} onChange={e => setForm({...form, juror2: e.target.value})} className="p-3 border-2 border-white rounded-xl text-sm font-bold outline-none focus:border-blue-500" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <input placeholder="Thư ký tòa án" value={form.clerk} onChange={e => setForm({...form, clerk: e.target.value})} className="p-3 border-2 border-white rounded-xl text-sm font-bold outline-none focus:border-blue-500" />
-                        <input placeholder="Kiểm sát viên" value={form.prosecutor} onChange={e => setForm({...form, prosecutor: e.target.value})} className="p-3 border-2 border-white rounded-xl text-sm font-black text-red-600 outline-none focus:border-blue-500" />
+                    <div className="bg-gray-50 p-8 rounded-[32px] space-y-6 border-2 border-gray-100">
+                      <input placeholder="Thẩm phán chủ tọa" value={form.judge} onChange={e => setForm({...form, judge: e.target.value})} className={inputBase} />
+                      <input placeholder="Hội thẩm nhân dân" value={form.juror1} onChange={e => setForm({...form, juror1: e.target.value})} className={inputBase} />
+                      <div className="grid grid-cols-2 gap-4">
+                        <input placeholder="Thư ký" value={form.clerk} onChange={e => setForm({...form, clerk: e.target.value})} className={inputBase} />
+                        <input placeholder="KSV" value={form.prosecutor} onChange={e => setForm({...form, prosecutor: e.target.value})} className={`${inputBase} text-red-600`} />
                       </div>
                     </div>
 
-                    <button onClick={handleSubmit} disabled={isRoomConflict} className={`w-full text-white font-black py-5 rounded-2xl uppercase text-lg mt-4 shadow-2xl transition-all transform active:scale-95 ${isRoomConflict ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-900 hover:bg-blue-800'}`}>
-                      {editingId ? "💾 Lưu cập nhật hồ sơ" : "✅ Đăng ký hệ thống"}
+                    <button onClick={handleSubmit} className="w-full bg-blue-900 text-white font-black py-6 rounded-[24px] uppercase text-xl shadow-2xl hover:bg-blue-800 transition-all active:scale-95">
+                      {editingId ? "Cập nhật hồ sơ" : "Lưu vào hệ thống"}
                     </button>
-                    {isRoomConflict && <p className="text-red-600 text-xs font-black text-center mt-2 animate-bounce italic">⚠️ CẢNH BÁO: Trùng lịch tại địa điểm này!</p>}
                   </div>
                 </div>
               </div>
             )}
 
-            {/* CỘT PHẢI: DANH SÁCH SỔ THỤ LÝ */}
-            <div className={`space-y-10 ${!canEdit ? 'xl:col-span-12' : 'xl:col-span-8'}`}>
-              
-              <div className="bg-white p-6 rounded-3xl border shadow-xl h-[450px] border-gray-100">
-                <Calendar 
-                   localizer={localizer} 
-                   events={schedule.map(i => ({...i, title: `[${i.room}] ${i.caseName}`, start: new Date(i.datetime), end: new Date(new Date(i.datetime).getTime() + 3600000)}))} 
-                   style={{ height: "100%" }} 
-                   onSelectEvent={e => setSelectedEvent(e)}
-                />
-              </div>
-
-              <div className="bg-white rounded-3xl border shadow-xl overflow-hidden flex flex-col h-[750px] border-gray-100">
-                <div className="p-6 border-b-2 border-gray-50 flex justify-between items-center sticky top-0 bg-white z-10">
-                  <h3 className="font-black uppercase text-2xl text-blue-900 flex items-center gap-3">📋 Sổ thụ lý điện tử</h3>
-                  <div className="relative">
-                    <input type="text" placeholder="Tìm kiếm vụ án..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-6 py-3 rounded-2xl text-base w-80 focus:border-blue-600 outline-none shadow-sm transition-all" />
+            {/* DANH SÁCH LỊCH */}
+            <div className={`space-y-12 ${!canEdit ? 'xl:col-span-12' : 'xl:col-span-8'}`}>
+              <div className="bg-white rounded-[40px] border shadow-2xl overflow-hidden flex flex-col h-[900px]">
+                <div className="p-10 border-b-2 border-gray-50 flex justify-between items-center sticky top-0 bg-white z-10">
+                  <h3 className="font-black uppercase text-2xl text-blue-950 flex items-center gap-4">
+                    <span className="w-2 h-10 bg-blue-950 rounded-full"></span>
+                    Sổ thụ lý trực tuyến
+                  </h3>
+                  <div className="flex gap-6">
+                    <input type="text" placeholder="Tìm kiếm vụ án..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-8 py-4 rounded-2xl text-lg w-80 focus:border-blue-600 outline-none font-bold" />
                   </div>
                 </div>
                 <div className="overflow-auto flex-1">
                   <table className="w-full text-left border-collapse">
-                    <thead className="bg-blue-900 text-white text-xs font-black uppercase tracking-widest sticky top-0">
+                    <thead className="bg-gray-50 text-[11px] font-black uppercase text-gray-400 border-b-2 border-gray-100 sticky top-0">
                       <tr>
-                        <th className="p-6">Thời gian & Địa điểm</th>
-                        <th className="p-6">Chi tiết vụ án</th>
-                        <th className="p-6">Hội đồng xét xử</th>
-                        {canEdit && <th className="p-6 text-center">Quản lý</th>}
+                        <th className="p-10">Thời gian / Địa điểm</th>
+                        <th className="p-10">Vụ án xét xử</th>
+                        <th className="p-10">Hội đồng xét xử</th>
+                        {canEdit && <th className="p-10 text-center">Tác vụ</th>}
                       </tr>
                     </thead>
-                    <tbody className="divide-y-2 divide-gray-50 text-sm">
+                    <tbody className="divide-y-2 divide-gray-50">
                       {schedule.filter(i => i.caseName.toLowerCase().includes(searchQuery.toLowerCase())).map(item => (
-                        <tr key={item.id} className="hover:bg-blue-50/50 bg-white transition-all cursor-pointer group" onClick={() => setSelectedEvent(item)}>
-                          <td className="p-6">
-                            <div className="font-black text-gray-900 text-xl tracking-tighter">{moment(item.datetime).format("DD/MM/YYYY")}</div>
-                            <div className="text-blue-700 font-black text-lg mt-1 flex items-center gap-2">🕒 {moment(item.datetime).format("HH:mm")}</div>
-                            <div className="mt-3 inline-block bg-gray-100 px-3 py-1 rounded-lg font-black text-gray-500 uppercase text-[10px]">{item.room}</div>
+                        <tr key={item.id} className="hover:bg-blue-50/20 bg-white transition-all group">
+                          <td className="p-10 align-top">
+                            <div className="font-black text-gray-950 text-2xl">{moment(item.datetime).format("DD/MM/YYYY")}</div>
+                            <div className="text-blue-600 font-black text-xl mt-2">🕒 {moment(item.datetime).format("HH:mm")}</div>
+                            <div className="mt-4 font-black text-gray-400 uppercase text-xs tracking-widest">{item.room}</div>
                           </td>
-                          <td className="p-6">
-                            <div className="font-black uppercase text-gray-800 text-lg leading-tight mb-4 group-hover:text-blue-900 transition-colors">{item.caseName}</div>
-                            <div className="flex gap-3 items-center">
-                                <span className="bg-blue-100 text-blue-800 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase shadow-sm border border-blue-200">{item.caseType}</span>
-                                <span className="bg-amber-100 text-amber-800 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase shadow-sm border border-amber-200">{item.trialCount || "Lần 1"}</span>
+                          <td className="p-10 align-top">
+                            <div className="font-black uppercase text-gray-900 text-xl leading-tight mb-6 group-hover:text-blue-900 transition-colors">{item.caseName}</div>
+                            <div className="flex gap-4">
+                                <span className="bg-blue-50 text-blue-800 px-5 py-2 rounded-xl text-xs font-black uppercase border border-blue-100">{item.caseType}</span>
+                                <span className="bg-amber-50 text-amber-800 px-5 py-2 rounded-xl text-xs font-black uppercase border border-amber-100">{item.trialCount || "Lần 1"}</span>
+                            </div>
+                            <div className="mt-6 text-base text-gray-500 space-y-2 font-bold">
+                                <p>📌 NĐ: {item.plaintiff || "N/A"}</p>
+                                <p>📌 BĐ: {item.defendant || "N/A"}</p>
                             </div>
                           </td>
-                          <td className="p-6">
-                            <div className="space-y-3">
-                                {/* Thẩm phán */}
-                                <div className="flex items-start gap-2">
-                                    <span className="text-[10px] font-black bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded mt-1">TP</span>
-                                    <span className="font-black text-gray-900 text-base">{item.judge}</span>
-                                </div>
-                                {/* Hội thẩm */}
-                                <div className="flex items-start gap-2">
-                                    <span className="text-[10px] font-black bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded mt-0.5">HT</span>
-                                    <div className="text-xs font-bold text-gray-600 leading-relaxed italic">
-                                        {item.juror1} <br/> {item.juror2}
-                                    </div>
-                                </div>
-                                {/* Thư ký - BỔ SUNG MỚI */}
-                                <div className="flex items-start gap-2">
-                                    <span className="text-[10px] font-black bg-green-100 text-green-600 px-1.5 py-0.5 rounded mt-0.5">TK</span>
-                                    <span className="text-xs font-bold text-gray-700">{item.clerk}</span>
-                                </div>
-                                {/* Kiểm sát viên */}
-                                <div className="flex items-start gap-2 border-t pt-2 border-gray-50">
-                                    <span className="text-[10px] font-black bg-red-50 text-red-600 px-1.5 py-0.5 rounded mt-0.5">KS</span>
-                                    <span className="text-xs font-black text-red-700">{item.prosecutor}</span>
-                                </div>
+                          <td className="p-10 align-top space-y-4">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 font-black text-sm">TP</div>
+                                <span className="font-black text-xl text-gray-900">{item.judge}</span>
+                            </div>
+                            <div className="flex items-center gap-4 text-base text-gray-500 font-bold">
+                                <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center font-black text-xs">TK</div>
+                                <span>{item.clerk}</span>
+                            </div>
+                            <div className="flex items-center gap-4 text-base text-red-600 font-black">
+                                <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center font-black text-xs">KS</div>
+                                <span>{item.prosecutor}</span>
                             </div>
                           </td>
                           {canEdit && (
-                            <td className="p-6" onClick={e => e.stopPropagation()}>
-                              <div className="flex flex-col gap-3">
-                                <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-white border-2 border-blue-200 text-blue-700 px-4 py-2.5 rounded-xl font-black uppercase text-[10px] hover:bg-blue-900 hover:text-white transition-all shadow-sm">Sửa hồ sơ</button>
+                            <td className="p-10 text-center align-top">
+                              <div className="flex flex-col gap-4">
+                                <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 px-6 py-4 rounded-2xl font-black uppercase text-xs hover:bg-blue-600 hover:text-white transition-all border border-blue-100">SỬA</button>
                                 {userRole === 'admin' && (
-                                  <button onClick={async () => {if(confirm("❗ XÁC NHẬN XÓA VĨNH VIỄN?")) {await deleteDoc(doc(db,"schedule",item.id)); loadData()}}} className="bg-white border-2 border-red-200 text-red-600 px-4 py-2.5 rounded-xl font-black uppercase text-[10px] hover:bg-red-600 hover:text-white transition-all shadow-sm">Xóa hồ sơ</button>
+                                  <button onClick={async () => {if(confirm("Xóa vĩnh viễn hồ sơ này?")) {await deleteDoc(doc(db,"schedule",item.id)); loadData()}}} className="bg-red-50 text-red-700 px-6 py-4 rounded-2xl font-black uppercase text-xs hover:bg-red-600 hover:text-white transition-all border border-red-100">XÓA</button>
                                 )}
                               </div>
                             </td>
@@ -311,42 +293,9 @@ export default function PremiumCourtApp() {
         </div>
       </main>
 
-      {/* Modal chi tiết vụ án */}
-      {selectedEvent && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-6" onClick={() => setSelectedEvent(null)}>
-           <div className="bg-white rounded-[40px] w-full max-w-xl overflow-hidden shadow-2xl scale-110 transition-transform border-4 border-white" onClick={e => e.stopPropagation()}>
-              <div className="bg-blue-900 p-10 text-white text-center">
-                <div className="flex justify-center gap-3 mb-4">
-                    <span className="bg-blue-700 px-3 py-1 rounded-full text-[10px] font-black uppercase">{selectedEvent.caseType}</span>
-                    <span className="bg-amber-600 px-3 py-1 rounded-full text-[10px] font-black uppercase">{selectedEvent.trialCount}</span>
-                </div>
-                <h3 className="text-3xl font-black uppercase leading-tight tracking-tight">{selectedEvent.caseName}</h3>
-              </div>
-              <div className="p-10 space-y-6 text-lg">
-                <div className="grid grid-cols-2 gap-8 border-b-2 border-gray-50 pb-6">
-                    <div>
-                        <p className="text-xs font-black text-gray-400 uppercase mb-1">Thời gian xét xử</p>
-                        <p className="font-black text-blue-900">{moment(selectedEvent.datetime).format("HH:mm - DD/MM/YYYY")}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs font-black text-gray-400 uppercase mb-1">Phòng xét xử</p>
-                        <p className="font-black text-gray-900">{selectedEvent.room}</p>
-                    </div>
-                </div>
-                <div className="space-y-4">
-                    <p className="flex justify-between items-center"><strong className="text-sm font-black text-gray-400 uppercase">Thẩm phán:</strong> <span className="font-black text-xl text-gray-900">{selectedEvent.judge}</span></p>
-                    <p className="flex justify-between items-start"><strong className="text-sm font-black text-gray-400 uppercase mt-1">Hội thẩm:</strong> <span className="font-bold text-right leading-snug">{selectedEvent.juror1} <br/> {selectedEvent.juror2}</span></p>
-                    <p className="flex justify-between items-center"><strong className="text-sm font-black text-gray-400 uppercase">Thư ký:</strong> <span className="font-bold text-green-700">{selectedEvent.clerk}</span></p>
-                    <p className="flex justify-between items-center"><strong className="text-sm font-black text-gray-400 uppercase">Kiểm sát viên:</strong> <span className="font-black text-red-600">{selectedEvent.prosecutor}</span></p>
-                </div>
-                <button onClick={() => setSelectedEvent(null)} className="w-full bg-blue-900 text-white py-5 rounded-2xl font-black uppercase mt-8 shadow-xl hover:bg-blue-800 transition-all">Đóng chi tiết</button>
-              </div>
-           </div>
-        </div>
-      )}
-
+      {/* Thông báo Toast */}
       {toast.show && (
-        <div className={`fixed bottom-10 right-10 z-[200] px-10 py-5 rounded-[20px] shadow-2xl font-black text-base text-white animate-bounce flex items-center gap-3 border-4 border-white/20 ${toast.type === 'error' ? 'bg-red-600' : 'bg-green-600'}`}>
+        <div className={`fixed bottom-12 right-12 z-[200] px-12 py-6 rounded-[32px] shadow-2xl font-black text-lg text-white animate-bounce ${toast.type === 'error' ? 'bg-red-600' : 'bg-blue-700'}`}>
           {toast.message}
         </div>
       )}
