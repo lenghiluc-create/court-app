@@ -95,7 +95,7 @@ export default function PremiumCourtApp() {
 
   const isRoomConflict = schedule.some(item => item.datetime === form.datetime && item.room === form.room && item.id !== editingId);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-xl text-blue-900">Đang tải hệ thống tòa án...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-2xl text-blue-900 animate-pulse">Hệ thống đang khởi động...</div>;
 
   if (!user) {
     return (
@@ -103,11 +103,11 @@ export default function PremiumCourtApp() {
         <div className="absolute inset-0 bg-black/40"></div>
         <div className="relative z-10 w-full max-w-[480px] bg-black/60 backdrop-blur-md p-10 shadow-2xl text-white text-center rounded-xl border border-white/10">
           <img src="/logo-toaan.png" alt="Logo" className="w-28 h-28 mx-auto mb-4" />
-          <h1 className="text-2xl font-black uppercase mb-8">TAND Khu Vực 9</h1>
+          <h1 className="text-2xl font-black uppercase mb-8 tracking-tighter">TAND Khu Vực 9</h1>
           <form onSubmit={handleLogin} className="space-y-4">
-            <input type="email" placeholder="Email..." value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="w-full px-4 py-3 bg-white text-black rounded text-lg outline-none" required />
-            <input type="password" placeholder="Mật khẩu..." value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full px-4 py-3 bg-white text-black rounded text-lg outline-none" required />
-            <button type="submit" className="w-full bg-blue-700 py-4 rounded font-bold uppercase hover:bg-blue-600 text-lg transition-all shadow-lg">Đăng Nhập</button>
+            <input type="email" placeholder="Email..." value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="w-full px-4 py-3 bg-white text-black rounded text-lg outline-none shadow-inner" required />
+            <input type="password" placeholder="Mật khẩu..." value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full px-4 py-3 bg-white text-black rounded text-lg outline-none shadow-inner" required />
+            <button type="submit" className="w-full bg-blue-700 py-4 rounded font-black uppercase hover:bg-blue-600 text-lg transition-all shadow-lg">Đăng Nhập</button>
           </form>
         </div>
       </div>
@@ -128,7 +128,7 @@ export default function PremiumCourtApp() {
           <div className="bg-blue-800 px-6 py-4 rounded-xl font-bold text-lg border border-blue-700 shadow-inner">📅 Lịch xét xử</div>
         </div>
         <div className="p-6 border-t border-blue-800">
-          <p className="text-[10px] text-blue-400 font-black uppercase mb-1 tracking-tighter">Quyền hạn: {userRole}</p>
+          <p className="text-[10px] text-blue-400 font-black uppercase mb-1">Quyền: {userRole}</p>
           <p className="text-sm truncate mb-6 opacity-80">{user.email}</p>
           <button onClick={() => signOut(auth)} className="w-full bg-red-600 py-3 rounded-lg font-bold uppercase hover:bg-red-700 transition-colors shadow-md text-sm">Đăng xuất</button>
         </div>
@@ -138,18 +138,17 @@ export default function PremiumCourtApp() {
       <main className="flex-1 xl:ml-72 flex flex-col min-h-screen">
         <header className="bg-white h-20 shadow-sm border-b flex items-center px-8 sticky top-0 z-10 justify-between">
           <h1 className="font-black text-2xl uppercase text-blue-900 tracking-tight">Hệ thống quản lý lịch trực tuyến</h1>
-          <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-xs font-black border border-blue-100 uppercase">Cần Thơ, {moment().format("DD/MM/YYYY")}</div>
         </header>
 
         <div className="p-8 lg:p-10 flex-1">
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
             
-            {/* CỘT TRÁI: FORM NHẬP LIỆU */}
+            {/* CỘT TRÁI: FORM ĐĂNG KÝ */}
             {canEdit && (
               <div className="xl:col-span-4">
                 <div className="bg-white p-8 rounded-3xl border shadow-xl sticky top-28 border-gray-100">
                   <h2 className="font-black text-2xl text-blue-900 uppercase mb-8 border-b-4 border-blue-600 w-fit pb-2">
-                    {editingId ? "✏️ Cập nhật hồ sơ" : "➕ Đăng ký lịch"}
+                    {editingId ? "✏️ Cập nhật" : "➕ Đăng ký lịch"}
                   </h2>
                   <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-6">
@@ -190,7 +189,7 @@ export default function PremiumCourtApp() {
 
                     <div>
                       <label className="block text-xs font-black text-gray-400 uppercase mb-2">Tên vụ án / Tội danh</label>
-                      <textarea value={form.caseName} onChange={e => setForm({...form, caseName: e.target.value})} placeholder="Nhập tên vụ án..." className="w-full border-2 border-gray-100 p-4 rounded-xl text-lg font-black outline-none focus:border-blue-500 transition-all" rows="2" />
+                      <textarea value={form.caseName} onChange={e => setForm({...form, caseName: e.target.value})} className="w-full border-2 border-gray-100 p-4 rounded-xl text-lg font-black outline-none focus:border-blue-500 transition-all" rows="2" />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -212,7 +211,7 @@ export default function PremiumCourtApp() {
                     </div>
 
                     <button onClick={handleSubmit} disabled={isRoomConflict} className={`w-full text-white font-black py-5 rounded-2xl uppercase text-lg mt-4 shadow-2xl transition-all transform active:scale-95 ${isRoomConflict ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-900 hover:bg-blue-800'}`}>
-                      {editingId ? "💾 Lưu cập nhật hồ sơ" : "✅ Đăng ký lên hệ thống"}
+                      {editingId ? "💾 Lưu cập nhật hồ sơ" : "✅ Đăng ký hệ thống"}
                     </button>
                     {isRoomConflict && <p className="text-red-600 text-xs font-black text-center mt-2 animate-bounce italic">⚠️ CẢNH BÁO: Trùng lịch tại địa điểm này!</p>}
                   </div>
@@ -220,9 +219,9 @@ export default function PremiumCourtApp() {
               </div>
             )}
 
-            {/* CỘT PHẢI: LỊCH VÀ DANH SÁCH */}
+            {/* CỘT PHẢI: DANH SÁCH SỔ THỤ LÝ */}
             <div className={`space-y-10 ${!canEdit ? 'xl:col-span-12' : 'xl:col-span-8'}`}>
-              {/* Lịch Calendar */}
+              
               <div className="bg-white p-6 rounded-3xl border shadow-xl h-[450px] border-gray-100">
                 <Calendar 
                    localizer={localizer} 
@@ -232,8 +231,7 @@ export default function PremiumCourtApp() {
                 />
               </div>
 
-              {/* Sổ Thụ Lý Điện Tử */}
-              <div className="bg-white rounded-3xl border shadow-xl overflow-hidden flex flex-col h-[700px] border-gray-100">
+              <div className="bg-white rounded-3xl border shadow-xl overflow-hidden flex flex-col h-[750px] border-gray-100">
                 <div className="p-6 border-b-2 border-gray-50 flex justify-between items-center sticky top-0 bg-white z-10">
                   <h3 className="font-black uppercase text-2xl text-blue-900 flex items-center gap-3">📋 Sổ thụ lý điện tử</h3>
                   <div className="relative">
@@ -267,16 +265,24 @@ export default function PremiumCourtApp() {
                           </td>
                           <td className="p-6">
                             <div className="space-y-3">
+                                {/* Thẩm phán */}
                                 <div className="flex items-start gap-2">
                                     <span className="text-[10px] font-black bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded mt-1">TP</span>
                                     <span className="font-black text-gray-900 text-base">{item.judge}</span>
                                 </div>
+                                {/* Hội thẩm */}
                                 <div className="flex items-start gap-2">
                                     <span className="text-[10px] font-black bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded mt-0.5">HT</span>
-                                    <div className="text-xs font-bold text-gray-600 leading-relaxed">
+                                    <div className="text-xs font-bold text-gray-600 leading-relaxed italic">
                                         {item.juror1} <br/> {item.juror2}
                                     </div>
                                 </div>
+                                {/* Thư ký - BỔ SUNG MỚI */}
+                                <div className="flex items-start gap-2">
+                                    <span className="text-[10px] font-black bg-green-100 text-green-600 px-1.5 py-0.5 rounded mt-0.5">TK</span>
+                                    <span className="text-xs font-bold text-gray-700">{item.clerk}</span>
+                                </div>
+                                {/* Kiểm sát viên */}
                                 <div className="flex items-start gap-2 border-t pt-2 border-gray-50">
                                     <span className="text-[10px] font-black bg-red-50 text-red-600 px-1.5 py-0.5 rounded mt-0.5">KS</span>
                                     <span className="text-xs font-black text-red-700">{item.prosecutor}</span>
@@ -288,7 +294,7 @@ export default function PremiumCourtApp() {
                               <div className="flex flex-col gap-3">
                                 <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-white border-2 border-blue-200 text-blue-700 px-4 py-2.5 rounded-xl font-black uppercase text-[10px] hover:bg-blue-900 hover:text-white transition-all shadow-sm">Sửa hồ sơ</button>
                                 {userRole === 'admin' && (
-                                  <button onClick={async () => {if(confirm("❗ Bạn có chắc chắn muốn XÓA VĨNH VIỄN hồ sơ này không?")) {await deleteDoc(doc(db,"schedule",item.id)); loadData()}}} className="bg-white border-2 border-red-200 text-red-600 px-4 py-2.5 rounded-xl font-black uppercase text-[10px] hover:bg-red-600 hover:text-white transition-all shadow-sm">Xóa hồ sơ</button>
+                                  <button onClick={async () => {if(confirm("❗ XÁC NHẬN XÓA VĨNH VIỄN?")) {await deleteDoc(doc(db,"schedule",item.id)); loadData()}}} className="bg-white border-2 border-red-200 text-red-600 px-4 py-2.5 rounded-xl font-black uppercase text-[10px] hover:bg-red-600 hover:text-white transition-all shadow-sm">Xóa hồ sơ</button>
                                 )}
                               </div>
                             </td>
@@ -305,7 +311,7 @@ export default function PremiumCourtApp() {
         </div>
       </main>
 
-      {/* MODAL CHI TIẾT VỤ ÁN (Khi bấm vào lịch hoặc hàng trong bảng) */}
+      {/* Modal chi tiết vụ án */}
       {selectedEvent && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-6" onClick={() => setSelectedEvent(null)}>
            <div className="bg-white rounded-[40px] w-full max-w-xl overflow-hidden shadow-2xl scale-110 transition-transform border-4 border-white" onClick={e => e.stopPropagation()}>
@@ -327,29 +333,21 @@ export default function PremiumCourtApp() {
                         <p className="font-black text-gray-900">{selectedEvent.room}</p>
                     </div>
                 </div>
-                
                 <div className="space-y-4">
                     <p className="flex justify-between items-center"><strong className="text-sm font-black text-gray-400 uppercase">Thẩm phán:</strong> <span className="font-black text-xl text-gray-900">{selectedEvent.judge}</span></p>
                     <p className="flex justify-between items-start"><strong className="text-sm font-black text-gray-400 uppercase mt-1">Hội thẩm:</strong> <span className="font-bold text-right leading-snug">{selectedEvent.juror1} <br/> {selectedEvent.juror2}</span></p>
-                    <p className="flex justify-between items-center"><strong className="text-sm font-black text-gray-400 uppercase">Thư ký:</strong> <span className="font-bold">{selectedEvent.clerk}</span></p>
+                    <p className="flex justify-between items-center"><strong className="text-sm font-black text-gray-400 uppercase">Thư ký:</strong> <span className="font-bold text-green-700">{selectedEvent.clerk}</span></p>
                     <p className="flex justify-between items-center"><strong className="text-sm font-black text-gray-400 uppercase">Kiểm sát viên:</strong> <span className="font-black text-red-600">{selectedEvent.prosecutor}</span></p>
                 </div>
-
-                <div className="pt-6 border-t-2 border-gray-50 space-y-2">
-                    <p className="text-sm"><strong>Nguyên đơn:</strong> {selectedEvent.plaintiff}</p>
-                    <p className="text-sm"><strong>Bị đơn:</strong> {selectedEvent.defendant}</p>
-                </div>
-
-                <button onClick={() => setSelectedEvent(null)} className="w-full bg-blue-900 text-white py-5 rounded-2xl font-black uppercase mt-8 shadow-xl hover:bg-blue-800 transition-all">Đóng cửa sổ chi tiết</button>
+                <button onClick={() => setSelectedEvent(null)} className="w-full bg-blue-900 text-white py-5 rounded-2xl font-black uppercase mt-8 shadow-xl hover:bg-blue-800 transition-all">Đóng chi tiết</button>
               </div>
            </div>
         </div>
       )}
 
-      {/* Thông báo Toast */}
       {toast.show && (
         <div className={`fixed bottom-10 right-10 z-[200] px-10 py-5 rounded-[20px] shadow-2xl font-black text-base text-white animate-bounce flex items-center gap-3 border-4 border-white/20 ${toast.type === 'error' ? 'bg-red-600' : 'bg-green-600'}`}>
-          {toast.type === 'error' ? '⚠️' : '✅'} {toast.message}
+          {toast.message}
         </div>
       )}
     </div>
