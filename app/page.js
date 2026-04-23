@@ -116,7 +116,12 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
             className="mx-auto mb-6 drop-shadow-2xl" 
             style={{ width: '120px', height: '120px', objectFit: 'contain' }} 
           />
-          <h1 className="text-3xl font-red uppercase mb-10 tracking-tight text-yellow-500">TAND KHU VỰC 9 - CẦN THƠ</h1>
+          <h1 
+            className="text-3xl font-black uppercase mb-10 tracking-tight"
+            style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.8)' }}
+          >
+            TAND KHU VỰC 9 - CẦN THƠ
+          </h1>
           <form onSubmit={handleLogin} className="space-y-6">
             <input type="email" placeholder="Email..." value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="w-full px-6 py-4 bg-white text-black rounded-2xl outline-none text-xl font-bold" required />
             <input type="password" placeholder="Mật khẩu..." value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full px-6 py-4 bg-white text-black rounded-2xl outline-none text-xl font-bold" required />
