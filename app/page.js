@@ -164,6 +164,30 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
         </header>
 
         <div className="p-12 flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+            <div className="bg-white p-8 rounded-[32px] border shadow-xl flex items-center justify-between border-l-8 border-l-blue-900">
+                <div>
+                    <p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Tổng vụ án</p>
+                    <p className="text-5xl font-black text-gray-950">{schedule.length}</p>
+                </div>
+                <div className="bg-blue-50 text-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-blue-100">📁</div>
+            </div>
+            <div className="bg-gradient-to-br from-blue-600 to-blue-900 text-white p-8 rounded-[32px] shadow-2xl flex items-center justify-between transform transition-all hover:-translate-y-1">
+                <div>
+                    <p className="text-blue-200 text-sm font-black uppercase mb-2 tracking-widest">Xử trong ngày</p>
+                    <p className="text-5xl font-black">{schedule.filter(i => moment(i.datetime).isSame(moment(), 'day')).length}</p>
+                </div>
+                <div className="bg-white/20 text-white w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-white/20">⚡</div>
+            </div>
+            <div className="bg-white p-8 rounded-[32px] border shadow-xl flex items-center justify-between border-l-8 border-l-amber-500">
+                <div>
+                    <p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Đang chờ xử</p>
+                    <p className="text-5xl font-black text-amber-600">{schedule.filter(i => i.status === 'pending').length}</p>
+                </div>
+                <div className="bg-amber-50 text-amber-500 w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-amber-100">⏳</div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-12">
             
             {/* FORM NHẬP LIỆU */}
