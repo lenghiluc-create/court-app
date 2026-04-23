@@ -102,6 +102,42 @@ export default function PremiumCourtApp() {
       setForm(initialForm); setEditingId(null); loadData();
     } catch (err) { showToast("Lỗi khi lưu dữ liệu", "error"); }
   };
+  const exportToExcel = () => {
+    if (schedule.length === 0) return showToast("Không có dữ liệu để xuất!", "error");
+
+    // 1. Tạo Header với Quốc hiệu, Tiêu ngữ
+    let csvContent = "\uFEFF"; // Hỗ trợ tiếng Việt UTF-8 cho Excel
+    csvContent += "TÒA ÁN NHÂN DÂN,,CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\n";
+    csvContent += "KHU VỰC 9 - CẦN THƠ,,Độc lập - Tự do - Hạnh Phúc\n\n";
+    csvContent += `,,Cần Thơ, ngày ${moment().format("DD")} tháng ${moment().format("MM")} năm ${moment().format("YYYY")}\n\n`;
+    csvContent += "LỊCH XÉT XỬ\n\n";
+    
+    // 2. Tiêu đề các cột
+    csvContent += 'STT,NỘI DUNG VỤ ÁN,NGÀY XÉT XỬ,"CHỦ TỌA, THƯ KÝ",HỘI THẨM NHÂN DÂN,PHÒNG XÉT XỬ\n';
+
+    // Lấy dữ liệu đang được lọc trên màn hình
+    const dataToExport = schedule.filter(i => i.caseName.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    // 3. Đổ dữ liệu vào từng dòng (Dùng nháy kép "" để gộp dòng trong 1 ô Excel)
+    dataToExport.forEach((item, index) => {
+      const stt = index + 1;
+      const noidung = `"${item.caseName}\nNĐ: ${item.plaintiff}\nBĐ: ${item.defendant}"`;
+      const thoigian = `"${moment(item.datetime).format("HH")} giờ ${moment(item.datetime).format("mm")} phút\nNgày ${moment(item.datetime).format("DD/MM/YYYY")}"`;
+      const hd = `"${item.judge}\n${item.clerk}"`;
+      const htm = `"${item.juror1}\n${item.juror2}"`;
+      const phong = `"${item.room}"`;
+
+      csvContent += `${stt},${noidung},${thoigian},${hd},${htm},${phong}\n`;
+    });
+
+    // 4. Tạo file và ép tải xuống
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Lich_Xet_Xu_TANDKV9_${moment().format("DD_MM_YYYY")}.csv`;
+    link.click();
+    showToast("Đã xuất file Excel!", "success");
+  };
 const isRoomConflict = schedule.some(item => item.datetime === form.datetime && item.room === form.room && item.id !== editingId);
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-blue-900">ĐANG TẢI...</div>;
 
