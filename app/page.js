@@ -102,7 +102,7 @@ export default function PremiumCourtApp() {
       setForm(initialForm); setEditingId(null); loadData();
     } catch (err) { showToast("Lỗi khi lưu dữ liệu", "error"); }
   };
-
+const isRoomConflict = schedule.some(item => item.datetime === form.datetime && item.room === form.room && item.id !== editingId);
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-blue-900">ĐANG TẢI...</div>;
 
   if (!user) {
