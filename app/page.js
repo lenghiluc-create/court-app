@@ -340,17 +340,21 @@ export default function PremiumCourtApp() {
                       
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
-                          <<div>
-  <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Địa điểm xét xử</label>
+                          <div>
+  <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+    Phòng xử án
+  </label>
   <select 
     value={form.room} 
     onChange={e => setForm({...form, room: e.target.value})} 
-    className={`w-full border p-2.5 rounded-lg bg-gray-50 text-sm font-bold outline-none text-gray-900 transition-colors ${isRoomConflict ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-blue-600 focus:bg-white'}`}
+    className={`w-full border p-2.5 rounded-lg bg-gray-50 text-sm font-bold outline-none text-gray-900 transition-colors ${
+      isRoomConflict ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-blue-600 focus:bg-white'
+    }`}
   >
-    <option value="">-- Chọn địa điểm --</option>
-    <option value="Trụ sở">🏢 Trụ sở</option>
-    <option value="Chi nhánh">🏢 Chi nhánh</option>
-    <option value="Dự phòng">⚠️ Dự phòng</option>
+    <option value="">-- Chọn nơi xử --</option>
+    <option value="Trụ sở">Trụ sở</option>
+    <option value="Chi nhánh">Chi nhánh</option>
+    <option value="Dự phòng">Dự phòng</option>
   </select>
 </div>
                         </div>
