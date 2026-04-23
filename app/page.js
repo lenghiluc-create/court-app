@@ -371,7 +371,7 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
                 <p>⚖️ Hội thẩm: {selectedEvent.juror1}, {selectedEvent.juror2}</p>
                 <p>📝 Thư ký: {selectedEvent.clerk}</p>
                 <p>🛡️ Kiểm sát: <span className="text-red-600">{selectedEvent.prosecutor}</span></p>
-                <button onClick={() => setSelectedEvent(null)} className="w-full bg-blue-900 text-white py-4 rounded-2xl font-black uppercase mt-6 shadow-lg">ĐÓNG</button>
+                <button onClick={() => setSelectedEvent(null)} className="w-full bg-blue-900 text-white py-4 rounded-2xl font-black uppercase mt-6 shadow-lg hover:bg-blue-800">ĐÓNG CỬA SỔ</button>
               </div>
            </div>
         </div>
