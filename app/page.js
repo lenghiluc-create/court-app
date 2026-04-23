@@ -110,7 +110,12 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
       <div className="min-h-screen flex items-center justify-center relative bg-cover bg-center font-sans" style={{ backgroundImage: "url('/toaan.jpg')" }}>
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
         <div className="relative z-10 w-full max-w-[480px] p-10 bg-white/10 backdrop-blur-md rounded-[40px] border border-white/20 text-white text-center shadow-2xl">
-          <img src="/logo-toa-an-nhan-dan-toi-cao.png" alt="Logo" className="w-28 h-28 object-contain mx-auto mb-6 drop-shadow-2xl" />
+          <img 
+            src="/logo-toa-an-nhan-dan-toi-cao.png" 
+            alt="Logo" 
+            className="mx-auto mb-6 drop-shadow-2xl" 
+            style={{ width: '120px', height: '120px', objectFit: 'contain' }} 
+          />
           <h1 className="text-3xl font-black uppercase mb-10 tracking-tight">TAND KHU VỰC 9</h1>
           <form onSubmit={handleLogin} className="space-y-6">
             <input type="email" placeholder="Email..." value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="w-full px-6 py-4 bg-white text-black rounded-2xl outline-none text-xl font-bold" required />
