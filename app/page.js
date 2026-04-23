@@ -28,7 +28,7 @@ export default function PremiumCourtApp() {
   const [selectedEvent, setSelectedEvent] = useState(null);
 
   const initialForm = {
-    datetime: "", room: "", caseType: "Hình sự", caseName: "", 
+    datetime: "", room: "Trụ sở", caseType: "Hình sự", caseName: "", 
     plaintiff: "", defendant: "", 
     judge: "", clerk: "", juror1: "", juror2: "", 
     prosecutor: "", status: "pending"
@@ -340,14 +340,19 @@ export default function PremiumCourtApp() {
                       
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Thời gian</label>
-                            <input type="datetime-local" value={form.datetime} onChange={e => setForm({...form, datetime: e.target.value})} className={`w-full border p-2.5 rounded-lg bg-gray-50 text-sm font-bold outline-none text-gray-900 transition-colors ${isRoomConflict ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-blue-600 focus:bg-white'}`} />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Phòng xử</label>
-                            <input placeholder="VD: 101" value={form.room} onChange={e => setForm({...form, room: e.target.value})} className={`w-full border p-2.5 rounded-lg bg-gray-50 text-sm font-bold outline-none text-gray-900 transition-colors ${isRoomConflict ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-blue-600 focus:bg-white'}`} />
-                          </div>
+                          <<div>
+  <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Địa điểm xét xử</label>
+  <select 
+    value={form.room} 
+    onChange={e => setForm({...form, room: e.target.value})} 
+    className={`w-full border p-2.5 rounded-lg bg-gray-50 text-sm font-bold outline-none text-gray-900 transition-colors ${isRoomConflict ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-blue-600 focus:bg-white'}`}
+  >
+    <option value="">-- Chọn địa điểm --</option>
+    <option value="Trụ sở">🏢 Trụ sở</option>
+    <option value="Chi nhánh">🏢 Chi nhánh</option>
+    <option value="Dự phòng">⚠️ Dự phòng</option>
+  </select>
+</div>
                         </div>
                         {isRoomConflict && <p className="text-red-600 text-[10px] font-bold bg-red-50 p-2 rounded border border-red-200 animate-pulse">⚠️ Trùng lịch tại phòng này!</p>}
 
