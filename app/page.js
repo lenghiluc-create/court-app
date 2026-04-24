@@ -139,6 +139,12 @@ export default function PremiumCourtApp() {
     showToast("Đã xuất file Excel!", "success");
   };
 const isRoomConflict = schedule.some(item => item.datetime === form.datetime && item.room === form.room && item.id !== editingId);
+const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item => 
+    item.datetime === form.datetime && 
+    item.prosecutor && 
+    item.prosecutor.trim().toLowerCase() === form.prosecutor.trim().toLowerCase() && 
+    item.id !== editingId
+  );
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-blue-900">ĐANG TẢI...</div>;
 
   if (!user) {
@@ -298,7 +304,9 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
                     <button onClick={handleSubmit} disabled={isRoomConflict} className={`w-full text-white font-black py-6 uppercase text-xl shadow-2xl transition-all active:scale-95 shadow-blue-900/20 ${isRoomConflict ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-900 hover:bg-blue-800'}`}>
                       {editingId ? "Cập nhật hồ sơ" : "Lưu vào hệ thống"}
                     </button>
-                    {isRoomConflict && <p className="text-red-500 text-sm font-black text-center mt-2 animate-pulse uppercase">⚠️ TRÙNG LỊCH XÉT XỬ!</p>}
+                    {isRoomConflict && <p className="text-red-500 text-sm font-black text-center mt-2 animate-pulse uppercase">⚠️ TRÙNG PHÒNG XÉT XỬ!</p>}
+                    {isProsecutorConflict && <p className="text-red-500 text-sm font-black text-center mt-2 animate-pulse uppercase">⚠️ KIỂM SÁT VIÊN BỊ TRÙNG LỊCH!</p>}
+                    
                   </div>
                 </div>
               </div>
