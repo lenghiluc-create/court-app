@@ -259,8 +259,10 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
                                 <option value="Hình sự">🚨 Hình sự</option>
                                 <option value="Dân sự">🤝 Dân sự</option>
                                 <option value="Hành chính">🏢 Hành chính</option>
-                                <option value="Hôn nhân & GĐ">💍 Hôn nhân</option>
-                                <option value="Kinh tế">💰 Kinh tế</option>
+                                <option value="HNGĐ">💍 Hôn nhân</option>
+                                <option value="ADBPXLHC">ADBPXLHC</option>
+                                <option value="Lao động">Lao động</option>
+                                <option value="KDTM">💰 KDTM</option>
                             </select>
                             <select value={form.trialCount} onChange={e => setForm({...form, trialCount: e.target.value})} className={`${inputBase} w-1/2 bg-blue-50/50`}>
                                 <option value="Lần 1">Lần 1</option>
