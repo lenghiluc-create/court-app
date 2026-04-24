@@ -20,6 +20,7 @@ export default function PremiumCourtApp() {
   const [loginPass, setLoginPass] = useState("");
   const [schedule, setSchedule] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("pending");
   const [editingId, setEditingId] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
 
@@ -30,9 +31,8 @@ export default function PremiumCourtApp() {
   };
   const [form, setForm] = useState(initialForm);
 
-  // PHÔNG CHỮ INTER VÀ CỠ CHỮ 16PX ĐỒNG NHẤT
   const textStyle = "text-[16px] font-bold text-gray-800";
-  const inputBase = `w-full border-2 border-gray-200 p-4 rounded-2xl bg-gray-50 outline-none focus:border-blue-600 focus:bg-white transition-all ${textStyle}`;
+  const inputBase = `w-full border-2 border-gray-200 p-4 bg-gray-50 outline-none focus:border-blue-600 focus:bg-white transition-all ${textStyle}`;
 
   const showToast = (message, type = "success") => {
     setToast({ show: true, message, type });
@@ -43,7 +43,8 @@ export default function PremiumCourtApp() {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        const email = currentUser.email.toLowerCase();"";
+        // Bọc thép lỗi email null
+        const email = currentUser.email ? currentUser.email.toLowerCase() : "";
         if (email.includes('admin') || email === 'truongphong@gmail.com') {
           setUserRole('admin');
         } else if (email.includes('thuky')) {
@@ -90,7 +91,8 @@ export default function PremiumCourtApp() {
     if (userRole === 'thamphan' || userRole === 'viewer') return showToast("Không có quyền!", "error");
     if (!form.datetime || !form.caseName || !form.room) return showToast("Vui lòng nhập đủ thông tin!", "error");
     
-    const logData = { ...form, updatedAt: moment().toISOString(), updatedBy: user.email };
+    // Đảm bảo status luôn có giá trị
+    const logData = { ...form, status: form.status || 'pending', updatedAt: moment().toISOString(), updatedBy: user.email };
     try {
       if (editingId) {
         await updateDoc(doc(db, "schedule", editingId), logData);
@@ -102,6 +104,7 @@ export default function PremiumCourtApp() {
       setForm(initialForm); setEditingId(null); loadData();
     } catch (err) { showToast("Lỗi khi lưu dữ liệu", "error"); }
   };
+
   const toggleStatus = async (id, newStatus) => {
     try {
       await updateDoc(doc(db, "schedule", id), { status: newStatus });
@@ -111,6 +114,7 @@ export default function PremiumCourtApp() {
       showToast("Lỗi cập nhật trạng thái", "error");
     }
   };
+
   const exportToExcel = () => {
     if (schedule.length === 0) return showToast("Không có dữ liệu để xuất!", "error");
 
@@ -122,7 +126,9 @@ export default function PremiumCourtApp() {
       const matchStatus = statusFilter === 'all' ? true : i.status === statusFilter;
       return matchSearch && matchStatus;
     });
-    // Xây dựng mã HTML để ép Excel hiểu UTF-8 và giữ format bảng
+
+    if (dataToExport.length === 0) return showToast("Không có dữ liệu trong bộ lọc này!", "error");
+
     let tableHtml = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
       <head>
@@ -146,7 +152,7 @@ export default function PremiumCourtApp() {
           </tr>
           <tr><td colspan="6" class="no-border"></td></tr>
           <tr>
-            <td colspan="6" class="no-border text-center font-bold" style="font-size: 16pt;">LỊCH XÉT XỬ</td>
+            <td colspan="6" class="no-border text-center font-bold" style="font-size: 16pt;">LỊCH XÉT XỬ ${statusFilter === 'completed' ? '(ĐÃ XỬ XONG)' : ''}</td>
           </tr>
           <tr><td colspan="6" class="no-border"></td></tr>
           
@@ -161,10 +167,10 @@ export default function PremiumCourtApp() {
     `;
 
     dataToExport.forEach((item, index) => {
-      const noidung = `<b>${item.caseName}</b><br/>NĐ: ${item.plaintiff}<br/>BĐ: ${item.defendant}`;
+      const noidung = `<b>${item.caseName || ""}</b><br/>NĐ: ${item.plaintiff || ""}<br/>BĐ: ${item.defendant || ""}`;
       const thoigian = `${moment(item.datetime).format("HH")} giờ ${moment(item.datetime).format("mm")} phút<br/>Ngày ${moment(item.datetime).format("DD/MM/YYYY")}`;
-      const hd = `${item.judge}<br/>${item.clerk}`;
-      const htm = `${item.juror1}<br/>${item.juror2}`;
+      const hd = `${item.judge || ""}<br/>${item.clerk || ""}`;
+      const htm = `${item.juror1 || ""}<br/>${item.juror2 || ""}`;
 
       tableHtml += `
         <tr>
@@ -173,7 +179,7 @@ export default function PremiumCourtApp() {
           <td class="text-center">${thoigian}</td>
           <td>${hd}</td>
           <td>${htm}</td>
-          <td class="text-center font-bold">${item.room}</td>
+          <td class="text-center font-bold">${item.room || ""}</td>
         </tr>
       `;
     });
@@ -184,7 +190,6 @@ export default function PremiumCourtApp() {
       </html>
     `;
 
-    // Xuất file dạng .xls thay vì .csv
     const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -192,13 +197,22 @@ export default function PremiumCourtApp() {
     link.click();
     showToast("Đã xuất file Excel chuẩn!", "success");
   };
-const isRoomConflict = schedule.some(item => item.datetime === form.datetime && item.room === form.room && item.id !== editingId);
-const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item => 
-    item.datetime === form.datetime && 
-    item.prosecutor && 
-    item.prosecutor.trim().toLowerCase() === form.prosecutor.trim().toLowerCase() && 
-    item.id !== editingId
+
+  // BỌC THÉP logic trùng lịch (Tránh sập khi dữ liệu cũ bị thiếu)
+  const isRoomConflict = schedule.some(item => 
+    item.datetime && item.datetime === form.datetime && 
+    item.room && item.room === form.room && 
+    item.id !== editingId && 
+    item.status !== 'completed'
   );
+  
+  const isProsecutorConflict = (form.prosecutor || "").trim() !== "" && schedule.some(item => 
+    item.datetime && item.datetime === form.datetime && 
+    (item.prosecutor || "").trim().toLowerCase() === (form.prosecutor || "").trim().toLowerCase() && 
+    item.id !== editingId &&
+    item.status !== 'completed'
+  );
+
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-blue-900">ĐANG TẢI...</div>;
 
   if (!user) {
@@ -221,7 +235,9 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
   const canEdit = userRole === 'admin' || userRole === 'thuky';
 
   return (
-    <div className="min-h-screen bg-gray-100 flex font-sans antialiased tracking-tight">
+    <div className="min-h-screen flex font-sans antialiased tracking-tight relative bg-cover bg-center bg-fixed" style={{ backgroundImage: "url('/buago.jpg')" }}>
+      
+      <div className="absolute inset-0 bg-black/30 z-0"></div>
 
       <style dangerouslySetInnerHTML={{__html: `
         .rbc-event { background-color: #1e3a8a !important; border-radius: 0px !important; padding: 4px 8px !important; font-weight: 800 !important; border: none !important; }
@@ -242,7 +258,7 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
         <div className="p-8 border-t border-white/5 bg-black/10">
           <div className="mb-6 p-4 bg-white/5 border border-white/10">
              <p className="text-[10px] text-blue-400 font-black uppercase mb-1 tracking-widest">Quyền: {userRole}</p>
-             <p className="text-sm font-bold truncate opacity-70">{user.email}</p>
+             <p className="text-sm font-bold truncate opacity-70">{user?.email}</p>
           </div>
           <button onClick={handleLogout} className="w-full bg-red-600 hover:bg-red-700 py-4 font-black uppercase text-xs transition-all flex items-center justify-center gap-2">🚪 ĐĂNG XUẤT</button>
         </div>
@@ -271,17 +287,17 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
             </div>
             <div className="bg-gradient-to-br from-blue-600 to-blue-900 text-white p-8 shadow-2xl flex items-center justify-between transform transition-all hover:-translate-y-1">
                 <div>
-                    <p className="text-blue-200 text-sm font-black uppercase mb-2 tracking-widest">Xử trong ngày</p>
-                    <p className="text-5xl font-black">{schedule.filter(i => moment(i.datetime).isSame(moment(), 'day')).length}</p>
+                    <p className="text-blue-200 text-sm font-black uppercase mb-2 tracking-widest">Đang chờ xử</p>
+                    <p className="text-5xl font-black">{schedule.filter(i => i.status !== 'completed').length}</p>
                 </div>
-                <div className="bg-white/20 text-white w-16 h-16 flex items-center justify-center text-3xl shadow-inner border border-white/20">⚡</div>
+                <div className="bg-white/20 text-white w-16 h-16 flex items-center justify-center text-3xl shadow-inner border border-white/20">⏳</div>
             </div>
-            <div className="bg-white p-8 border shadow-xl flex items-center justify-between border-l-8 border-l-amber-500">
+            <div className="bg-white p-8 border shadow-xl flex items-center justify-between border-l-8 border-l-green-500">
                 <div>
-                    <p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Đang chờ xử</p>
-                    <p className="text-5xl font-black text-amber-600">{schedule.filter(i => i.status === 'pending').length}</p>
+                    <p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Đã xử xong</p>
+                    <p className="text-5xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p>
                 </div>
-                <div className="bg-amber-50 text-amber-500 w-16 h-16 flex items-center justify-center text-3xl shadow-inner border border-amber-100">⏳</div>
+                <div className="bg-green-50 text-green-500 w-16 h-16 flex items-center justify-center text-3xl shadow-inner border border-green-100">✅</div>
             </div>
           </div>
 
@@ -296,11 +312,11 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
                     {editingId ? "Cập nhật hồ sơ" : "Đăng ký lịch"}
                   </h2>
                   <div className="space-y-8">
+                    
                     <div className="grid grid-cols-1 gap-6">
                       <div>
                         <label className="block text-xs font-black text-gray-400 uppercase mb-3 ml-2 tracking-widest">Thời gian xét xử</label>
                         <div className="flex gap-4">
-                          {/* Input chọn Ngày */}
                           <input 
                             type="date" 
                             value={form.datetime ? form.datetime.split('T')[0] : ""} 
@@ -310,7 +326,6 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
                             }} 
                             className={inputBase} 
                           />
-                          {/* Dropdown chọn Giờ */}
                           <select 
                             value={form.datetime && form.datetime.includes('T') ? form.datetime.split('T')[1] : "07:30"} 
                             onChange={e => {
@@ -338,6 +353,7 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
                           </select>
                         </div>
                       </div>
+                      
                       <div>
                         <label className="block text-xs font-black text-gray-400 uppercase mb-3 ml-2 tracking-widest">Phòng xử / Địa điểm</label>
                         <select value={form.room} onChange={e => setForm({...form, room: e.target.value})} className={inputBase}>
@@ -356,10 +372,8 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
                                 <option value="Hình sự">🚨 Hình sự</option>
                                 <option value="Dân sự">🤝 Dân sự</option>
                                 <option value="Hành chính">🏢 Hành chính</option>
-                                <option value="HNGĐ">💍 Hôn nhân</option>
-                                <option value="ADBPXLHC">ADBPXLHC</option>
-                                <option value="Lao động">Lao động</option>
-                                <option value="KDTM">💰 KDTM</option>
+                                <option value="Hôn nhân & GĐ">💍 Hôn nhân</option>
+                                <option value="Kinh tế">💰 Kinh tế</option>
                             </select>
                             <select value={form.trialCount} onChange={e => setForm({...form, trialCount: e.target.value})} className={`${inputBase} w-1/2 bg-blue-50/50`}>
                                 <option value="Lần 1">Lần 1</option>
@@ -392,12 +406,15 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
                       </div>
                     </div>
 
-                    <button onClick={handleSubmit} disabled={isRoomConflict} className={`w-full text-white font-black py-6 uppercase text-xl shadow-2xl transition-all active:scale-95 shadow-blue-900/20 ${isRoomConflict ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-900 hover:bg-blue-800'}`}>
+                    <button 
+                      onClick={handleSubmit} 
+                      disabled={isRoomConflict || isProsecutorConflict} 
+                      className={`w-full text-white font-black py-6 uppercase text-xl shadow-2xl transition-all active:scale-95 shadow-blue-900/20 ${(isRoomConflict || isProsecutorConflict) ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-900 hover:bg-blue-800'}`}
+                    >
                       {editingId ? "Cập nhật hồ sơ" : "Lưu vào hệ thống"}
                     </button>
                     {isRoomConflict && <p className="text-red-500 text-sm font-black text-center mt-2 animate-pulse uppercase">⚠️ TRÙNG PHÒNG XÉT XỬ!</p>}
                     {isProsecutorConflict && <p className="text-red-500 text-sm font-black text-center mt-2 animate-pulse uppercase">⚠️ KIỂM SÁT VIÊN BỊ TRÙNG LỊCH!</p>}
-                    
                   </div>
                 </div>
               </div>
@@ -407,9 +424,15 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
             <div className={`space-y-12 ${!canEdit ? 'xl:col-span-12' : 'xl:col-span-8'}`}>
               
               <div className="bg-white p-8 border shadow-2xl h-[500px]">
+                {/* BỌC THÉP Lịch để tránh những hồ sơ bị mất ngày giờ làm sập hệ thống */}
                 <Calendar 
                    localizer={localizer} 
-                   events={schedule.map(i => ({...i, title: `[${i.room}] ${i.caseName}`, start: new Date(i.datetime), end: new Date(new Date(i.datetime).getTime() + 3600000)}))} 
+                   events={schedule.filter(i => i.datetime).map(i => ({
+                     ...i, 
+                     title: `${i.status === 'completed' ? '✅ ' : ''}[${i.room}] ${i.caseName || 'Chưa có tên'}`, 
+                     start: new Date(i.datetime), 
+                     end: new Date(new Date(i.datetime).getTime() + 3600000)
+                   }))} 
                    style={{ height: "100%" }} 
                    onSelectEvent={e => setSelectedEvent(e)}
                 />
@@ -420,7 +443,7 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
                 <div className="p-10 border-b-2 border-gray-50 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 sticky top-0 bg-white z-10">
                   <h3 className="font-black uppercase text-2xl text-blue-950 flex items-center gap-4">
                     <span className="w-2 h-10 bg-blue-950"></span>
-                    Sổ thụ lý trực tuyến
+                    Sổ thụ lý
                   </h3>
                   
                   <div className="flex flex-col md:flex-row gap-4 w-full xl:w-auto">
@@ -429,10 +452,11 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
                       <option value="completed">✅ Đã xử xong</option>
                       <option value="all">📁 Tất cả vụ án</option>
                     </select>
-                    <input type="text" placeholder="Tìm kiếm vụ án..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-6 py-4 text-lg w-full md:w-72 focus:border-blue-600 outline-none font-bold" />
+
+                    <input type="text" placeholder="Tìm kiếm vụ án..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-6 py-4 text-lg w-full md:w-64 focus:border-blue-600 outline-none font-bold" />
                     
                     <button onClick={exportToExcel} className="bg-green-600 text-white px-8 py-4 font-black uppercase shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 w-full md:w-auto">
-                      📊 XUẤT EXCEL TÒA ÁN
+                      📊 XUẤT EXCEL
                     </button>
                   </div>
                 </div>
@@ -448,6 +472,7 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
                       </tr>
                     </thead>
                     <tbody className="divide-y-2 divide-gray-50">
+                      {/* BỌC THÉP TÌM KIẾM BẢNG */}
                       {schedule.filter(i => {
                         const caseName = i.caseName || "";
                         const search = searchQuery || "";
@@ -455,18 +480,19 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
                         const matchStatus = statusFilter === 'all' ? true : i.status === statusFilter;
                         return matchSearch && matchStatus;
                       }).map(item => (
-                        <tr key={item.id} className="hover:bg-blue-50/20 bg-white transition-all group">
+                        <tr key={item.id} className={`hover:bg-blue-50/20 bg-white transition-all group ${item.status === 'completed' ? 'opacity-70 bg-gray-50/50' : ''}`}>
                           <td className="p-10 align-top">
-                            <div className="font-black text-gray-950 text-2xl">{moment(item.datetime).format("DD/MM/YYYY")}</div>
-                            <div className="text-blue-600 font-black text-xl mt-2">🕒 {moment(item.datetime).format("HH:mm")}</div>
-                            <div className="mt-4 font-black text-gray-400 uppercase text-xs tracking-widest">{item.room}</div>
+                            <div className="font-black text-gray-950 text-2xl">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
+                            <div className="text-blue-600 font-black text-xl mt-2">🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</div>
+                            <div className="mt-4 font-black text-gray-400 uppercase text-xs tracking-widest">{item.room || "---"}</div>
                           </td>
                           <td className="p-10 align-top">
-                            <div className="font-black uppercase text-gray-900 text-xl leading-tight mb-6 group-hover:text-blue-900 transition-colors">{item.caseName}</div>
-                            {item.status === 'completed' && <span className="text-green-600 mr-2">✅</span>}
+                            <div className="font-black uppercase text-gray-900 text-xl leading-tight mb-6 group-hover:text-blue-900 transition-colors">
+                              {item.status === 'completed' && <span className="text-green-600 mr-2">✅</span>}
                               {item.caseName || "Vụ án chưa có tên"}
+                            </div>
                             <div className="flex gap-4">
-                                <span className="bg-blue-50 text-blue-800 px-5 py-2 text-xs font-black uppercase border border-blue-100">{item.caseType}</span>
+                                <span className="bg-blue-50 text-blue-800 px-5 py-2 text-xs font-black uppercase border border-blue-100">{item.caseType || "---"}</span>
                                 <span className="bg-amber-50 text-amber-700 px-5 py-2 text-xs font-black uppercase border border-amber-100">{item.trialCount || "Lần 1"}</span>
                             </div>
                             <div className="mt-6 text-base text-gray-500 space-y-2 font-bold italic">
@@ -477,25 +503,25 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
                           <td className="p-10 align-top space-y-4">
                             <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 bg-blue-100 flex items-center justify-center text-blue-600 font-black text-sm">TP</div>
-                                <span className="font-black text-xl text-gray-900">{item.judge}</span>
+                                <span className="font-black text-xl text-gray-900">{item.judge || "---"}</span>
                             </div>
                             <div className="flex items-center gap-4 text-base text-gray-500 font-bold">
                                 <div className="w-10 h-10 bg-gray-100 flex items-center justify-center font-black text-xs">HT</div>
-                                <span>{item.juror1}, {item.juror2}</span>
+                                <span>{item.juror1 || "---"}, {item.juror2 || "---"}</span>
                             </div>
                             <div className="flex items-center gap-4 text-base text-gray-500 font-bold">
                                 <div className="w-10 h-10 bg-gray-100 flex items-center justify-center font-black text-xs">TK</div>
-                                <span>{item.clerk}</span>
+                                <span>{item.clerk || "---"}</span>
                             </div>
                             <div className="flex items-center gap-4 text-base text-red-600 font-black">
                                 <div className="w-10 h-10 bg-red-50 flex items-center justify-center font-black text-xs">KS</div>
-                                <span>{item.prosecutor}</span>
+                                <span>{item.prosecutor || "---"}</span>
                             </div>
                           </td>
                           {canEdit && (
                             <td className="p-10 text-center align-top">
                               <div className="flex flex-col gap-4">
-                                {item.status === 'pending' ? (
+                                {item.status === 'pending' || !item.status ? (
                                   <button onClick={() => toggleStatus(item.id, 'completed')} className="bg-green-50 text-green-700 px-6 py-4 font-black uppercase text-xs border border-green-100 hover:bg-green-600 hover:text-white transition-all">✔ XONG</button>
                                 ) : (
                                   <button onClick={() => toggleStatus(item.id, 'pending')} className="bg-amber-50 text-amber-700 px-6 py-4 font-black uppercase text-xs border border-amber-100 hover:bg-amber-600 hover:text-white transition-all">↺ MỞ LẠI</button>
@@ -519,22 +545,25 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
         </div>
       </main>
 
-      {/* MODAL */}
+      {/* MODAL CHI TIẾT BỌC THÉP */}
       {selectedEvent && (
         <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[100] p-6" onClick={() => setSelectedEvent(null)}>
            <div className="bg-white w-full max-w-lg shadow-[0_0_40px_rgba(0,0,0,1)] border-4 border-blue-900 scale-105" onClick={e => e.stopPropagation()}>
-              <div className="bg-blue-900 p-8 text-white">
-                <p className="text-xs font-black uppercase opacity-60 mb-2">{selectedEvent.caseType} - {selectedEvent.trialCount}</p>
-                <h3 className="text-2xl font-black uppercase leading-tight">{selectedEvent.caseName}</h3>
+              <div className="bg-blue-900 p-8 text-white flex justify-between items-start">
+                <div>
+                  <p className="text-xs font-black uppercase opacity-80 mb-2">{selectedEvent.caseType || "---"} - {selectedEvent.trialCount || "---"}</p>
+                  <h3 className="text-2xl font-black uppercase leading-tight">{selectedEvent.caseName || "Chưa có tên"}</h3>
+                </div>
+                {selectedEvent.status === 'completed' && <span className="bg-green-500 text-white px-3 py-1 font-black text-xs ml-4">ĐÃ XONG</span>}
               </div>
-              <div className="p-8 space-y-4 text-base font-bold">
-                <p>🕒 <span className="text-blue-900">{moment(selectedEvent.datetime).format("HH:mm - DD/MM/YYYY")}</span> tại <span className="text-blue-900">{selectedEvent.room}</span></p>
-                <hr/>
-                <p>👨‍⚖️ Thẩm phán: <span className="font-black text-gray-900">{selectedEvent.judge}</span></p>
-                <p>⚖️ Hội thẩm: {selectedEvent.juror1}, {selectedEvent.juror2}</p>
-                <p>📝 Thư ký: {selectedEvent.clerk}</p>
-                <p>🛡️ Kiểm sát: <span className="text-red-600">{selectedEvent.prosecutor}</span></p>
-                <button onClick={() => setSelectedEvent(null)} className="w-full bg-blue-900 text-white py-4 font-black uppercase mt-6 shadow-lg hover:bg-blue-800">ĐÓNG CỬA SỔ</button>
+              <div className="p-8 space-y-4 text-base font-bold text-gray-900">
+                <p>🕒 <span className="text-blue-900">{selectedEvent.datetime ? moment(selectedEvent.datetime).format("HH:mm - DD/MM/YYYY") : "---"}</span> tại <span className="text-blue-900">{selectedEvent.room || "---"}</span></p>
+                <hr className="border-gray-300 border-2"/>
+                <p>👨‍⚖️ Thẩm phán: <span className="font-black text-gray-950">{selectedEvent.judge || "---"}</span></p>
+                <p>⚖️ Hội thẩm: {selectedEvent.juror1 || "---"}, {selectedEvent.juror2 || "---"}</p>
+                <p>📝 Thư ký: {selectedEvent.clerk || "---"}</p>
+                <p>🛡️ Kiểm sát: <span className="text-red-600">{selectedEvent.prosecutor || "---"}</span></p>
+                <button onClick={() => setSelectedEvent(null)} className="w-full bg-blue-900 text-white py-5 font-black uppercase mt-6 hover:bg-blue-800 transition-colors">ĐÓNG CỬA SỔ</button>
               </div>
            </div>
         </div>
