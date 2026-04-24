@@ -172,6 +172,12 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
 
   return (
     <div className="min-h-screen bg-gray-100 flex font-sans antialiased tracking-tight">
+      <style dangerouslySetInnerHTML={{__html: `
+        .rbc-event { background-color: #1e3a8a !important; border-radius: 0px !important; padding: 4px 8px !important; font-weight: 800 !important; border: none !important; }
+        .rbc-event.rbc-selected { background-color: #000000 !important; box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #000000 !important; z-index: 10 !important; }
+        .rbc-slot-selection { background-color: rgba(0, 0, 0, 0.6) !important; }
+        .rbc-day-bg.rbc-today { background-color: #eff6ff !important; }
+      `}} />
       {/* SIDEBAR */}
       <aside className="w-80 bg-blue-950 text-white hidden xl:flex flex-col fixed h-screen shadow-2xl border-r border-blue-900">
         <div className="p-12 text-center border-b border-white/5">
