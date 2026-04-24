@@ -284,7 +284,44 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
                     <div className="grid grid-cols-1 gap-6">
                       <div>
                         <label className="block text-xs font-black text-gray-400 uppercase mb-3 ml-2 tracking-widest">Thời gian xét xử</label>
-                        <input type="datetime-local" value={form.datetime} onChange={e => setForm({...form, datetime: e.target.value})} className={inputBase} />
+                        <div className="flex gap-4">
+                          {/* Input chọn Ngày */}
+                          <input 
+                            type="date" 
+                            value={form.datetime ? form.datetime.split('T')[0] : ""} 
+                            onChange={e => {
+                              const time = form.datetime && form.datetime.includes('T') ? form.datetime.split('T')[1] : '07:30';
+                              setForm({...form, datetime: `${e.target.value}T${time}`});
+                            }} 
+                            className={inputBase} 
+                          />
+                          {/* Dropdown chọn Giờ */}
+                          <select 
+                            value={form.datetime && form.datetime.includes('T') ? form.datetime.split('T')[1] : "07:30"} 
+                            onChange={e => {
+                              const date = form.datetime ? form.datetime.split('T')[0] : moment().format('YYYY-MM-DD');
+                              setForm({...form, datetime: `${date}T${e.target.value}`});
+                            }} 
+                            className={`${inputBase} w-1/2 bg-blue-50/50`}
+                          >
+                            <option value="07:30">07:30</option>
+                            <option value="08:00">08:00</option>
+                            <option value="08:30">08:30</option>
+                            <option value="09:00">09:00</option>
+                            <option value="09:30">09:30</option>
+                            <option value="10:00">10:00</option>
+                            <option value="10:30">10:30</option>
+                            <option value="11:00">11:00</option>
+                            <option value="13:30">13:30</option>
+                            <option value="14:00">14:00</option>
+                            <option value="14:30">14:30</option>
+                            <option value="15:00">15:00</option>
+                            <option value="15:30">15:30</option>
+                            <option value="16:00">16:00</option>
+                            <option value="16:30">16:30</option>
+                            <option value="17:00">17:00</option>
+                          </select>
+                        </div>
                       </div>
                       <div>
                         <label className="block text-xs font-black text-gray-400 uppercase mb-3 ml-2 tracking-widest">Phòng xử / Địa điểm</label>
