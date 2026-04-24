@@ -105,38 +105,77 @@ export default function PremiumCourtApp() {
   const exportToExcel = () => {
     if (schedule.length === 0) return showToast("Không có dữ liệu để xuất!", "error");
 
-    // 1. Tạo Header với Quốc hiệu, Tiêu ngữ
-    let csvContent = "\uFEFF"; // Hỗ trợ tiếng Việt UTF-8 cho Excel
-    csvContent += "TÒA ÁN NHÂN DÂN,,CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\n";
-    csvContent += "KHU VỰC 9 - CẦN THƠ,,Độc lập - Tự do - Hạnh Phúc\n\n";
-    csvContent += `,,Cần Thơ, ngày ${moment().format("DD")} tháng ${moment().format("MM")} năm ${moment().format("YYYY")}\n\n`;
-    csvContent += "LỊCH XÉT XỬ\n\n";
-    
-    // 2. Tiêu đề các cột
-    csvContent += 'STT,NỘI DUNG VỤ ÁN,NGÀY XÉT XỬ,"CHỦ TỌA, THƯ KÝ",HỘI THẨM NHÂN DÂN,PHÒNG XÉT XỬ\n';
-
-    // Lấy dữ liệu đang được lọc trên màn hình
     const dataToExport = schedule.filter(i => i.caseName.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    // 3. Đổ dữ liệu vào từng dòng (Dùng nháy kép "" để gộp dòng trong 1 ô Excel)
-    dataToExport.forEach((item, index) => {
-      const stt = index + 1;
-      const noidung = `"${item.caseName}\nNĐ: ${item.plaintiff}\nBĐ: ${item.defendant}"`;
-      const thoigian = `"${moment(item.datetime).format("HH")} giờ ${moment(item.datetime).format("mm")} phút\nNgày ${moment(item.datetime).format("DD/MM/YYYY")}"`;
-      const hd = `"${item.judge}\n${item.clerk}"`;
-      const htm = `"${item.juror1}\n${item.juror2}"`;
-      const phong = `"${item.room}"`;
+    // Xây dựng mã HTML để ép Excel hiểu UTF-8 và giữ format bảng
+    let tableHtml = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8" />
+        <style>
+          table { border-collapse: collapse; width: 100%; font-family: 'Times New Roman', Times, serif; font-size: 13pt; }
+          td, th { border: 1px solid #000000; padding: 8px; vertical-align: top; }
+          .no-border { border: none !important; }
+          .text-center { text-align: center; vertical-align: middle; }
+          .font-bold { font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <tr>
+            <td colspan="2" class="no-border text-center font-bold">TÒA ÁN NHÂN DÂN<br/>KHU VỰC 9 - CẦN THƠ</td>
+            <td colspan="4" class="no-border text-center font-bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/>Độc lập - Tự do - Hạnh Phúc</td>
+          </tr>
+          <tr>
+            <td colspan="6" class="no-border text-center"><i>Cần Thơ, ngày ${moment().format("DD")} tháng ${moment().format("MM")} năm ${moment().format("YYYY")}</i></td>
+          </tr>
+          <tr><td colspan="6" class="no-border"></td></tr>
+          <tr>
+            <td colspan="6" class="no-border text-center font-bold" style="font-size: 16pt;">LỊCH XÉT XỬ</td>
+          </tr>
+          <tr><td colspan="6" class="no-border"></td></tr>
+          
+          <tr>
+            <th class="text-center font-bold" style="background-color: #f2f2f2;">STT</th>
+            <th class="text-center font-bold" style="background-color: #f2f2f2;">NỘI DUNG VỤ ÁN</th>
+            <th class="text-center font-bold" style="background-color: #f2f2f2;">NGÀY XÉT XỬ</th>
+            <th class="text-center font-bold" style="background-color: #f2f2f2;">CHỦ TỌA, THƯ KÝ</th>
+            <th class="text-center font-bold" style="background-color: #f2f2f2;">HỘI THẨM NHÂN DÂN</th>
+            <th class="text-center font-bold" style="background-color: #f2f2f2;">PHÒNG XÉT XỬ</th>
+          </tr>
+    `;
 
-      csvContent += `${stt},${noidung},${thoigian},${hd},${htm},${phong}\n`;
+    dataToExport.forEach((item, index) => {
+      const noidung = `<b>${item.caseName}</b><br/>NĐ: ${item.plaintiff}<br/>BĐ: ${item.defendant}`;
+      const thoigian = `${moment(item.datetime).format("HH")} giờ ${moment(item.datetime).format("mm")} phút<br/>Ngày ${moment(item.datetime).format("DD/MM/YYYY")}`;
+      const hd = `${item.judge}<br/>${item.clerk}`;
+      const htm = `${item.juror1}<br/>${item.juror2}`;
+
+      tableHtml += `
+        <tr>
+          <td class="text-center">${index + 1}</td>
+          <td>${noidung}</td>
+          <td class="text-center">${thoigian}</td>
+          <td>${hd}</td>
+          <td>${htm}</td>
+          <td class="text-center font-bold">${item.room}</td>
+        </tr>
+      `;
     });
 
-    // 4. Tạo file và ép tải xuống
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    tableHtml += `
+        </table>
+      </body>
+      </html>
+    `;
+
+    // Xuất file dạng .xls thay vì .csv
+    const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `Lich_Xet_Xu_TANDKV9_${moment().format("DD_MM_YYYY")}.csv`;
+    link.download = `Lich_Xet_Xu_TANDKV9_${moment().format("DD_MM_YYYY")}.xls`;
     link.click();
-    showToast("Đã xuất file Excel!", "success");
+    showToast("Đã xuất file Excel chuẩn!", "success");
   };
 const isRoomConflict = schedule.some(item => item.datetime === form.datetime && item.room === form.room && item.id !== editingId);
 const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item => 
