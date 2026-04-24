@@ -327,6 +327,10 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
                     Sổ thụ lý trực tuyến
                   </h3>
                   <input type="text" placeholder="Tìm kiếm vụ án..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-8 py-4 rounded-2xl text-lg w-80 focus:border-blue-600 outline-none font-bold" />
+                  <button onClick={exportToExcel} className="bg-green-600 text-white px-6 py-4 rounded-2xl font-black uppercase shadow-lg hover:bg-green-700 transition-all flex items-center gap-2">
+                      📊 Xuất Excel
+                    </button>
+                  </div>
                 </div>
                 <div className="overflow-auto flex-1">
                   <table className="w-full text-left border-collapse">
