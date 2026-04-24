@@ -235,8 +235,7 @@ export default function PremiumCourtApp() {
   const canEdit = userRole === 'admin' || userRole === 'thuky';
 
   return (
-    <div className="min-h-screen flex font-sans antialiased tracking-tight relative bg-cover bg-center bg-fixed" style={{ backgroundImage: "url('/buago.jpg')" }}>
-      
+    <div className="min-h-screen bg-gray-100 flex font-sans antialiased tracking-tight relative">
       <div className="absolute inset-0 bg-black/30 z-0"></div>
 
       <style dangerouslySetInnerHTML={{__html: `
