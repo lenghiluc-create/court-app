@@ -43,7 +43,7 @@ export default function PremiumCourtApp() {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        const email = currentUser.email.toLowerCase();
+        const email = currentUser.email.toLowerCase();"";
         if (email.includes('admin') || email === 'truongphong@gmail.com') {
           setUserRole('admin');
         } else if (email.includes('thuky')) {
@@ -114,8 +114,14 @@ export default function PremiumCourtApp() {
   const exportToExcel = () => {
     if (schedule.length === 0) return showToast("Không có dữ liệu để xuất!", "error");
 
-    const dataToExport = schedule.filter(i => i.caseName.toLowerCase().includes(searchQuery.toLowerCase()));
-
+    const dataToExport = schedule.filter(i => {
+      // Bọc thép lỗi string rỗng
+      const caseName = i.caseName || ""; 
+      const search = searchQuery || "";
+      const matchSearch = caseName.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = statusFilter === 'all' ? true : i.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
     // Xây dựng mã HTML để ép Excel hiểu UTF-8 và giữ format bảng
     let tableHtml = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
@@ -442,7 +448,13 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
                       </tr>
                     </thead>
                     <tbody className="divide-y-2 divide-gray-50">
-                      {schedule.filter(i => i.caseName.toLowerCase().includes(searchQuery.toLowerCase())).map(item => (
+                      {schedule.filter(i => {
+                        const caseName = i.caseName || "";
+                        const search = searchQuery || "";
+                        const matchSearch = caseName.toLowerCase().includes(search.toLowerCase());
+                        const matchStatus = statusFilter === 'all' ? true : i.status === statusFilter;
+                        return matchSearch && matchStatus;
+                      }).map(item => (
                         <tr key={item.id} className="hover:bg-blue-50/20 bg-white transition-all group">
                           <td className="p-10 align-top">
                             <div className="font-black text-gray-950 text-2xl">{moment(item.datetime).format("DD/MM/YYYY")}</div>
@@ -451,6 +463,8 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
                           </td>
                           <td className="p-10 align-top">
                             <div className="font-black uppercase text-gray-900 text-xl leading-tight mb-6 group-hover:text-blue-900 transition-colors">{item.caseName}</div>
+                            {item.status === 'completed' && <span className="text-green-600 mr-2">✅</span>}
+                              {item.caseName || "Vụ án chưa có tên"}
                             <div className="flex gap-4">
                                 <span className="bg-blue-50 text-blue-800 px-5 py-2 text-xs font-black uppercase border border-blue-100">{item.caseType}</span>
                                 <span className="bg-amber-50 text-amber-700 px-5 py-2 text-xs font-black uppercase border border-amber-100">{item.trialCount || "Lần 1"}</span>
