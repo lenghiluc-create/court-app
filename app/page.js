@@ -145,23 +145,13 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
     return (
       <div className="min-h-screen flex items-center justify-center relative bg-cover bg-center font-sans" style={{ backgroundImage: "url('/toaan.jpg')" }}>
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-        <div className="relative z-10 w-full max-w-[480px] p-10 bg-white/10 backdrop-blur-md rounded-[40px] border border-white/20 text-white text-center shadow-2xl">
-          <img 
-            src="/logo-toa-an-nhan-dan-toi-cao.png" 
-            alt="Logo" 
-            className="mx-auto mb-6 drop-shadow-2xl" 
-            style={{ width: '120px', height: '120px', objectFit: 'contain' }} 
-          />
-          <h1 
-            className="text-3xl font-black uppercase mb-10 tracking-tight"
-            style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.8)' }}
-          >
-            TAND KHU VỰC 9 - CẦN THƠ
-          </h1>
+        <div className="relative z-10 w-full max-w-[480px] p-10 bg-white/20 backdrop-blur-md border border-white/30 text-center shadow-2xl">
+          <img src="/logo-toaan.png" alt="Logo" className="mx-auto mb-6 drop-shadow-2xl" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
+          <h1 className="text-3xl font-black uppercase mb-10 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.8)' }}>TAND KHU VỰC 9 - CẦN THƠ</h1>
           <form onSubmit={handleLogin} className="space-y-6">
-            <input type="email" placeholder="Email..." value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="w-full px-6 py-4 bg-white text-black rounded-2xl outline-none text-xl font-bold" required />
-            <input type="password" placeholder="Mật khẩu..." value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full px-6 py-4 bg-white text-black rounded-2xl outline-none text-xl font-bold" required />
-            <button type="submit" className="w-full bg-blue-600 py-5 rounded-2xl font-black uppercase hover:bg-blue-500 text-xl shadow-xl transition-all">ĐĂNG NHẬP</button>
+            <input type="email" placeholder="Email..." value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="w-full px-6 py-4 bg-white text-black outline-none text-xl font-bold" required />
+            <input type="password" placeholder="Mật khẩu..." value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full px-6 py-4 bg-white text-black outline-none text-xl font-bold" required />
+            <button type="submit" className="w-full bg-blue-600 py-5 font-black uppercase text-white hover:bg-blue-500 text-xl shadow-xl transition-all">ĐĂNG NHẬP</button>
           </form>
         </div>
       </div>
@@ -171,78 +161,80 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
   const canEdit = userRole === 'admin' || userRole === 'thuky';
 
   return (
-    <div className="min-h-screen bg-gray-100 flex font-sans antialiased tracking-tight">
+    <div className="min-h-screen flex font-sans antialiased tracking-tight relative bg-cover bg-center bg-fixed" style={{ backgroundImage: "url('/buago.jpg')" }}>
+      
+      <div className="absolute inset-0 bg-black/30 z-0"></div>
+
       <style dangerouslySetInnerHTML={{__html: `
         .rbc-event { background-color: #1e3a8a !important; border-radius: 0px !important; padding: 4px 8px !important; font-weight: 800 !important; border: none !important; }
         .rbc-event.rbc-selected { background-color: #000000 !important; box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #000000 !important; z-index: 10 !important; }
         .rbc-slot-selection { background-color: rgba(0, 0, 0, 0.6) !important; }
         .rbc-day-bg.rbc-today { background-color: #eff6ff !important; }
       `}} />
+
       {/* SIDEBAR */}
-      <aside className="w-80 bg-blue-950 text-white hidden xl:flex flex-col fixed h-screen shadow-2xl border-r border-blue-900">
+      <aside className="w-80 bg-blue-950 text-white hidden xl:flex flex-col fixed h-screen shadow-2xl border-r border-blue-900 z-20">
         <div className="p-12 text-center border-b border-white/5">
           <div className="text-5xl mb-4">⚖️</div>
           <h2 className="font-black text-2xl uppercase tracking-tighter">TAND KV9</h2>
         </div>
         <div className="p-8 flex-1">
-          <div className="bg-blue-600 px-6 py-4 rounded-2xl font-black text-xl shadow-lg shadow-blue-900/50">📅 LỊCH XÉT XỬ</div>
+          <div className="bg-blue-600 px-6 py-4 font-black text-xl shadow-lg shadow-blue-900/50">📅 LỊCH XÉT XỬ</div>
         </div>
         <div className="p-8 border-t border-white/5 bg-black/10">
-          <div className="mb-6 p-4 bg-white/5 rounded-2xl border border-white/10">
+          <div className="mb-6 p-4 bg-white/5 border border-white/10">
              <p className="text-[10px] text-blue-400 font-black uppercase mb-1 tracking-widest">Quyền: {userRole}</p>
              <p className="text-sm font-bold truncate opacity-70">{user.email}</p>
           </div>
-          <button onClick={handleLogout} className="w-full bg-red-600 hover:bg-red-700 py-4 rounded-2xl font-black uppercase text-xs transition-all flex items-center justify-center gap-2">
-             🚪 ĐĂNG XUẤT
-          </button>
+          <button onClick={handleLogout} className="w-full bg-red-600 hover:bg-red-700 py-4 font-black uppercase text-xs transition-all flex items-center justify-center gap-2">🚪 ĐĂNG XUẤT</button>
         </div>
       </aside>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 xl:ml-80 flex flex-col min-h-screen">
-        <header className="bg-white h-24 shadow-sm flex items-center px-12 sticky top-0 z-10 justify-between border-b">
+      <main className="flex-1 xl:ml-80 flex flex-col min-h-screen relative z-10">
+        <header className="bg-white/95 backdrop-blur-md h-24 shadow-sm flex items-center px-12 sticky top-0 z-30 justify-between border-b border-gray-200">
           <h1 className="font-black text-2xl uppercase text-blue-950">Hệ thống quản lý lịch trực tuyến</h1>
           <div className="flex items-center gap-6">
-             <div className="bg-blue-50 text-blue-700 px-6 py-3 rounded-2xl font-black text-sm border border-blue-100 uppercase tracking-widest hidden md:block">Cần Thơ: {moment().format("DD/MM/YYYY")}</div>
-             <button onClick={handleLogout} className="bg-red-50 text-red-600 border border-red-100 px-4 py-2 rounded-xl text-xs font-black uppercase hover:bg-red-600 hover:text-white transition-all">
-                Đăng xuất
-             </button>
+             <div className="bg-blue-50 text-blue-700 px-6 py-3 font-black text-sm border border-blue-100 uppercase tracking-widest hidden md:block">Cần Thơ: {moment().format("DD/MM/YYYY")}</div>
+             <button onClick={handleLogout} className="bg-red-50 text-red-600 border border-red-100 px-4 py-2 text-xs font-black uppercase hover:bg-red-600 hover:text-white transition-all">Đăng xuất</button>
           </div>
         </header>
 
         <div className="p-12 flex-1">
+          
+          {/* DASHBOARD */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-            <div className="bg-white p-8 rounded-[32px] border shadow-xl flex items-center justify-between border-l-8 border-l-blue-900">
+            <div className="bg-white p-8 border shadow-xl flex items-center justify-between border-l-8 border-l-blue-900">
                 <div>
                     <p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Tổng vụ án</p>
                     <p className="text-5xl font-black text-gray-950">{schedule.length}</p>
                 </div>
-                <div className="bg-blue-50 text-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-blue-100">📁</div>
+                <div className="bg-blue-50 text-blue-600 w-16 h-16 flex items-center justify-center text-3xl shadow-inner border border-blue-100">📁</div>
             </div>
-            <div className="bg-gradient-to-br from-blue-600 to-blue-900 text-white p-8 rounded-[32px] shadow-2xl flex items-center justify-between transform transition-all hover:-translate-y-1">
+            <div className="bg-gradient-to-br from-blue-600 to-blue-900 text-white p-8 shadow-2xl flex items-center justify-between transform transition-all hover:-translate-y-1">
                 <div>
                     <p className="text-blue-200 text-sm font-black uppercase mb-2 tracking-widest">Xử trong ngày</p>
                     <p className="text-5xl font-black">{schedule.filter(i => moment(i.datetime).isSame(moment(), 'day')).length}</p>
                 </div>
-                <div className="bg-white/20 text-white w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-white/20">⚡</div>
+                <div className="bg-white/20 text-white w-16 h-16 flex items-center justify-center text-3xl shadow-inner border border-white/20">⚡</div>
             </div>
-            <div className="bg-white p-8 rounded-[32px] border shadow-xl flex items-center justify-between border-l-8 border-l-amber-500">
+            <div className="bg-white p-8 border shadow-xl flex items-center justify-between border-l-8 border-l-amber-500">
                 <div>
                     <p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Đang chờ xử</p>
                     <p className="text-5xl font-black text-amber-600">{schedule.filter(i => i.status === 'pending').length}</p>
                 </div>
-                <div className="bg-amber-50 text-amber-500 w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-amber-100">⏳</div>
+                <div className="bg-amber-50 text-amber-500 w-16 h-16 flex items-center justify-center text-3xl shadow-inner border border-amber-100">⏳</div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-12">
             
-            {/* FORM NHẬP LIỆU */}
+            {/* FORM */}
             {canEdit && (
               <div className="xl:col-span-4">
-                <div className="bg-white p-10 rounded-[40px] border shadow-2xl sticky top-36">
+                <div className="bg-white p-10 border shadow-2xl sticky top-36">
                   <h2 className="font-black text-2xl text-blue-950 uppercase mb-10 flex items-center gap-4">
-                    <span className="w-2 h-10 bg-blue-600 rounded-full"></span>
+                    <span className="w-2 h-10 bg-blue-600"></span>
                     {editingId ? "Cập nhật hồ sơ" : "Đăng ký lịch"}
                   </h2>
                   <div className="space-y-8">
@@ -291,7 +283,7 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
                       <input placeholder="Bị đơn..." value={form.defendant} onChange={e => setForm({...form, defendant: e.target.value})} className={inputBase} />
                     </div>
 
-                    <div className="bg-gray-50 p-8 rounded-[32px] space-y-6 border-2 border-gray-100">
+                    <div className="bg-gray-50 p-8 space-y-6 border-2 border-gray-100">
                       <input placeholder="Thẩm phán chủ tọa" value={form.judge} onChange={e => setForm({...form, judge: e.target.value})} className={inputBase} />
                       <div className="grid grid-cols-2 gap-4">
                         <input placeholder="Hội thẩm 1" value={form.juror1} onChange={e => setForm({...form, juror1: e.target.value})} className={inputBase} />
@@ -303,7 +295,7 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
                       </div>
                     </div>
 
-                    <button onClick={handleSubmit} className="w-full bg-blue-900 text-white font-black py-6 rounded-[24px] uppercase text-xl shadow-2xl hover:bg-blue-800 transition-all active:scale-95 shadow-blue-900/20">
+                    <button onClick={handleSubmit} disabled={isRoomConflict} className={`w-full text-white font-black py-6 uppercase text-xl shadow-2xl transition-all active:scale-95 shadow-blue-900/20 ${isRoomConflict ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-900 hover:bg-blue-800'}`}>
                       {editingId ? "Cập nhật hồ sơ" : "Lưu vào hệ thống"}
                     </button>
                     {isRoomConflict && <p className="text-red-500 text-sm font-black text-center mt-2 animate-pulse uppercase">⚠️ TRÙNG LỊCH XÉT XỬ!</p>}
@@ -315,8 +307,7 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
             {/* DANH SÁCH LỊCH & SỔ THỤ LÝ */}
             <div className={`space-y-12 ${!canEdit ? 'xl:col-span-12' : 'xl:col-span-8'}`}>
               
-              {/* LỊCH CALENDAR */}
-              <div className="bg-white p-8 rounded-[40px] border shadow-2xl h-[500px]">
+              <div className="bg-white p-8 border shadow-2xl h-[500px]">
                 <Calendar 
                    localizer={localizer} 
                    events={schedule.map(i => ({...i, title: `[${i.room}] ${i.caseName}`, start: new Date(i.datetime), end: new Date(new Date(i.datetime).getTime() + 3600000)}))} 
@@ -325,22 +316,23 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
                 />
               </div>
 
-              {/* BẢNG SỔ THỤ LÝ */}
-              <div className="bg-white rounded-[40px] border shadow-2xl overflow-hidden flex flex-col h-[850px]">
+              <div className="bg-white border shadow-2xl overflow-hidden flex flex-col h-[850px]">
+                
                 <div className="p-10 border-b-2 border-gray-50 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 sticky top-0 bg-white z-10">
                   <h3 className="font-black uppercase text-2xl text-blue-950 flex items-center gap-4">
-                    <span className="w-2 h-10 bg-blue-950 rounded-full"></span>
+                    <span className="w-2 h-10 bg-blue-950"></span>
                     Sổ thụ lý trực tuyến
                   </h3>
                   
                   <div className="flex flex-col md:flex-row gap-4 w-full xl:w-auto">
-                    <input type="text" placeholder="Tìm kiếm vụ án..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-6 py-4 rounded-2xl text-lg w-full md:w-72 focus:border-blue-600 outline-none font-bold" />
+                    <input type="text" placeholder="Tìm kiếm vụ án..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-6 py-4 text-lg w-full md:w-72 focus:border-blue-600 outline-none font-bold" />
                     
-                    <button onClick={exportToExcel} className="bg-green-600 text-white px-8 py-4 rounded-2xl font-black uppercase shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 w-full md:w-auto">
+                    <button onClick={exportToExcel} className="bg-green-600 text-white px-8 py-4 font-black uppercase shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 w-full md:w-auto">
                       📊 XUẤT EXCEL TÒA ÁN
                     </button>
                   </div>
                 </div>
+
                 <div className="overflow-auto flex-1">
                   <table className="w-full text-left border-collapse">
                     <thead className="bg-gray-50 text-[11px] font-black uppercase text-gray-400 border-b-2 border-gray-100 sticky top-0">
@@ -362,8 +354,8 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
                           <td className="p-10 align-top">
                             <div className="font-black uppercase text-gray-900 text-xl leading-tight mb-6 group-hover:text-blue-900 transition-colors">{item.caseName}</div>
                             <div className="flex gap-4">
-                                <span className="bg-blue-50 text-blue-800 px-5 py-2 rounded-xl text-xs font-black uppercase border border-blue-100">{item.caseType}</span>
-                                <span className="bg-amber-50 text-amber-700 px-5 py-2 rounded-xl text-xs font-black uppercase border border-amber-100">{item.trialCount || "Lần 1"}</span>
+                                <span className="bg-blue-50 text-blue-800 px-5 py-2 text-xs font-black uppercase border border-blue-100">{item.caseType}</span>
+                                <span className="bg-amber-50 text-amber-700 px-5 py-2 text-xs font-black uppercase border border-amber-100">{item.trialCount || "Lần 1"}</span>
                             </div>
                             <div className="mt-6 text-base text-gray-500 space-y-2 font-bold italic">
                                 <p>📌 NĐ: {item.plaintiff || "N/A"}</p>
@@ -372,28 +364,28 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
                           </td>
                           <td className="p-10 align-top space-y-4">
                             <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 font-black text-sm">TP</div>
+                                <div className="w-10 h-10 bg-blue-100 flex items-center justify-center text-blue-600 font-black text-sm">TP</div>
                                 <span className="font-black text-xl text-gray-900">{item.judge}</span>
                             </div>
                             <div className="flex items-center gap-4 text-base text-gray-500 font-bold">
-                                <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center font-black text-xs">HT</div>
+                                <div className="w-10 h-10 bg-gray-100 flex items-center justify-center font-black text-xs">HT</div>
                                 <span>{item.juror1}, {item.juror2}</span>
                             </div>
                             <div className="flex items-center gap-4 text-base text-gray-500 font-bold">
-                                <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center font-black text-xs">TK</div>
+                                <div className="w-10 h-10 bg-gray-100 flex items-center justify-center font-black text-xs">TK</div>
                                 <span>{item.clerk}</span>
                             </div>
                             <div className="flex items-center gap-4 text-base text-red-600 font-black">
-                                <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center font-black text-xs">KS</div>
+                                <div className="w-10 h-10 bg-red-50 flex items-center justify-center font-black text-xs">KS</div>
                                 <span>{item.prosecutor}</span>
                             </div>
                           </td>
                           {canEdit && (
                             <td className="p-10 text-center align-top">
                               <div className="flex flex-col gap-4">
-                                <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 px-6 py-4 rounded-2xl font-black uppercase text-xs border border-blue-100 hover:bg-blue-600 hover:text-white transition-all">SỬA</button>
+                                <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 px-6 py-4 font-black uppercase text-xs border border-blue-100 hover:bg-blue-600 hover:text-white transition-all">SỬA</button>
                                 {userRole === 'admin' && (
-                                  <button onClick={async () => {if(confirm("Xóa hồ sơ này?")) {await deleteDoc(doc(db,"schedule",item.id)); loadData()}}} className="bg-red-50 text-red-700 px-6 py-4 rounded-2xl font-black uppercase text-xs border border-red-100 hover:bg-red-600 hover:text-white transition-all">XÓA</button>
+                                  <button onClick={async () => {if(confirm("Xóa hồ sơ này?")) {await deleteDoc(doc(db,"schedule",item.id)); loadData()}}} className="bg-red-50 text-red-700 px-6 py-4 font-black uppercase text-xs border border-red-100 hover:bg-red-600 hover:text-white transition-all">XÓA</button>
                                 )}
                               </div>
                             </td>
@@ -410,10 +402,10 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
         </div>
       </main>
 
-      {/* MODAL CHI TIẾT KHI CLICK VÀO LỊCH */}
+      {/* MODAL */}
       {selectedEvent && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[100] p-6" onClick={() => setSelectedEvent(null)}>
-           <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl scale-105" onClick={e => e.stopPropagation()}>
+           <div className="bg-white w-full max-w-lg overflow-hidden shadow-2xl scale-105" onClick={e => e.stopPropagation()}>
               <div className="bg-blue-900 p-8 text-white">
                 <p className="text-xs font-black uppercase opacity-60 mb-2">{selectedEvent.caseType} - {selectedEvent.trialCount}</p>
                 <h3 className="text-2xl font-black uppercase leading-tight">{selectedEvent.caseName}</h3>
@@ -425,15 +417,14 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
                 <p>⚖️ Hội thẩm: {selectedEvent.juror1}, {selectedEvent.juror2}</p>
                 <p>📝 Thư ký: {selectedEvent.clerk}</p>
                 <p>🛡️ Kiểm sát: <span className="text-red-600">{selectedEvent.prosecutor}</span></p>
-                <button onClick={() => setSelectedEvent(null)} className="w-full bg-blue-900 text-white py-4 rounded-2xl font-black uppercase mt-6 shadow-lg hover:bg-blue-800">ĐÓNG CỬA SỔ</button>
+                <button onClick={() => setSelectedEvent(null)} className="w-full bg-blue-900 text-white py-4 font-black uppercase mt-6 shadow-lg hover:bg-blue-800">ĐÓNG CỬA SỔ</button>
               </div>
            </div>
         </div>
       )}
 
-      {/* THÔNG BÁO TOAST */}
       {toast.show && (
-        <div className={`fixed bottom-12 right-12 z-[200] px-12 py-6 rounded-[32px] shadow-2xl font-black text-base text-white animate-bounce ${toast.type === 'error' ? 'bg-red-600' : 'bg-blue-700'}`}>
+        <div className={`fixed bottom-12 right-12 z-[200] px-12 py-6 shadow-2xl font-black text-lg text-white ${toast.type === 'error' ? 'bg-red-600' : 'bg-blue-700'}`}>
           {toast.message}
         </div>
       )}
