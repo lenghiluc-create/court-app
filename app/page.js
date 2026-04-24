@@ -102,6 +102,15 @@ export default function PremiumCourtApp() {
       setForm(initialForm); setEditingId(null); loadData();
     } catch (err) { showToast("Lỗi khi lưu dữ liệu", "error"); }
   };
+  const toggleStatus = async (id, newStatus) => {
+    try {
+      await updateDoc(doc(db, "schedule", id), { status: newStatus });
+      showToast(newStatus === 'completed' ? "✅ Đã đánh dấu xử xong!" : "⏳ Đã mở lại vụ án!", "success");
+      loadData();
+    } catch (err) {
+      showToast("Lỗi cập nhật trạng thái", "error");
+    }
+  };
   const exportToExcel = () => {
     if (schedule.length === 0) return showToast("Không có dữ liệu để xuất!", "error");
 
@@ -409,6 +418,11 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
                   </h3>
                   
                   <div className="flex flex-col md:flex-row gap-4 w-full xl:w-auto">
+                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="border-2 border-gray-100 px-6 py-4 text-lg focus:border-blue-600 outline-none font-bold bg-white">
+                      <option value="pending">⏳ Đang chờ xử</option>
+                      <option value="completed">✅ Đã xử xong</option>
+                      <option value="all">📁 Tất cả vụ án</option>
+                    </select>
                     <input type="text" placeholder="Tìm kiếm vụ án..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-6 py-4 text-lg w-full md:w-72 focus:border-blue-600 outline-none font-bold" />
                     
                     <button onClick={exportToExcel} className="bg-green-600 text-white px-8 py-4 font-black uppercase shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 w-full md:w-auto">
@@ -467,6 +481,11 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
                           {canEdit && (
                             <td className="p-10 text-center align-top">
                               <div className="flex flex-col gap-4">
+                                {item.status === 'pending' ? (
+                                  <button onClick={() => toggleStatus(item.id, 'completed')} className="bg-green-50 text-green-700 px-6 py-4 font-black uppercase text-xs border border-green-100 hover:bg-green-600 hover:text-white transition-all">✔ XONG</button>
+                                ) : (
+                                  <button onClick={() => toggleStatus(item.id, 'pending')} className="bg-amber-50 text-amber-700 px-6 py-4 font-black uppercase text-xs border border-amber-100 hover:bg-amber-600 hover:text-white transition-all">↺ MỞ LẠI</button>
+                                )}
                                 <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 px-6 py-4 font-black uppercase text-xs border border-blue-100 hover:bg-blue-600 hover:text-white transition-all">SỬA</button>
                                 {userRole === 'admin' && (
                                   <button onClick={async () => {if(confirm("Xóa hồ sơ này?")) {await deleteDoc(doc(db,"schedule",item.id)); loadData()}}} className="bg-red-50 text-red-700 px-6 py-4 font-black uppercase text-xs border border-red-100 hover:bg-red-600 hover:text-white transition-all">XÓA</button>
