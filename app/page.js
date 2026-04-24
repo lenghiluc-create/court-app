@@ -321,14 +321,17 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
 
               {/* BẢNG SỔ THỤ LÝ */}
               <div className="bg-white rounded-[40px] border shadow-2xl overflow-hidden flex flex-col h-[850px]">
-                <div className="p-10 border-b-2 border-gray-50 flex justify-between items-center sticky top-0 bg-white z-10">
+                <div className="p-10 border-b-2 border-gray-50 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 sticky top-0 bg-white z-10">
                   <h3 className="font-black uppercase text-2xl text-blue-950 flex items-center gap-4">
                     <span className="w-2 h-10 bg-blue-950 rounded-full"></span>
                     Sổ thụ lý trực tuyến
                   </h3>
-                  <input type="text" placeholder="Tìm kiếm vụ án..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-8 py-4 rounded-2xl text-lg w-80 focus:border-blue-600 outline-none font-bold" />
-                  <button onClick={exportToExcel} className="bg-green-600 text-white px-6 py-4 rounded-2xl font-black uppercase shadow-lg hover:bg-green-700 transition-all flex items-center gap-2">
-                      📊 Xuất Excel
+                  
+                  <div className="flex flex-col md:flex-row gap-4 w-full xl:w-auto">
+                    <input type="text" placeholder="Tìm kiếm vụ án..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-6 py-4 rounded-2xl text-lg w-full md:w-72 focus:border-blue-600 outline-none font-bold" />
+                    
+                    <button onClick={exportToExcel} className="bg-green-600 text-white px-8 py-4 rounded-2xl font-black uppercase shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 w-full md:w-auto">
+                      📊 XUẤT EXCEL TÒA ÁN
                     </button>
                   </div>
                 </div>
