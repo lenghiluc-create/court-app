@@ -161,9 +161,7 @@ const isRoomConflict = schedule.some(item => item.datetime === form.datetime && 
   const canEdit = userRole === 'admin' || userRole === 'thuky';
 
   return (
-    <div className="min-h-screen flex font-sans antialiased tracking-tight relative bg-cover bg-center bg-fixed" style={{ backgroundImage: "url('/buago.jpg')" }}>
-      
-      <div className="absolute inset-0 bg-black/30 z-0"></div>
+    <div className="min-h-screen bg-gray-100 flex font-sans antialiased tracking-tight">
 
       <style dangerouslySetInnerHTML={{__html: `
         .rbc-event { background-color: #1e3a8a !important; border-radius: 0px !important; padding: 4px 8px !important; font-weight: 800 !important; border: none !important; }
