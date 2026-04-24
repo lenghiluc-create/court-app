@@ -451,8 +451,8 @@ const isProsecutorConflict = form.prosecutor.trim() !== "" && schedule.some(item
 
       {/* MODAL */}
       {selectedEvent && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[100] p-6" onClick={() => setSelectedEvent(null)}>
-           <div className="bg-white w-full max-w-lg overflow-hidden shadow-2xl scale-105" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[100] p-6" onClick={() => setSelectedEvent(null)}>
+           <div className="bg-white w-full max-w-lg shadow-[0_0_40px_rgba(0,0,0,1)] border-4 border-blue-900 scale-105" onClick={e => e.stopPropagation()}>
               <div className="bg-blue-900 p-8 text-white">
                 <p className="text-xs font-black uppercase opacity-60 mb-2">{selectedEvent.caseType} - {selectedEvent.trialCount}</p>
                 <h3 className="text-2xl font-black uppercase leading-tight">{selectedEvent.caseName}</h3>
