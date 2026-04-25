@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import "react-big-calendar/lib/css/react-big-calendar.css";
+// Bổ sung cọ vẽ biểu đồ tròn
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Firebase Imports
 import { db, auth } from './firebase'; 
@@ -137,11 +139,8 @@ export default function PremiumCourtApp() {
     showToast("Đã lấy dữ liệu, vui lòng chọn ngày giờ mới!", "success");
   };
 
-  // ===== THUẬT TOÁN TÌM KIẾM ĐA NĂNG & SẮP XẾP THÔNG MINH =====
   const processedSchedule = schedule.filter(i => {
     const search = (searchQuery || "").toLowerCase().trim();
-    
-    // Tìm kiếm quét qua tất cả các trường dữ liệu quan trọng
     const matchSearch = search === "" || 
       (i.caseName || "").toLowerCase().includes(search) ||
       (i.plaintiff || "").toLowerCase().includes(search) ||
@@ -155,21 +154,15 @@ export default function PremiumCourtApp() {
   }).sort((a, b) => {
     const dateA = a.datetime ? new Date(a.datetime).getTime() : 0;
     const dateB = b.datetime ? new Date(b.datetime).getTime() : 0;
-    
-    // Nếu cả hai đang chờ xử: Sắp xếp tăng dần (Gần hiện tại nhất ở trên)
     if (a.status === 'pending' && b.status === 'pending') return dateA - dateB;
-    
-    // Nếu cả hai đã xử xong/hoãn: Sắp xếp giảm dần (Mới xử xong ở trên)
     if (a.status !== 'pending' && b.status !== 'pending') return dateB - dateA;
-    
-    // Nếu khác trạng thái: Ưu tiên đưa án pending lên trên cùng
     return a.status === 'pending' ? -1 : 1;
   });
 
   const exportToExcel = () => {
     if (schedule.length === 0) return showToast("Không có dữ liệu để xuất!", "error");
 
-    const dataToExport = processedSchedule; // Dùng luôn danh sách đã sắp xếp & lọc thông minh
+    const dataToExport = processedSchedule; 
 
     if (dataToExport.length === 0) return showToast("Không có dữ liệu trong bộ lọc này!", "error");
 
@@ -261,12 +254,17 @@ export default function PremiumCourtApp() {
   const urgentCount = schedule.filter(i => i.status === 'pending' && isUrgent(i.datetime)).length;
   const pendingCases = schedule.filter(i => i.status === 'pending');
   
+  // Dữ liệu mảng cho Biểu đồ tròn
   const caseTypeStats = {};
   schedule.forEach(i => { if(i.caseType) caseTypeStats[i.caseType] = (caseTypeStats[i.caseType] || 0) + 1 });
+  const caseTypeData = Object.keys(caseTypeStats).map(key => ({ name: key, value: caseTypeStats[key] }));
   
   const judgeStats = {};
   pendingCases.forEach(i => { if(i.judge) judgeStats[i.judge] = (judgeStats[i.judge] || 0) + 1 });
-  const sortedJudges = Object.keys(judgeStats).sort((a,b) => judgeStats[b] - judgeStats[a]).slice(0, 5);
+  const judgeData = Object.keys(judgeStats).map(key => ({ name: key, value: judgeStats[key] })).sort((a,b) => b.value - a.value); // Lọc Thẩm phán nhiều án nhất lên đầu
+
+  // Bảng màu cho Biểu đồ
+  const CHART_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899', '#6366f1', '#84cc16'];
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-blue-900">ĐANG TẢI...</div>;
 
@@ -390,11 +388,9 @@ export default function PremiumCourtApp() {
       <main className="flex-1 xl:ml-80 flex flex-col min-h-screen relative z-10">
         
         <header className="bg-white/95 backdrop-blur-md h-24 shadow-sm flex items-center px-12 sticky top-0 z-30 border-b border-gray-200 relative">
-          
           <h1 className="font-black text-2xl uppercase text-blue-950 absolute left-1/2 transform -translate-x-1/2 w-max">
             HỆ THỐNG QUẢN LÝ LỊCH TRỰC TUYẾN
           </h1>
-          
           <div className="ml-auto flex items-center gap-6 relative z-10">
              <div className="bg-blue-50 text-blue-700 px-6 py-3 font-black text-sm border border-blue-100 uppercase tracking-widest hidden md:block">Cần Thơ: {moment().format("DD/MM/YYYY")}</div>
              <button onClick={handleLogout} className="bg-red-50 text-red-600 border border-red-100 px-4 py-2 text-xs font-black uppercase hover:bg-red-600 hover:text-white transition-all">Đăng xuất</button>
@@ -422,40 +418,41 @@ export default function PremiumCourtApp() {
             </div>
           </div>
 
+          {/* ===== BIỂU ĐỒ TRÒN MỚI TẠI ĐÂY ===== */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-            <div className="bg-white p-8 border shadow-sm">
-               <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest mb-6">📊 Tỷ lệ loại án</h3>
-               <div className="space-y-4">
-                 {Object.entries(caseTypeStats).map(([type, count]) => (
-                   <div key={type}>
-                     <div className="flex justify-between text-sm font-bold text-gray-700 mb-1">
-                       <span>{type}</span>
-                       <span>{count} vụ ({Math.round((count/schedule.length)*100)}%)</span>
-                     </div>
-                     <div className="w-full bg-gray-100 h-3">
-                       <div className="bg-blue-600 h-3" style={{ width: `${(count/schedule.length)*100}%` }}></div>
-                     </div>
-                   </div>
-                 ))}
-               </div>
+            
+            <div className="bg-white p-8 border shadow-sm flex flex-col items-center">
+               <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest mb-6 w-full text-left">📊 TỶ LỆ LOẠI ÁN (TỔNG THỂ)</h3>
+               {caseTypeData.length > 0 ? (
+                 <div className="w-full h-[300px]">
+                   <ResponsiveContainer width="100%" height="100%">
+                     <PieChart>
+                       <Pie data={caseTypeData} cx="50%" cy="50%" outerRadius={110} dataKey="value" label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                         {caseTypeData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
+                       </Pie>
+                       <Tooltip formatter={(value) => [`${value} vụ`, 'Số lượng']} />
+                     </PieChart>
+                   </ResponsiveContainer>
+                 </div>
+               ) : <p className="text-gray-400 font-bold italic mt-10">Chưa có dữ liệu</p>}
             </div>
-            <div className="bg-white p-8 border shadow-sm">
-               <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest mb-6">👨‍⚖️ Năng suất Thẩm phán (Án đang chờ)</h3>
-               <div className="space-y-4">
-                 {sortedJudges.map(judge => (
-                   <div key={judge}>
-                     <div className="flex justify-between text-sm font-bold text-gray-700 mb-1">
-                       <span>{judge}</span>
-                       <span className="text-amber-600">{judgeStats[judge]} vụ</span>
-                     </div>
-                     <div className="w-full bg-gray-100 h-3">
-                       <div className="bg-amber-500 h-3" style={{ width: `${(judgeStats[judge] / Math.max(...Object.values(judgeStats))) * 100}%` }}></div>
-                     </div>
-                   </div>
-                 ))}
-                 {sortedJudges.length === 0 && <p className="text-gray-400 text-sm italic font-bold">Chưa có dữ liệu thụ lý mới.</p>}
-               </div>
+
+            <div className="bg-white p-8 border shadow-sm flex flex-col items-center">
+               <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest mb-6 w-full text-left">👨‍⚖️ NĂNG SUẤT THẨM PHÁN (ĐANG CHỜ XỬ)</h3>
+               {judgeData.length > 0 ? (
+                 <div className="w-full h-[300px]">
+                   <ResponsiveContainer width="100%" height="100%">
+                     <PieChart>
+                       <Pie data={judgeData} cx="50%" cy="50%" innerRadius={60} outerRadius={110} paddingAngle={2} dataKey="value" label={({name}) => name}>
+                         {judgeData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[(index + 4) % CHART_COLORS.length]} />)}
+                       </Pie>
+                       <Tooltip formatter={(value) => [`${value} vụ`, 'Đang giải quyết']} />
+                     </PieChart>
+                   </ResponsiveContainer>
+                 </div>
+               ) : <p className="text-gray-400 font-bold italic mt-10">Chưa có dữ liệu thụ lý</p>}
             </div>
+
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-12">
