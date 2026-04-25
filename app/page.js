@@ -75,9 +75,14 @@ export default function PremiumCourtApp() {
     e.preventDefault();
     setLoading(true);
     try {
+      await setPersistence(auth, browserSessionPersistence);
       await signInWithEmailAndPassword(auth, loginEmail, loginPass);
       showToast("Đăng nhập thành công!", "success");
-    } catch (err) { showToast("Sai tài khoản hoặc mật khẩu", "error"); } finally { setLoading(false); }
+    } catch (err) { 
+      showToast("Sai tài khoản hoặc mật khẩu", "error"); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const handleLogout = async () => {
