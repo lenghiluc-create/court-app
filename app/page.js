@@ -31,6 +31,10 @@ export default function PremiumCourtApp() {
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
 
+  // States cho Lọc theo khoảng thời gian
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
   const initialForm = {
     datetime: "", room: "Trụ sở", caseType: "Hình sự", trialCount: "Lần 1", caseName: "", 
     plaintiff: "", defendant: "", judge: "", clerk: "", juror1: "", juror2: "", 
@@ -99,7 +103,6 @@ export default function PremiumCourtApp() {
     } catch (error) { showToast("Lỗi khi đăng xuất", "error"); }
   };
 
-  // Hàm xử lý đổi mật khẩu
   const handleChangePassword = async (e) => {
     e.preventDefault();
     if (newPwd !== confirmPwd) {
@@ -168,6 +171,7 @@ export default function PremiumCourtApp() {
     showToast("Đã lấy dữ liệu, vui lòng chọn ngày giờ mới!", "success");
   };
 
+  // ===== BỘ LỌC ĐA NĂNG (GỒM TÌM KIẾM, TRẠNG THÁI & KHOẢNG THỜI GIAN) =====
   const processedSchedule = schedule.filter(i => {
     const search = (searchQuery || "").toLowerCase().trim();
     const matchSearch = search === "" || 
@@ -179,7 +183,25 @@ export default function PremiumCourtApp() {
       (i.caseType || "").toLowerCase().includes(search);
       
     const matchStatus = statusFilter === 'all' ? true : i.status === statusFilter;
-    return matchSearch && matchStatus;
+
+    // Lọc theo mốc thời gian
+    let matchDate = true;
+    if (startDate || endDate) {
+      const itemDateStr = i.datetime ? i.datetime.split('T')[0] : null;
+      if (!itemDateStr) {
+        matchDate = false; // Án chưa có ngày sẽ bị loại nếu có lọc ngày
+      } else {
+        const itemTime = moment(itemDateStr).startOf('day').valueOf();
+        const start = startDate ? moment(startDate).startOf('day').valueOf() : 0;
+        const end = endDate ? moment(endDate).startOf('day').valueOf() : Infinity;
+        
+        if (itemTime < start || itemTime > end) {
+          matchDate = false;
+        }
+      }
+    }
+
+    return matchSearch && matchStatus && matchDate;
   }).sort((a, b) => {
     const dateA = a.datetime ? new Date(a.datetime).getTime() : 0;
     const dateB = b.datetime ? new Date(b.datetime).getTime() : 0;
@@ -191,7 +213,7 @@ export default function PremiumCourtApp() {
   const exportToExcel = () => {
     if (schedule.length === 0) return showToast("Không có dữ liệu để xuất!", "error");
 
-    const dataToExport = processedSchedule; 
+    const dataToExport = processedSchedule; // Dùng data đã được lọc thời gian & từ khóa
 
     if (dataToExport.length === 0) return showToast("Không có dữ liệu trong bộ lọc này!", "error");
 
@@ -218,7 +240,10 @@ export default function PremiumCourtApp() {
           </tr>
           <tr><td colspan="6" class="no-border"></td></tr>
           <tr>
-            <td colspan="6" class="no-border text-center font-bold" style="font-size: 16pt;">LỊCH XÉT XỬ ${statusFilter === 'completed' ? '(ĐÃ XỬ XONG)' : ''}</td>
+            <td colspan="6" class="no-border text-center font-bold" style="font-size: 16pt;">
+              LỊCH XÉT XỬ ${statusFilter === 'completed' ? '(ĐÃ XỬ XONG)' : ''}
+              ${startDate || endDate ? `<br/><span style="font-size: 12pt; font-weight: normal;">(Từ ngày ${startDate ? moment(startDate).format("DD/MM/YYYY") : "..."} đến ngày ${endDate ? moment(endDate).format("DD/MM/YYYY") : "..."})</span>` : ''}
+            </td>
           </tr>
           <tr><td colspan="6" class="no-border"></td></tr>
           
@@ -259,7 +284,7 @@ export default function PremiumCourtApp() {
     const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `Lich_Xet_Xu_TANDKV9_${moment().format("DD_MM_YYYY")}.xls`;
+    link.download = `Lich_Xet_Xu_${startDate ? moment(startDate).format("DDMMYY") : "All"}_${endDate ? moment(endDate).format("DDMMYY") : "All"}.xls`;
     link.click();
     showToast("Đã xuất file Excel chuẩn!", "success");
   };
@@ -397,7 +422,7 @@ export default function PremiumCourtApp() {
         }
       `}} />
 
-      {/* SIDEBAR - Thêm overflow-y-auto chống bị cắt mất đáy */}
+      {/* SIDEBAR */}
       <aside className="w-80 bg-blue-950 text-white hidden xl:flex flex-col fixed h-screen shadow-2xl border-r border-blue-900 z-20 overflow-y-auto">
         <div className="p-12 text-center border-b border-white/5">
           <div className="text-5xl mb-4">⚖️</div>
@@ -424,10 +449,7 @@ export default function PremiumCourtApp() {
       {/* MAIN CONTENT */}
       <main className="flex-1 xl:ml-80 flex flex-col min-h-screen relative z-10">
         
-        {/* HEADER MỚI - ĐƯỢC CHIA LÀM 3 CỘT ĐỂ KHÔNG BỊ TRÀN CHỮ */}
         <header className="bg-white/95 backdrop-blur-md h-24 shadow-sm flex items-center justify-between px-4 md:px-8 xl:px-12 sticky top-0 z-30 border-b border-gray-200 w-full">
-          
-          {/* Vùng trái: Nút chức năng cho màn hình nhỏ (Laptop, Tablet) */}
           <div className="flex-1 flex justify-start items-center gap-2 xl:hidden">
              <button onClick={() => setShowPwdModal(true)} className="bg-blue-50 text-blue-700 px-3 py-2 text-[10px] sm:text-xs font-black uppercase border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm">
                🔑 Đổi MK
@@ -436,16 +458,14 @@ export default function PremiumCourtApp() {
                🚪 Đăng xuất
              </button>
           </div>
-          <div className="flex-1 hidden xl:block"></div> {/* Giữ chỗ cho màn hình lớn */}
+          <div className="flex-1 hidden xl:block"></div>
 
-          {/* Vùng giữa: Tiêu đề - Tự động thu nhỏ cỡ chữ nếu màn hẹp */}
           <div className="flex-[2] text-center px-2">
             <h1 className="font-black text-[14px] sm:text-[16px] md:text-xl xl:text-2xl uppercase text-blue-950 truncate">
-              HỆ THỐNG QUẢN LÝ LỊCH XÉT XỬ
+              HỆ THỐNG QUẢN LÝ LỊCH TRỰC TUYẾN
             </h1>
           </div>
           
-          {/* Vùng phải: Ngày tháng */}
           <div className="flex-1 flex items-center justify-end">
              <div className="bg-blue-50 text-blue-700 px-3 py-2 sm:px-4 sm:py-2 md:px-6 md:py-3 font-black text-[10px] sm:text-xs md:text-sm border border-blue-100 uppercase tracking-widest text-center w-max">
                Cần Thơ: {moment().format("DD/MM/YYYY")}
@@ -654,22 +674,34 @@ export default function PremiumCourtApp() {
               <div className="bg-white border shadow-2xl overflow-hidden flex flex-col h-[850px]">
                 
                 <div className="p-6 md:p-10 border-b-2 border-gray-50 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 sticky top-0 bg-white z-10">
-                  <h3 className="font-black uppercase text-xl md:text-2xl text-blue-950 flex items-center gap-4">
+                  <h3 className="font-black uppercase text-xl md:text-2xl text-blue-950 flex items-center gap-4 whitespace-nowrap">
                     <span className="w-2 h-10 bg-blue-950"></span>
                     Sổ thụ lý
                   </h3>
                   
-                  <div className="flex flex-col md:flex-row gap-4 w-full xl:w-auto">
-                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="border-2 border-gray-100 px-6 py-4 text-sm md:text-lg focus:border-blue-600 outline-none font-bold bg-white w-full md:w-auto">
+                  <div className="flex flex-col md:flex-row flex-wrap gap-4 w-full justify-end items-stretch md:items-center">
+                    
+                    {/* KHỐI CHỌN NGÀY THÁNG ĐƯỢC THÊM MỚI Ở ĐÂY */}
+                    <div className="flex items-center gap-2 border-2 border-gray-100 px-4 py-3 bg-white w-full xl:w-auto">
+                      <span className="text-xs font-black text-gray-400 uppercase">Từ:</span>
+                      <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="outline-none text-sm md:text-base font-bold bg-transparent w-full" />
+                      <span className="text-xs font-black text-gray-400 uppercase ml-2">Đến:</span>
+                      <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="outline-none text-sm md:text-base font-bold bg-transparent w-full" />
+                      {(startDate || endDate) && (
+                        <button onClick={() => {setStartDate(""); setEndDate("")}} className="text-red-500 font-bold px-2 hover:bg-red-50 rounded" title="Xóa lộc ngày">✕</button>
+                      )}
+                    </div>
+
+                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="border-2 border-gray-100 px-6 py-3 text-sm md:text-base focus:border-blue-600 outline-none font-bold bg-white w-full xl:w-auto">
                       <option value="pending">⏳ Đang chờ xử</option>
                       <option value="postponed">⏸ Đã hoãn</option>
                       <option value="completed">✅ Đã xử xong</option>
                       <option value="all">📁 Tất cả vụ án</option>
                     </select>
 
-                    <input type="text" placeholder="Tìm tên án, thẩm phán..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-6 py-4 text-sm md:text-lg w-full md:w-64 focus:border-blue-600 outline-none font-bold" />
+                    <input type="text" placeholder="Tìm tên án, thẩm phán..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-6 py-3 text-sm md:text-base w-full xl:w-64 focus:border-blue-600 outline-none font-bold" />
                     
-                    <button onClick={exportToExcel} className="bg-green-600 text-white px-8 py-4 font-black uppercase shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 w-full md:w-auto">
+                    <button onClick={exportToExcel} className="bg-green-600 text-white px-8 py-3 font-black uppercase shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 w-full xl:w-auto">
                       📊 XUẤT EXCEL
                     </button>
                   </div>
