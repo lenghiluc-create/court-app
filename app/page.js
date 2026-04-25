@@ -441,7 +441,7 @@ export default function PremiumCourtApp() {
           {/* Vùng giữa: Tiêu đề - Tự động thu nhỏ cỡ chữ nếu màn hẹp */}
           <div className="flex-[2] text-center px-2">
             <h1 className="font-black text-[14px] sm:text-[16px] md:text-xl xl:text-2xl uppercase text-blue-950 truncate">
-              HỆ THỐNG QUẢN LÝ LỊCH TRỰC TUYẾN
+              HỆ THỐNG QUẢN LÝ LỊCH XÉT XỬ
             </h1>
           </div>
           
