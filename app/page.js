@@ -6,12 +6,14 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 
 // Firebase Imports
 import { db, auth } from './firebase'; 
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence, browserSessionPersistence } from 'firebase/auth';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
 
-const localizer = momentLocalizer(moment);
+// Bọc thép lỗi SSR của Next.js (Lỗi navigator is not defined)
+const localizer = typeof window !== 'undefined' ? momentLocalizer(moment) : null;
 
 export default function PremiumCourtApp() {
+  const [isMounted, setIsMounted] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState('viewer'); 
@@ -40,10 +42,10 @@ export default function PremiumCourtApp() {
   };
 
   useEffect(() => {
+    setIsMounted(true);
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        // Bọc thép lỗi email null
         const email = currentUser.email ? currentUser.email.toLowerCase() : "";
         if (email.includes('admin') || email === 'truongphong@gmail.com') {
           setUserRole('admin');
@@ -96,7 +98,6 @@ export default function PremiumCourtApp() {
     if (userRole === 'thamphan' || userRole === 'viewer') return showToast("Không có quyền!", "error");
     if (!form.datetime || !form.caseName || !form.room) return showToast("Vui lòng nhập đủ thông tin!", "error");
     
-    // Đảm bảo status luôn có giá trị
     const logData = { ...form, status: form.status || 'pending', updatedAt: moment().toISOString(), updatedBy: user.email };
     try {
       if (editingId) {
@@ -113,13 +114,17 @@ export default function PremiumCourtApp() {
   const toggleStatus = async (id, newStatus) => {
     try {
       await updateDoc(doc(db, "schedule", id), { status: newStatus });
-      showToast(newStatus === 'completed' ? "✅ Đã đánh dấu xử xong!" : "⏳ Đã mở lại vụ án!", "success");
+      let msg = "⏳ Đã mở lại vụ án!";
+      if(newStatus === 'completed') msg = "✅ Đã đánh dấu xử xong!";
+      if(newStatus === 'postponed') msg = "⏸ Đã hoãn phiên tòa!";
+      showToast(msg, "success");
       loadData();
     } catch (err) {
       showToast("Lỗi cập nhật trạng thái", "error");
     }
   };
-const handleReschedule = (item) => {
+
+  const handleReschedule = (item) => {
     let nextTrialCount = "Lần 2";
     if (item.trialCount === "Lần 1") nextTrialCount = "Lần 2";
     else if (item.trialCount === "Lần 2") nextTrialCount = "Mở lại";
@@ -127,19 +132,19 @@ const handleReschedule = (item) => {
 
     setForm({
       ...item,
-      datetime: "", // Xóa ngày giờ cũ bắt chọn lại
-      trialCount: nextTrialCount, // Tự động nhảy bậc
-      status: "pending" // Đưa trạng thái về Đang chờ xử
+      datetime: "",
+      trialCount: nextTrialCount,
+      status: "pending"
     });
     setEditingId(item.id);
     window.scrollTo({top:0, behavior:'smooth'});
     showToast("Đã lấy dữ liệu, vui lòng chọn ngày giờ mới!", "success");
   };
+
   const exportToExcel = () => {
     if (schedule.length === 0) return showToast("Không có dữ liệu để xuất!", "error");
 
     const dataToExport = schedule.filter(i => {
-      // Bọc thép lỗi string rỗng
       const caseName = i.caseName || ""; 
       const search = searchQuery || "";
       const matchSearch = caseName.toLowerCase().includes(search.toLowerCase());
@@ -172,7 +177,9 @@ const handleReschedule = (item) => {
           </tr>
           <tr><td colspan="6" class="no-border"></td></tr>
           <tr>
-            <td colspan="6" class="no-border text-center font-bold" style="font-size: 16pt;">LỊCH XÉT XỬ ${statusFilter === 'completed' ? '(ĐÃ XỬ XONG)' : ''}</td>
+            <td colspan="6" class="no-border text-center font-bold" style="font-size: 16pt;">
+              LỊCH XÉT XỬ ${statusFilter === 'completed' ? '(ĐÃ XỬ XONG)' : statusFilter === 'postponed' ? '(ĐÃ HOÃN)' : ''}
+            </td>
           </tr>
           <tr><td colspan="6" class="no-border"></td></tr>
           
@@ -218,20 +225,34 @@ const handleReschedule = (item) => {
     showToast("Đã xuất file Excel chuẩn!", "success");
   };
 
-  // BỌC THÉP logic trùng lịch (Tránh sập khi dữ liệu cũ bị thiếu)
-  const isRoomConflict = schedule.some(item => 
-    item.datetime && item.datetime === form.datetime && 
-    item.room && item.room === form.room && 
-    item.id !== editingId && 
-    item.status !== 'completed'
-  );
+  const isRoomConflict = schedule.some(i => i.datetime && i.datetime === form.datetime && i.room && i.room === form.room && i.id !== editingId && i.status === 'pending');
+  const isProsecutorConflict = (form.prosecutor || "").trim() !== "" && schedule.some(i => i.datetime && i.datetime === form.datetime && (i.prosecutor || "").trim().toLowerCase() === (form.prosecutor || "").trim().toLowerCase() && i.id !== editingId && i.status === 'pending');
+  const isJudgeConflict = (form.judge || "").trim() !== "" && schedule.some(i => i.datetime && i.datetime === form.datetime && (i.judge || "").trim().toLowerCase() === (form.judge || "").trim().toLowerCase() && i.id !== editingId && i.status === 'pending');
+  const isClerkConflict = (form.clerk || "").trim() !== "" && schedule.some(i => i.datetime && i.datetime === form.datetime && (i.clerk || "").trim().toLowerCase() === (form.clerk || "").trim().toLowerCase() && i.id !== editingId && i.status === 'pending');
+  const hasConflict = isRoomConflict || isProsecutorConflict || isJudgeConflict || isClerkConflict;
+
+  // --- TẠO DANH SÁCH GỢI Ý NHÂN SỰ ---
+  const judgesList = [...new Set(schedule.map(i => i.judge).filter(Boolean))];
+  const clerksList = [...new Set(schedule.map(i => i.clerk).filter(Boolean))];
+  const prosecutorsList = [...new Set(schedule.map(i => i.prosecutor).filter(Boolean))];
+
+  // --- TÍNH TOÁN DỮ LIỆU THỐNG KÊ (DASHBOARD NÂNG CAO) ---
+  const isUrgent = (datetime) => {
+    if(!datetime) return false;
+    const diffDays = moment(datetime).startOf('day').diff(moment().startOf('day'), 'days');
+    return diffDays === 0 || diffDays === 1; // Hôm nay hoặc Ngày mai
+  };
   
-  const isProsecutorConflict = (form.prosecutor || "").trim() !== "" && schedule.some(item => 
-    item.datetime && item.datetime === form.datetime && 
-    (item.prosecutor || "").trim().toLowerCase() === (form.prosecutor || "").trim().toLowerCase() && 
-    item.id !== editingId &&
-    item.status !== 'completed'
-  );
+  const urgentCount = schedule.filter(i => i.status === 'pending' && isUrgent(i.datetime)).length;
+  const pendingCases = schedule.filter(i => i.status === 'pending');
+  
+  // KIỂM TRA ĐÃ CÓ BIẾN caseTypeStats Ở ĐÂY
+  const caseTypeStats = {};
+  schedule.forEach(i => { if(i.caseType) caseTypeStats[i.caseType] = (caseTypeStats[i.caseType] || 0) + 1 });
+  
+  const judgeStats = {};
+  pendingCases.forEach(i => { if(i.judge) judgeStats[i.judge] = (judgeStats[i.judge] || 0) + 1 });
+  const sortedJudges = Object.keys(judgeStats).sort((a,b) => judgeStats[b] - judgeStats[a]).slice(0, 5);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-blue-900">ĐANG TẢI...</div>;
 
@@ -240,7 +261,7 @@ const handleReschedule = (item) => {
       <div className="min-h-screen flex items-center justify-center relative bg-cover bg-center font-sans" style={{ backgroundImage: "url('/toaan.jpg')" }}>
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
         <div className="relative z-10 w-full max-w-[480px] p-10 bg-white/20 backdrop-blur-md border border-white/30 text-center shadow-2xl">
-          <img src="/logo-toa-an-nhan-dan-toi-cao.png" alt="Logo" className="mx-auto mb-6 drop-shadow-2xl" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
+          <img src="/logo-toaan.png" alt="Logo" className="mx-auto mb-6 drop-shadow-2xl" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
           <h1 className="text-3xl font-black uppercase mb-10 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.8)' }}>TAND KHU VỰC 9 - CẦN THƠ</h1>
           <form onSubmit={handleLogin} className="space-y-6">
             <input type="email" placeholder="Email..." value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="w-full px-6 py-4 bg-white text-black outline-none text-xl font-bold" required />
@@ -256,7 +277,10 @@ const handleReschedule = (item) => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex font-sans antialiased tracking-tight relative">
-      <div className="absolute inset-0 bg-black/30 z-0"></div>
+      
+      <datalist id="judges-list">{judgesList.map((name, i) => <option key={i} value={name} />)}</datalist>
+      <datalist id="clerks-list">{clerksList.map((name, i) => <option key={i} value={name} />)}</datalist>
+      <datalist id="prosecutors-list">{prosecutorsList.map((name, i) => <option key={i} value={name} />)}</datalist>
 
       <style dangerouslySetInnerHTML={{__html: `
         .rbc-event { background-color: #1e3a8a !important; border-radius: 0px !important; padding: 4px 8px !important; font-weight: 800 !important; border: none !important; }
@@ -272,7 +296,10 @@ const handleReschedule = (item) => {
           <h2 className="font-black text-2xl uppercase tracking-tighter">TAND KV9</h2>
         </div>
         <div className="p-8 flex-1">
-          <div className="bg-blue-600 px-6 py-4 font-black text-xl shadow-lg shadow-blue-900/50">📅 LỊCH XÉT XỬ</div>
+          <div className="bg-blue-600 px-6 py-4 font-black text-xl shadow-lg shadow-blue-900/50 flex justify-between items-center">
+            📅 LỊCH XÉT XỬ
+            {urgentCount > 0 && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded-full animate-bounce">{urgentCount}</span>}
+          </div>
         </div>
         <div className="p-8 border-t border-white/5 bg-black/10">
           <div className="mb-6 p-4 bg-white/5 border border-white/10">
@@ -295,28 +322,60 @@ const handleReschedule = (item) => {
 
         <div className="p-12 flex-1">
           
-          {/* DASHBOARD */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-            <div className="bg-white p-8 border shadow-xl flex items-center justify-between border-l-8 border-l-blue-900">
-                <div>
-                    <p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Tổng vụ án</p>
-                    <p className="text-5xl font-black text-gray-950">{schedule.length}</p>
-                </div>
-                <div className="bg-blue-50 text-blue-600 w-16 h-16 flex items-center justify-center text-3xl shadow-inner border border-blue-100">📁</div>
+          {/* DASHBOARD CON SỐ */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white p-8 border shadow-sm border-l-8 border-l-blue-900">
+                <p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Tổng vụ án</p>
+                <p className="text-4xl font-black text-gray-950">{schedule.length}</p>
             </div>
-            <div className="bg-gradient-to-br from-blue-600 to-blue-900 text-white p-8 shadow-2xl flex items-center justify-between transform transition-all hover:-translate-y-1">
-                <div>
-                    <p className="text-blue-200 text-sm font-black uppercase mb-2 tracking-widest">Đang chờ xử</p>
-                    <p className="text-5xl font-black">{schedule.filter(i => i.status !== 'completed').length}</p>
-                </div>
-                <div className="bg-white/20 text-white w-16 h-16 flex items-center justify-center text-3xl shadow-inner border border-white/20">⏳</div>
+            <div className="bg-white p-8 border shadow-sm border-l-8 border-l-amber-500">
+                <p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Chờ xử</p>
+                <p className="text-4xl font-black text-amber-600">{pendingCases.length}</p>
             </div>
-            <div className="bg-white p-8 border shadow-xl flex items-center justify-between border-l-8 border-l-green-500">
-                <div>
-                    <p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Đã xử xong</p>
-                    <p className="text-5xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p>
-                </div>
-                <div className="bg-green-50 text-green-500 w-16 h-16 flex items-center justify-center text-3xl shadow-inner border border-green-100">✅</div>
+            <div className="bg-gradient-to-br from-red-500 to-red-700 text-white p-8 shadow-xl transform transition-all hover:scale-105">
+                <p className="text-red-100 text-sm font-black uppercase mb-2 tracking-widest">Sắp xử (24h)</p>
+                <p className="text-4xl font-black">{urgentCount}</p>
+            </div>
+            <div className="bg-white p-8 border shadow-sm border-l-8 border-l-green-500">
+                <p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Đã xong</p>
+                <p className="text-4xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p>
+            </div>
+          </div>
+
+          {/* DASHBOARD BIỂU ĐỒ */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+            <div className="bg-white p-8 border shadow-sm">
+               <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest mb-6">📊 Tỷ lệ loại án</h3>
+               <div className="space-y-4">
+                 {Object.entries(caseTypeStats).map(([type, count]) => (
+                   <div key={type}>
+                     <div className="flex justify-between text-sm font-bold text-gray-700 mb-1">
+                       <span>{type}</span>
+                       <span>{count} vụ ({Math.round((count/schedule.length)*100)}%)</span>
+                     </div>
+                     <div className="w-full bg-gray-100 h-3">
+                       <div className="bg-blue-600 h-3" style={{ width: `${(count/schedule.length)*100}%` }}></div>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+            </div>
+            <div className="bg-white p-8 border shadow-sm">
+               <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest mb-6">👨‍⚖️ Năng suất Thẩm phán (Án đang chờ)</h3>
+               <div className="space-y-4">
+                 {sortedJudges.map(judge => (
+                   <div key={judge}>
+                     <div className="flex justify-between text-sm font-bold text-gray-700 mb-1">
+                       <span>{judge}</span>
+                       <span className="text-amber-600">{judgeStats[judge]} vụ</span>
+                     </div>
+                     <div className="w-full bg-gray-100 h-3">
+                       <div className="bg-amber-500 h-3" style={{ width: `${(judgeStats[judge] / Math.max(...Object.values(judgeStats))) * 100}%` }}></div>
+                     </div>
+                   </div>
+                 ))}
+                 {sortedJudges.length === 0 && <p className="text-gray-400 text-sm italic font-bold">Chưa có dữ liệu thụ lý mới.</p>}
+               </div>
             </div>
           </div>
 
@@ -414,25 +473,28 @@ const handleReschedule = (item) => {
                     </div>
 
                     <div className="bg-gray-50 p-8 space-y-6 border-2 border-gray-100">
-                      <input placeholder="Thẩm phán chủ tọa" value={form.judge} onChange={e => setForm({...form, judge: e.target.value})} className={inputBase} />
+                      <input list="judges-list" placeholder="Thẩm phán chủ tọa" value={form.judge} onChange={e => setForm({...form, judge: e.target.value})} className={inputBase} />
                       <div className="grid grid-cols-2 gap-4">
                         <input placeholder="Hội thẩm 1" value={form.juror1} onChange={e => setForm({...form, juror1: e.target.value})} className={inputBase} />
                         <input placeholder="Hội thẩm 2" value={form.juror2} onChange={e => setForm({...form, juror2: e.target.value})} className={inputBase} />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
-                        <input placeholder="Thư ký" value={form.clerk} onChange={e => setForm({...form, clerk: e.target.value})} className={inputBase} />
-                        <input placeholder="KSV" value={form.prosecutor} onChange={e => setForm({...form, prosecutor: e.target.value})} className={`${inputBase} text-red-600`} />
+                        <input list="clerks-list" placeholder="Thư ký" value={form.clerk} onChange={e => setForm({...form, clerk: e.target.value})} className={inputBase} />
+                        <input list="prosecutors-list" placeholder="KSV" value={form.prosecutor} onChange={e => setForm({...form, prosecutor: e.target.value})} className={`${inputBase} text-red-600`} />
                       </div>
                     </div>
 
                     <button 
                       onClick={handleSubmit} 
-                      disabled={isRoomConflict || isProsecutorConflict} 
-                      className={`w-full text-white font-black py-6 uppercase text-xl shadow-2xl transition-all active:scale-95 shadow-blue-900/20 ${(isRoomConflict || isProsecutorConflict) ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-900 hover:bg-blue-800'}`}
+                      disabled={hasConflict} 
+                      className={`w-full text-white font-black py-6 uppercase text-xl shadow-2xl transition-all active:scale-95 shadow-blue-900/20 ${hasConflict ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-900 hover:bg-blue-800'}`}
                     >
                       {editingId ? "Cập nhật hồ sơ" : "Lưu vào hệ thống"}
                     </button>
+                    
                     {isRoomConflict && <p className="text-red-500 text-sm font-black text-center mt-2 animate-pulse uppercase">⚠️ TRÙNG PHÒNG XÉT XỬ!</p>}
+                    {isJudgeConflict && <p className="text-red-500 text-sm font-black text-center mt-2 animate-pulse uppercase">⚠️ THẨM PHÁN BỊ TRÙNG LỊCH!</p>}
+                    {isClerkConflict && <p className="text-red-500 text-sm font-black text-center mt-2 animate-pulse uppercase">⚠️ THƯ KÝ BỊ TRÙNG LỊCH!</p>}
                     {isProsecutorConflict && <p className="text-red-500 text-sm font-black text-center mt-2 animate-pulse uppercase">⚠️ KIỂM SÁT VIÊN BỊ TRÙNG LỊCH!</p>}
                   </div>
                 </div>
@@ -443,18 +505,21 @@ const handleReschedule = (item) => {
             <div className={`space-y-12 ${!canEdit ? 'xl:col-span-12' : 'xl:col-span-8'}`}>
               
               <div className="bg-white p-8 border shadow-2xl h-[500px]">
-                {/* BỌC THÉP Lịch để tránh những hồ sơ bị mất ngày giờ làm sập hệ thống */}
-                <Calendar 
-                   localizer={localizer} 
-                   events={schedule.filter(i => i.datetime).map(i => ({
-                     ...i, 
-                     title: `${i.status === 'completed' ? '✅ ' : ''}[${i.room}] ${i.caseName || 'Chưa có tên'}`, 
-                     start: new Date(i.datetime), 
-                     end: new Date(new Date(i.datetime).getTime() + 3600000)
-                   }))} 
-                   style={{ height: "100%" }} 
-                   onSelectEvent={e => setSelectedEvent(e)}
-                />
+                {isMounted && localizer ? (
+                  <Calendar 
+                     localizer={localizer} 
+                     events={schedule.filter(i => i.datetime && i.status !== 'postponed').map(i => ({
+                       ...i, 
+                       title: `${i.status === 'completed' ? '✅ ' : ''}[${i.room}] ${i.caseName || 'Chưa có tên'}`, 
+                       start: new Date(i.datetime), 
+                       end: new Date(new Date(i.datetime).getTime() + 3600000)
+                     }))} 
+                     style={{ height: "100%" }} 
+                     onSelectEvent={e => setSelectedEvent(e)}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center font-bold text-gray-400">Đang tải bộ lịch...</div>
+                )}
               </div>
 
               <div className="bg-white border shadow-2xl overflow-hidden flex flex-col h-[850px]">
@@ -468,6 +533,7 @@ const handleReschedule = (item) => {
                   <div className="flex flex-col md:flex-row gap-4 w-full xl:w-auto">
                     <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="border-2 border-gray-100 px-6 py-4 text-lg focus:border-blue-600 outline-none font-bold bg-white">
                       <option value="pending">⏳ Đang chờ xử</option>
+                      <option value="postponed">⏸ Đã hoãn</option>
                       <option value="completed">✅ Đã xử xong</option>
                       <option value="all">📁 Tất cả vụ án</option>
                     </select>
@@ -491,23 +557,33 @@ const handleReschedule = (item) => {
                       </tr>
                     </thead>
                     <tbody className="divide-y-2 divide-gray-50">
-                      {/* BỌC THÉP TÌM KIẾM BẢNG */}
                       {schedule.filter(i => {
                         const caseName = i.caseName || "";
                         const search = searchQuery || "";
                         const matchSearch = caseName.toLowerCase().includes(search.toLowerCase());
                         const matchStatus = statusFilter === 'all' ? true : i.status === statusFilter;
                         return matchSearch && matchStatus;
-                      }).map(item => (
-                        <tr key={item.id} className={`hover:bg-blue-50/20 bg-white transition-all group ${item.status === 'completed' ? 'opacity-70 bg-gray-50/50' : ''}`}>
-                          <td className="p-10 align-top">
-                            <div className="font-black text-gray-950 text-2xl">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
-                            <div className="text-blue-600 font-black text-xl mt-2">🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</div>
+                      }).map(item => {
+                       const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
+
+                        return (
+                        <tr key={item.id} className={`transition-all group ${item.status === 'completed' || item.status === 'postponed' ? 'opacity-70 bg-gray-50/50' : isRowUrgent ? 'bg-red-50 hover:bg-red-100' : 'bg-white hover:bg-blue-50/20'}`}>
+                          <td className={`p-10 align-top ${isRowUrgent ? 'border-l-4 border-red-500' : ''}`}>
+                            {item.status === 'postponed' ? (
+                               <div className="text-amber-600 font-black text-xl mb-2 animate-pulse">⏸ ĐÃ HOÃN</div>
+                            ) : (
+                               <>
+                                 <div className="font-black text-gray-950 text-2xl">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
+                                 <div className="text-blue-600 font-black text-xl mt-2">🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</div>
+                               </>
+                            )}
                             <div className="mt-4 font-black text-gray-400 uppercase text-xs tracking-widest">{item.room || "---"}</div>
                           </td>
                           <td className="p-10 align-top">
                             <div className="font-black uppercase text-gray-900 text-xl leading-tight mb-6 group-hover:text-blue-900 transition-colors">
                               {item.status === 'completed' && <span className="text-green-600 mr-2">✅</span>}
+                              {item.status === 'postponed' && <span className="text-amber-500 mr-2">⏸</span>}
+                              {isRowUrgent && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded mr-2 animate-pulse">⚠️ SẮP XỬ</span>}
                               {item.caseName || "Vụ án chưa có tên"}
                             </div>
                             <div className="flex gap-4">
@@ -522,7 +598,7 @@ const handleReschedule = (item) => {
                           <td className="p-10 align-top space-y-4">
                             <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 bg-blue-100 flex items-center justify-center text-blue-600 font-black text-sm">TP</div>
-                                <span className="font-black text-xl text-gray-900">{item.judge || "---"}</span>
+                                <span className={`font-black text-xl ${isRowUrgent ? 'text-red-900' : 'text-gray-900'}`}>{item.judge || "---"}</span>
                             </div>
                             <div className="flex items-center gap-4 text-base text-gray-500 font-bold">
                                 <div className="w-10 h-10 bg-gray-100 flex items-center justify-center font-black text-xs">HT</div>
@@ -541,11 +617,18 @@ const handleReschedule = (item) => {
                             <td className="p-10 text-center align-top">
                               <div className="flex flex-col gap-4">
                                 {item.status === 'pending' || !item.status ? (
-                                  <button onClick={() => toggleStatus(item.id, 'completed')} className="bg-green-50 text-green-700 px-6 py-4 font-black uppercase text-xs border border-green-100 hover:bg-green-600 hover:text-white transition-all">✔ XONG</button>
+                                  <>
+                                    <button onClick={() => toggleStatus(item.id, 'completed')} className="bg-green-50 text-green-700 px-6 py-4 font-black uppercase text-xs border border-green-100 hover:bg-green-600 hover:text-white transition-all">✔ XONG</button>
+                                    <button onClick={() => toggleStatus(item.id, 'postponed')} className="bg-amber-50 text-amber-700 px-6 py-4 font-black uppercase text-xs border border-amber-100 hover:bg-amber-600 hover:text-white transition-all">⏸ HOÃN</button>
+                                  </>
+                                ) : item.status === 'postponed' ? (
+                                  <button onClick={() => handleReschedule(item)} className="bg-blue-600 text-white px-6 py-4 font-black uppercase text-xs shadow-lg hover:bg-blue-700 transition-all">📅 LÊN LỊCH LẠI</button>
                                 ) : (
-                                  <button onClick={() => toggleStatus(item.id, 'pending')} className="bg-amber-50 text-amber-700 px-6 py-4 font-black uppercase text-xs border border-amber-100 hover:bg-amber-600 hover:text-white transition-all">↺ MỞ LẠI</button>
+                                  <button onClick={() => toggleStatus(item.id, 'pending')} className="bg-gray-200 text-gray-700 px-6 py-4 font-black uppercase text-xs hover:bg-gray-400 transition-all">↺ MỞ LẠI</button>
                                 )}
-                                <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 px-6 py-4 font-black uppercase text-xs border border-blue-100 hover:bg-blue-600 hover:text-white transition-all">SỬA</button>
+
+                                <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 px-6 py-4 font-black uppercase text-xs border border-blue-100 hover:bg-blue-600 hover:text-white transition-all mt-4">SỬA</button>
+                                
                                 {userRole === 'admin' && (
                                   <button onClick={async () => {if(confirm("Xóa hồ sơ này?")) {await deleteDoc(doc(db,"schedule",item.id)); loadData()}}} className="bg-red-50 text-red-700 px-6 py-4 font-black uppercase text-xs border border-red-100 hover:bg-red-600 hover:text-white transition-all">XÓA</button>
                                 )}
@@ -553,7 +636,7 @@ const handleReschedule = (item) => {
                             </td>
                           )}
                         </tr>
-                      ))}
+                      )})}
                     </tbody>
                   </table>
                 </div>
@@ -564,16 +647,18 @@ const handleReschedule = (item) => {
         </div>
       </main>
 
-      {/* MODAL CHI TIẾT BỌC THÉP */}
+      {/* MODAL CHI TIẾT */}
       {selectedEvent && (
-        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[100] p-6" onClick={() => setSelectedEvent(null)}>
-           <div className="bg-white w-full max-w-lg shadow-[0_0_40px_rgba(0,0,0,1)] border-4 border-blue-900 scale-105" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-6" onClick={() => setSelectedEvent(null)}>
+           <div className="bg-white w-full max-w-lg shadow-2xl border-4 border-blue-900 scale-105" onClick={e => e.stopPropagation()}>
               <div className="bg-blue-900 p-8 text-white flex justify-between items-start">
                 <div>
                   <p className="text-xs font-black uppercase opacity-80 mb-2">{selectedEvent.caseType || "---"} - {selectedEvent.trialCount || "---"}</p>
                   <h3 className="text-2xl font-black uppercase leading-tight">{selectedEvent.caseName || "Chưa có tên"}</h3>
                 </div>
                 {selectedEvent.status === 'completed' && <span className="bg-green-500 text-white px-3 py-1 font-black text-xs ml-4">ĐÃ XONG</span>}
+                {selectedEvent.status === 'postponed' && <span className="bg-amber-500 text-white px-3 py-1 font-black text-xs ml-4">ĐÃ HOÃN</span>}
+                {selectedEvent.status === 'pending' && isUrgent(selectedEvent.datetime) && <span className="bg-red-500 text-white px-3 py-1 font-black text-xs ml-4 animate-pulse">SẮP XỬ</span>}
               </div>
               <div className="p-8 space-y-4 text-base font-bold text-gray-900">
                 <p>🕒 <span className="text-blue-900">{selectedEvent.datetime ? moment(selectedEvent.datetime).format("HH:mm - DD/MM/YYYY") : "---"}</span> tại <span className="text-blue-900">{selectedEvent.room || "---"}</span></p>
