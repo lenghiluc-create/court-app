@@ -116,7 +116,6 @@ export default function PremiumCourtApp() {
       setNewPwd("");
       setConfirmPwd("");
     } catch (error) {
-      // Firebase yêu cầu đăng nhập gần đây để đổi MK, nếu để quá lâu sẽ báo lỗi này
       if (error.code === 'auth/requires-recent-login') {
          showToast("Vui lòng đăng xuất và đăng nhập lại để thực hiện đổi mật khẩu!", "error");
       } else {
@@ -398,8 +397,8 @@ export default function PremiumCourtApp() {
         }
       `}} />
 
-      {/* SIDEBAR */}
-      <aside className="w-80 bg-blue-950 text-white hidden xl:flex flex-col fixed h-screen shadow-2xl border-r border-blue-900 z-20">
+      {/* SIDEBAR - Thêm overflow-y-auto chống bị cắt mất đáy */}
+      <aside className="w-80 bg-blue-950 text-white hidden xl:flex flex-col fixed h-screen shadow-2xl border-r border-blue-900 z-20 overflow-y-auto">
         <div className="p-12 text-center border-b border-white/5">
           <div className="text-5xl mb-4">⚖️</div>
           <h2 className="font-black text-2xl uppercase tracking-tighter">TAND KV9</h2>
@@ -410,7 +409,7 @@ export default function PremiumCourtApp() {
             {urgentCount > 0 && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded-full animate-bounce">{urgentCount}</span>}
           </div>
         </div>
-        <div className="p-8 border-t border-white/5 bg-black/10">
+        <div className="p-8 border-t border-white/5 bg-black/10 mt-auto">
           <div className="mb-6 p-4 bg-white/5 border border-white/10">
              <p className="text-[10px] text-blue-400 font-black uppercase mb-1 tracking-widest">Quyền: {userRole}</p>
              <p className="text-sm font-bold truncate opacity-70">{user?.email}</p>
@@ -425,18 +424,38 @@ export default function PremiumCourtApp() {
       {/* MAIN CONTENT */}
       <main className="flex-1 xl:ml-80 flex flex-col min-h-screen relative z-10">
         
-        <header className="bg-white/95 backdrop-blur-md h-24 shadow-sm flex items-center px-12 sticky top-0 z-30 border-b border-gray-200 relative">
-          <h1 className="font-black text-2xl uppercase text-blue-950 absolute left-1/2 transform -translate-x-1/2 w-max">
-            HỆ THỐNG QUẢN LÝ LỊCH TRỰC TUYẾN
-          </h1>
-          <div className="ml-auto flex items-center gap-6 relative z-10">
-             <div className="bg-blue-50 text-blue-700 px-6 py-3 font-black text-sm border border-blue-100 uppercase tracking-widest hidden md:block">Cần Thơ: {moment().format("DD/MM/YYYY")}</div>
+        {/* HEADER MỚI - ĐƯỢC CHIA LÀM 3 CỘT ĐỂ KHÔNG BỊ TRÀN CHỮ */}
+        <header className="bg-white/95 backdrop-blur-md h-24 shadow-sm flex items-center justify-between px-4 md:px-8 xl:px-12 sticky top-0 z-30 border-b border-gray-200 w-full">
+          
+          {/* Vùng trái: Nút chức năng cho màn hình nhỏ (Laptop, Tablet) */}
+          <div className="flex-1 flex justify-start items-center gap-2 xl:hidden">
+             <button onClick={() => setShowPwdModal(true)} className="bg-blue-50 text-blue-700 px-3 py-2 text-[10px] sm:text-xs font-black uppercase border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm">
+               🔑 Đổi MK
+             </button>
+             <button onClick={handleLogout} className="bg-red-50 text-red-600 border border-red-100 px-3 py-2 text-[10px] sm:text-xs font-black uppercase hover:bg-red-600 hover:text-white transition-all shadow-sm">
+               🚪 Đăng xuất
+             </button>
+          </div>
+          <div className="flex-1 hidden xl:block"></div> {/* Giữ chỗ cho màn hình lớn */}
+
+          {/* Vùng giữa: Tiêu đề - Tự động thu nhỏ cỡ chữ nếu màn hẹp */}
+          <div className="flex-[2] text-center px-2">
+            <h1 className="font-black text-[14px] sm:text-[16px] md:text-xl xl:text-2xl uppercase text-blue-950 truncate">
+              HỆ THỐNG QUẢN LÝ LỊCH TRỰC TUYẾN
+            </h1>
+          </div>
+          
+          {/* Vùng phải: Ngày tháng */}
+          <div className="flex-1 flex items-center justify-end">
+             <div className="bg-blue-50 text-blue-700 px-3 py-2 sm:px-4 sm:py-2 md:px-6 md:py-3 font-black text-[10px] sm:text-xs md:text-sm border border-blue-100 uppercase tracking-widest text-center w-max">
+               Cần Thơ: {moment().format("DD/MM/YYYY")}
+             </div>
           </div>
         </header>
 
-        <div className="p-12 flex-1">
+        <div className="p-4 md:p-12 flex-1">
           
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-8">
             <div className="bg-white p-8 border shadow-sm border-l-8 border-l-blue-900">
                 <p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Tổng vụ án</p>
                 <p className="text-4xl font-black text-gray-950">{schedule.length}</p>
@@ -455,7 +474,7 @@ export default function PremiumCourtApp() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-12">
             
             <div className="bg-white p-8 border shadow-sm flex flex-col items-center">
                <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest mb-6 w-full text-left">📊 TỶ LỆ LOẠI ÁN (TỔNG THỂ)</h3>
@@ -495,7 +514,7 @@ export default function PremiumCourtApp() {
             
             {canEdit && (
               <div className="xl:col-span-4">
-                <div className="bg-white p-10 border shadow-2xl sticky top-36">
+                <div className="bg-white p-6 md:p-10 border shadow-2xl sticky top-36">
                   <h2 className="font-black text-2xl text-blue-950 uppercase mb-10 flex items-center gap-4">
                     <span className="w-2 h-10 bg-blue-600"></span>
                     {editingId ? "Cập nhật hồ sơ" : "Đăng ký lịch"}
@@ -583,7 +602,7 @@ export default function PremiumCourtApp() {
                       <input placeholder="Bị đơn..." value={form.defendant} onChange={e => setForm({...form, defendant: e.target.value})} className={inputBase} />
                     </div>
 
-                    <div className="bg-gray-50 p-8 space-y-6 border-2 border-gray-100">
+                    <div className="bg-gray-50 p-4 md:p-8 space-y-6 border-2 border-gray-100">
                       <input list="judges-list" placeholder="Thẩm phán chủ tọa" value={form.judge} onChange={e => setForm({...form, judge: e.target.value})} className={inputBase} />
                       <div className="grid grid-cols-2 gap-4">
                         <input placeholder="Hội thẩm 1" value={form.juror1} onChange={e => setForm({...form, juror1: e.target.value})} className={inputBase} />
@@ -614,7 +633,7 @@ export default function PremiumCourtApp() {
 
             <div className={`space-y-12 ${!canEdit ? 'xl:col-span-12' : 'xl:col-span-8'}`}>
               
-              <div className="bg-white p-8 border shadow-2xl h-[500px]">
+              <div className="bg-white p-4 md:p-8 border shadow-2xl h-[500px] overflow-hidden">
                 {isMounted && localizer ? (
                   <Calendar 
                      localizer={localizer} 
@@ -634,21 +653,21 @@ export default function PremiumCourtApp() {
 
               <div className="bg-white border shadow-2xl overflow-hidden flex flex-col h-[850px]">
                 
-                <div className="p-10 border-b-2 border-gray-50 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 sticky top-0 bg-white z-10">
-                  <h3 className="font-black uppercase text-2xl text-blue-950 flex items-center gap-4">
+                <div className="p-6 md:p-10 border-b-2 border-gray-50 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 sticky top-0 bg-white z-10">
+                  <h3 className="font-black uppercase text-xl md:text-2xl text-blue-950 flex items-center gap-4">
                     <span className="w-2 h-10 bg-blue-950"></span>
                     Sổ thụ lý
                   </h3>
                   
                   <div className="flex flex-col md:flex-row gap-4 w-full xl:w-auto">
-                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="border-2 border-gray-100 px-6 py-4 text-lg focus:border-blue-600 outline-none font-bold bg-white">
+                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="border-2 border-gray-100 px-6 py-4 text-sm md:text-lg focus:border-blue-600 outline-none font-bold bg-white w-full md:w-auto">
                       <option value="pending">⏳ Đang chờ xử</option>
                       <option value="postponed">⏸ Đã hoãn</option>
                       <option value="completed">✅ Đã xử xong</option>
                       <option value="all">📁 Tất cả vụ án</option>
                     </select>
 
-                    <input type="text" placeholder="Tìm tên án, thẩm phán..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-6 py-4 text-lg w-full md:w-64 focus:border-blue-600 outline-none font-bold" />
+                    <input type="text" placeholder="Tìm tên án, thẩm phán..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-6 py-4 text-sm md:text-lg w-full md:w-64 focus:border-blue-600 outline-none font-bold" />
                     
                     <button onClick={exportToExcel} className="bg-green-600 text-white px-8 py-4 font-black uppercase shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 w-full md:w-auto">
                       📊 XUẤT EXCEL
@@ -657,13 +676,13 @@ export default function PremiumCourtApp() {
                 </div>
 
                 <div className="overflow-auto flex-1">
-                  <table className="w-full text-left border-collapse">
+                  <table className="w-full text-left border-collapse min-w-[800px]">
                     <thead className="bg-gray-50 text-[11px] font-black uppercase text-gray-400 border-b-2 border-gray-100 sticky top-0">
                       <tr>
-                        <th className="p-10">Thời gian / Địa điểm</th>
-                        <th className="p-10">Nội dung vụ việc</th>
-                        <th className="p-10">Hội đồng & Thư ký</th>
-                        {canEdit && <th className="p-10 text-center">Tác vụ</th>}
+                        <th className="p-6 md:p-10">Thời gian / Địa điểm</th>
+                        <th className="p-6 md:p-10">Nội dung vụ việc</th>
+                        <th className="p-6 md:p-10">Hội đồng & Thư ký</th>
+                        {canEdit && <th className="p-6 md:p-10 text-center">Tác vụ</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y-2 divide-gray-50">
@@ -672,19 +691,19 @@ export default function PremiumCourtApp() {
 
                         return (
                         <tr key={item.id} className={`transition-all group ${item.status === 'completed' || item.status === 'postponed' ? 'opacity-70 bg-gray-50/50' : isRowUrgent ? 'bg-red-50 hover:bg-red-100' : 'bg-white hover:bg-blue-50/20'}`}>
-                          <td className={`p-10 align-top ${isRowUrgent ? 'border-l-4 border-red-500' : ''}`}>
+                          <td className={`p-6 md:p-10 align-top ${isRowUrgent ? 'border-l-4 border-red-500' : ''}`}>
                             {item.status === 'postponed' ? (
-                               <div className="text-amber-600 font-black text-xl mb-2 animate-pulse">⏸ ĐÃ HOÃN</div>
+                               <div className="text-amber-600 font-black text-lg md:text-xl mb-2 animate-pulse">⏸ ĐÃ HOÃN</div>
                             ) : (
                                <>
-                                 <div className="font-black text-gray-950 text-2xl">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
-                                 <div className="text-blue-600 font-black text-xl mt-2">🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</div>
+                                 <div className="font-black text-gray-950 text-xl md:text-2xl">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
+                                 <div className="text-blue-600 font-black text-lg md:text-xl mt-2">🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</div>
                                </>
                             )}
                             <div className="mt-4 font-black text-gray-400 uppercase text-xs tracking-widest">{item.room || "---"}</div>
                           </td>
-                          <td className="p-10 align-top">
-                            <div className="font-black uppercase text-gray-900 text-xl leading-tight mb-6 group-hover:text-blue-900 transition-colors">
+                          <td className="p-6 md:p-10 align-top">
+                            <div className="font-black uppercase text-gray-900 text-lg md:text-xl leading-tight mb-6 group-hover:text-blue-900 transition-colors">
                               {item.status === 'completed' && <span className="text-green-600 mr-2">✅</span>}
                               {item.status === 'postponed' && <span className="text-amber-500 mr-2">⏸</span>}
                               {isRowUrgent && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded mr-2 animate-pulse">⚠️ SẮP XỬ</span>}
@@ -694,47 +713,47 @@ export default function PremiumCourtApp() {
                                 <span className="bg-blue-50 text-blue-800 px-5 py-2 text-xs font-black uppercase border border-blue-100">{item.caseType || "---"}</span>
                                 <span className="bg-amber-50 text-amber-700 px-5 py-2 text-xs font-black uppercase border border-amber-100">{item.trialCount || "Lần 1"}</span>
                             </div>
-                            <div className="mt-6 text-base text-gray-500 space-y-2 font-bold italic">
+                            <div className="mt-6 text-sm md:text-base text-gray-500 space-y-2 font-bold italic">
                                 <p>📌 NĐ: {item.plaintiff || "N/A"}</p>
                                 <p>📌 BĐ: {item.defendant || "N/A"}</p>
                             </div>
                           </td>
-                          <td className="p-10 align-top space-y-4">
+                          <td className="p-6 md:p-10 align-top space-y-4">
                             <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 bg-blue-100 flex items-center justify-center text-blue-600 font-black text-sm">TP</div>
-                                <span className={`font-black text-xl ${isRowUrgent ? 'text-red-900' : 'text-gray-900'}`}>{item.judge || "---"}</span>
+                                <div className="w-10 h-10 bg-blue-100 flex items-center justify-center text-blue-600 font-black text-sm shrink-0">TP</div>
+                                <span className={`font-black text-lg md:text-xl ${isRowUrgent ? 'text-red-900' : 'text-gray-900'}`}>{item.judge || "---"}</span>
                             </div>
-                            <div className="flex items-center gap-4 text-base text-gray-500 font-bold">
-                                <div className="w-10 h-10 bg-gray-100 flex items-center justify-center font-black text-xs">HT</div>
+                            <div className="flex items-center gap-4 text-sm md:text-base text-gray-500 font-bold">
+                                <div className="w-10 h-10 bg-gray-100 flex items-center justify-center font-black text-xs shrink-0">HT</div>
                                 <span>{item.juror1 || "---"}, {item.juror2 || "---"}</span>
                             </div>
-                            <div className="flex items-center gap-4 text-base text-gray-500 font-bold">
-                                <div className="w-10 h-10 bg-gray-100 flex items-center justify-center font-black text-xs">TK</div>
+                            <div className="flex items-center gap-4 text-sm md:text-base text-gray-500 font-bold">
+                                <div className="w-10 h-10 bg-gray-100 flex items-center justify-center font-black text-xs shrink-0">TK</div>
                                 <span>{item.clerk || "---"}</span>
                             </div>
-                            <div className="flex items-center gap-4 text-base text-red-600 font-black">
-                                <div className="w-10 h-10 bg-red-50 flex items-center justify-center font-black text-xs">KS</div>
+                            <div className="flex items-center gap-4 text-sm md:text-base text-red-600 font-black">
+                                <div className="w-10 h-10 bg-red-50 flex items-center justify-center font-black text-xs shrink-0">KS</div>
                                 <span>{item.prosecutor || "---"}</span>
                             </div>
                           </td>
                           {canEdit && (
-                            <td className="p-10 text-center align-top">
+                            <td className="p-6 md:p-10 text-center align-top">
                               <div className="flex flex-col gap-4">
                                 {item.status === 'pending' || !item.status ? (
                                   <>
-                                    <button onClick={() => toggleStatus(item.id, 'completed')} className="bg-green-50 text-green-700 px-6 py-4 font-black uppercase text-xs border border-green-100 hover:bg-green-600 hover:text-white transition-all">✔ XONG</button>
-                                    <button onClick={() => toggleStatus(item.id, 'postponed')} className="bg-amber-50 text-amber-700 px-6 py-4 font-black uppercase text-xs border border-amber-100 hover:bg-amber-600 hover:text-white transition-all">⏸ HOÃN</button>
+                                    <button onClick={() => toggleStatus(item.id, 'completed')} className="bg-green-50 text-green-700 px-4 py-3 font-black uppercase text-xs border border-green-100 hover:bg-green-600 hover:text-white transition-all">✔ XONG</button>
+                                    <button onClick={() => toggleStatus(item.id, 'postponed')} className="bg-amber-50 text-amber-700 px-4 py-3 font-black uppercase text-xs border border-amber-100 hover:bg-amber-600 hover:text-white transition-all">⏸ HOÃN</button>
                                   </>
                                 ) : item.status === 'postponed' ? (
-                                  <button onClick={() => handleReschedule(item)} className="bg-blue-600 text-white px-6 py-4 font-black uppercase text-xs shadow-lg hover:bg-blue-700 transition-all">📅 LÊN LỊCH LẠI</button>
+                                  <button onClick={() => handleReschedule(item)} className="bg-blue-600 text-white px-4 py-3 font-black uppercase text-xs shadow-lg hover:bg-blue-700 transition-all">📅 LÊN LỊCH LẠI</button>
                                 ) : (
-                                  <button onClick={() => toggleStatus(item.id, 'pending')} className="bg-gray-200 text-gray-700 px-6 py-4 font-black uppercase text-xs hover:bg-gray-400 transition-all">↺ MỞ LẠI</button>
+                                  <button onClick={() => toggleStatus(item.id, 'pending')} className="bg-gray-200 text-gray-700 px-4 py-3 font-black uppercase text-xs hover:bg-gray-400 transition-all">↺ MỞ LẠI</button>
                                 )}
 
-                                <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 px-6 py-4 font-black uppercase text-xs border border-blue-100 hover:bg-blue-600 hover:text-white transition-all mt-4">SỬA</button>
+                                <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 px-4 py-3 font-black uppercase text-xs border border-blue-100 hover:bg-blue-600 hover:text-white transition-all mt-4">SỬA</button>
                                 
                                 {userRole === 'admin' && (
-                                  <button onClick={async () => {if(confirm("Xóa hồ sơ này?")) {await deleteDoc(doc(db,"schedule",item.id)); loadData()}}} className="bg-red-50 text-red-700 px-6 py-4 font-black uppercase text-xs border border-red-100 hover:bg-red-600 hover:text-white transition-all">XÓA</button>
+                                  <button onClick={async () => {if(confirm("Xóa hồ sơ này?")) {await deleteDoc(doc(db,"schedule",item.id)); loadData()}}} className="bg-red-50 text-red-700 px-4 py-3 font-black uppercase text-xs border border-red-100 hover:bg-red-600 hover:text-white transition-all">XÓA</button>
                                 )}
                               </div>
                             </td>
@@ -753,25 +772,25 @@ export default function PremiumCourtApp() {
 
       {/* MODAL CHI TIẾT VỤ ÁN */}
       {selectedEvent && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-6" onClick={() => setSelectedEvent(null)}>
-           <div className="bg-white w-full max-w-lg shadow-2xl border-4 border-blue-900 scale-105" onClick={e => e.stopPropagation()}>
-              <div className="bg-blue-900 p-8 text-white flex justify-between items-start">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 md:p-6" onClick={() => setSelectedEvent(null)}>
+           <div className="bg-white w-full max-w-lg shadow-2xl border-4 border-blue-900 md:scale-105" onClick={e => e.stopPropagation()}>
+              <div className="bg-blue-900 p-6 md:p-8 text-white flex justify-between items-start">
                 <div>
                   <p className="text-xs font-black uppercase opacity-80 mb-2">{selectedEvent.caseType || "---"} - {selectedEvent.trialCount || "---"}</p>
-                  <h3 className="text-2xl font-black uppercase leading-tight">{selectedEvent.caseName || "Chưa có tên"}</h3>
+                  <h3 className="text-xl md:text-2xl font-black uppercase leading-tight">{selectedEvent.caseName || "Chưa có tên"}</h3>
                 </div>
-                {selectedEvent.status === 'completed' && <span className="bg-green-500 text-white px-3 py-1 font-black text-xs ml-4">ĐÃ XONG</span>}
-                {selectedEvent.status === 'postponed' && <span className="bg-amber-500 text-white px-3 py-1 font-black text-xs ml-4">ĐÃ HOÃN</span>}
-                {selectedEvent.status === 'pending' && isUrgent(selectedEvent.datetime) && <span className="bg-red-500 text-white px-3 py-1 font-black text-xs ml-4 animate-pulse">SẮP XỬ</span>}
+                {selectedEvent.status === 'completed' && <span className="bg-green-500 text-white px-3 py-1 font-black text-xs ml-4 shrink-0">ĐÃ XONG</span>}
+                {selectedEvent.status === 'postponed' && <span className="bg-amber-500 text-white px-3 py-1 font-black text-xs ml-4 shrink-0">ĐÃ HOÃN</span>}
+                {selectedEvent.status === 'pending' && isUrgent(selectedEvent.datetime) && <span className="bg-red-500 text-white px-3 py-1 font-black text-xs ml-4 animate-pulse shrink-0">SẮP XỬ</span>}
               </div>
-              <div className="p-8 space-y-4 text-base font-bold text-gray-900">
+              <div className="p-6 md:p-8 space-y-4 text-sm md:text-base font-bold text-gray-900">
                 <p>🕒 <span className="text-blue-900">{selectedEvent.datetime ? moment(selectedEvent.datetime).format("HH:mm - DD/MM/YYYY") : "---"}</span> tại <span className="text-blue-900">{selectedEvent.room || "---"}</span></p>
                 <hr className="border-gray-300 border-2"/>
                 <p>👨‍⚖️ Thẩm phán: <span className="font-black text-gray-950">{selectedEvent.judge || "---"}</span></p>
                 <p>⚖️ Hội thẩm: {selectedEvent.juror1 || "---"}, {selectedEvent.juror2 || "---"}</p>
                 <p>📝 Thư ký: {selectedEvent.clerk || "---"}</p>
                 <p>🛡️ Kiểm sát: <span className="text-red-600">{selectedEvent.prosecutor || "---"}</span></p>
-                <button onClick={() => setSelectedEvent(null)} className="w-full bg-blue-900 text-white py-5 font-black uppercase mt-6 hover:bg-blue-800 transition-colors">ĐÓNG CỬA SỔ</button>
+                <button onClick={() => setSelectedEvent(null)} className="w-full bg-blue-900 text-white py-4 md:py-5 font-black uppercase mt-6 hover:bg-blue-800 transition-colors">ĐÓNG CỬA SỔ</button>
               </div>
            </div>
         </div>
@@ -779,12 +798,12 @@ export default function PremiumCourtApp() {
 
       {/* MODAL ĐỔI MẬT KHẨU */}
       {showPwdModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-6" onClick={() => setShowPwdModal(false)}>
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 md:p-6" onClick={() => setShowPwdModal(false)}>
            <div className="bg-white w-full max-w-md shadow-2xl border-4 border-blue-900" onClick={e => e.stopPropagation()}>
               <div className="bg-blue-900 p-6 text-white text-center">
                 <h3 className="text-xl font-black uppercase tracking-widest">🔑 ĐỔI MẬT KHẨU</h3>
               </div>
-              <form onSubmit={handleChangePassword} className="p-8 space-y-6">
+              <form onSubmit={handleChangePassword} className="p-6 md:p-8 space-y-6">
                 <div>
                    <label className="block text-xs font-black text-gray-400 uppercase mb-2 tracking-widest">Mật khẩu mới</label>
                    <input type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} required className={inputBase} placeholder="Nhập mật khẩu mới..." minLength={6} />
@@ -795,7 +814,7 @@ export default function PremiumCourtApp() {
                 </div>
                 <div className="flex gap-4 pt-4">
                    <button type="button" onClick={() => setShowPwdModal(false)} className="w-1/2 bg-gray-200 text-gray-700 font-black py-4 uppercase hover:bg-gray-300 transition-all">HỦY BỎ</button>
-                   <button type="submit" className="w-1/2 bg-blue-600 text-white font-black py-4 uppercase hover:bg-blue-700 transition-all shadow-lg">LƯU THAY ĐỔI</button>
+                   <button type="submit" className="w-1/2 bg-blue-600 text-white font-black py-4 uppercase hover:bg-blue-700 transition-all shadow-lg">LƯU ĐỔI</button>
                 </div>
               </form>
            </div>
@@ -803,7 +822,7 @@ export default function PremiumCourtApp() {
       )}
 
       {toast.show && (
-        <div className={`fixed bottom-12 right-12 z-[200] px-12 py-6 shadow-2xl font-black text-lg text-white ${toast.type === 'error' ? 'bg-red-600' : 'bg-blue-700'}`}>
+        <div className={`fixed bottom-6 md:bottom-12 right-6 md:right-12 z-[200] px-8 md:px-12 py-4 md:py-6 shadow-2xl font-black text-sm md:text-lg text-white ${toast.type === 'error' ? 'bg-red-600' : 'bg-blue-700'}`}>
           {toast.message}
         </div>
       )}
