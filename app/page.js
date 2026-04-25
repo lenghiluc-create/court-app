@@ -114,7 +114,22 @@ export default function PremiumCourtApp() {
       showToast("Lỗi cập nhật trạng thái", "error");
     }
   };
+const handleReschedule = (item) => {
+    let nextTrialCount = "Lần 2";
+    if (item.trialCount === "Lần 1") nextTrialCount = "Lần 2";
+    else if (item.trialCount === "Lần 2") nextTrialCount = "Mở lại";
+    else nextTrialCount = "Mở lại";
 
+    setForm({
+      ...item,
+      datetime: "", // Xóa ngày giờ cũ bắt chọn lại
+      trialCount: nextTrialCount, // Tự động nhảy bậc
+      status: "pending" // Đưa trạng thái về Đang chờ xử
+    });
+    setEditingId(item.id);
+    window.scrollTo({top:0, behavior:'smooth'});
+    showToast("Đã lấy dữ liệu, vui lòng chọn ngày giờ mới!", "success");
+  };
   const exportToExcel = () => {
     if (schedule.length === 0) return showToast("Không có dữ liệu để xuất!", "error");
 
