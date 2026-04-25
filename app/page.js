@@ -3,12 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import "react-big-calendar/lib/css/react-big-calendar.css";
-// Bổ sung cọ vẽ biểu đồ tròn
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Firebase Imports
 import { db, auth } from './firebase'; 
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence, browserSessionPersistence } from 'firebase/auth';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence, browserSessionPersistence, updatePassword } from 'firebase/auth';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
 
 const localizer = typeof window !== 'undefined' ? momentLocalizer(moment) : null;
@@ -26,6 +25,11 @@ export default function PremiumCourtApp() {
   const [statusFilter, setStatusFilter] = useState("pending");
   const [editingId, setEditingId] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
+
+  // States cho Đổi mật khẩu
+  const [showPwdModal, setShowPwdModal] = useState(false);
+  const [newPwd, setNewPwd] = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
 
   const initialForm = {
     datetime: "", room: "Trụ sở", caseType: "Hình sự", trialCount: "Lần 1", caseName: "", 
@@ -93,6 +97,32 @@ export default function PremiumCourtApp() {
       await signOut(auth);
       showToast("Đã đăng xuất hệ thống", "success");
     } catch (error) { showToast("Lỗi khi đăng xuất", "error"); }
+  };
+
+  // Hàm xử lý đổi mật khẩu
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (newPwd !== confirmPwd) {
+      return showToast("Mật khẩu xác nhận không khớp!", "error");
+    }
+    if (newPwd.length < 6) {
+      return showToast("Mật khẩu phải từ 6 ký tự trở lên!", "error");
+    }
+    
+    try {
+      await updatePassword(auth.currentUser, newPwd);
+      showToast("✅ Đổi mật khẩu thành công!", "success");
+      setShowPwdModal(false);
+      setNewPwd("");
+      setConfirmPwd("");
+    } catch (error) {
+      // Firebase yêu cầu đăng nhập gần đây để đổi MK, nếu để quá lâu sẽ báo lỗi này
+      if (error.code === 'auth/requires-recent-login') {
+         showToast("Vui lòng đăng xuất và đăng nhập lại để thực hiện đổi mật khẩu!", "error");
+      } else {
+         showToast("Lỗi: " + error.message, "error");
+      }
+    }
   };
 
   const handleSubmit = async () => {
@@ -261,10 +291,15 @@ export default function PremiumCourtApp() {
   
   const judgeStats = {};
   pendingCases.forEach(i => { if(i.judge) judgeStats[i.judge] = (judgeStats[i.judge] || 0) + 1 });
-  const judgeData = Object.keys(judgeStats).map(key => ({ name: key, value: judgeStats[key] })).sort((a,b) => b.value - a.value); // Lọc Thẩm phán nhiều án nhất lên đầu
+  const judgeData = Object.keys(judgeStats).map(key => ({ name: key, value: judgeStats[key] })).sort((a,b) => b.value - a.value); 
 
-  // Bảng màu cho Biểu đồ
-  const CHART_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899', '#6366f1', '#84cc16'];
+  // Bảng 16 màu sắc chuẩn chuyên nghiệp cho Biểu đồ
+  const CHART_COLORS = [
+    '#3b82f6', '#ef4444', '#10b981', '#f59e0b', 
+    '#8b5cf6', '#06b6d4', '#f97316', '#ec4899', 
+    '#6366f1', '#84cc16', '#14b8a6', '#d946ef', 
+    '#0ea5e9', '#f43f5e', '#eab308', '#64748b'
+  ];
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-blue-900">ĐANG TẢI...</div>;
 
@@ -380,7 +415,10 @@ export default function PremiumCourtApp() {
              <p className="text-[10px] text-blue-400 font-black uppercase mb-1 tracking-widest">Quyền: {userRole}</p>
              <p className="text-sm font-bold truncate opacity-70">{user?.email}</p>
           </div>
-          <button onClick={handleLogout} className="w-full bg-red-600 hover:bg-red-700 py-4 font-black uppercase text-xs transition-all flex items-center justify-center gap-2">🚪 ĐĂNG XUẤT</button>
+          <div className="space-y-3">
+             <button onClick={() => setShowPwdModal(true)} className="w-full bg-blue-600 hover:bg-blue-700 py-4 font-black uppercase text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20">🔑 ĐỔI MẬT KHẨU</button>
+             <button onClick={handleLogout} className="w-full bg-red-600 hover:bg-red-700 py-4 font-black uppercase text-xs transition-all flex items-center justify-center gap-2">🚪 ĐĂNG XUẤT</button>
+          </div>
         </div>
       </aside>
 
@@ -393,7 +431,6 @@ export default function PremiumCourtApp() {
           </h1>
           <div className="ml-auto flex items-center gap-6 relative z-10">
              <div className="bg-blue-50 text-blue-700 px-6 py-3 font-black text-sm border border-blue-100 uppercase tracking-widest hidden md:block">Cần Thơ: {moment().format("DD/MM/YYYY")}</div>
-             <button onClick={handleLogout} className="bg-red-50 text-red-600 border border-red-100 px-4 py-2 text-xs font-black uppercase hover:bg-red-600 hover:text-white transition-all">Đăng xuất</button>
           </div>
         </header>
 
@@ -418,7 +455,6 @@ export default function PremiumCourtApp() {
             </div>
           </div>
 
-          {/* ===== BIỂU ĐỒ TRÒN MỚI TẠI ĐÂY ===== */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
             
             <div className="bg-white p-8 border shadow-sm flex flex-col items-center">
@@ -715,7 +751,7 @@ export default function PremiumCourtApp() {
         </div>
       </main>
 
-      {/* MODAL CHI TIẾT */}
+      {/* MODAL CHI TIẾT VỤ ÁN */}
       {selectedEvent && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-6" onClick={() => setSelectedEvent(null)}>
            <div className="bg-white w-full max-w-lg shadow-2xl border-4 border-blue-900 scale-105" onClick={e => e.stopPropagation()}>
@@ -737,6 +773,31 @@ export default function PremiumCourtApp() {
                 <p>🛡️ Kiểm sát: <span className="text-red-600">{selectedEvent.prosecutor || "---"}</span></p>
                 <button onClick={() => setSelectedEvent(null)} className="w-full bg-blue-900 text-white py-5 font-black uppercase mt-6 hover:bg-blue-800 transition-colors">ĐÓNG CỬA SỔ</button>
               </div>
+           </div>
+        </div>
+      )}
+
+      {/* MODAL ĐỔI MẬT KHẨU */}
+      {showPwdModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-6" onClick={() => setShowPwdModal(false)}>
+           <div className="bg-white w-full max-w-md shadow-2xl border-4 border-blue-900" onClick={e => e.stopPropagation()}>
+              <div className="bg-blue-900 p-6 text-white text-center">
+                <h3 className="text-xl font-black uppercase tracking-widest">🔑 ĐỔI MẬT KHẨU</h3>
+              </div>
+              <form onSubmit={handleChangePassword} className="p-8 space-y-6">
+                <div>
+                   <label className="block text-xs font-black text-gray-400 uppercase mb-2 tracking-widest">Mật khẩu mới</label>
+                   <input type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} required className={inputBase} placeholder="Nhập mật khẩu mới..." minLength={6} />
+                </div>
+                <div>
+                   <label className="block text-xs font-black text-gray-400 uppercase mb-2 tracking-widest">Xác nhận mật khẩu</label>
+                   <input type="password" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} required className={inputBase} placeholder="Nhập lại mật khẩu..." minLength={6} />
+                </div>
+                <div className="flex gap-4 pt-4">
+                   <button type="button" onClick={() => setShowPwdModal(false)} className="w-1/2 bg-gray-200 text-gray-700 font-black py-4 uppercase hover:bg-gray-300 transition-all">HỦY BỎ</button>
+                   <button type="submit" className="w-1/2 bg-blue-600 text-white font-black py-4 uppercase hover:bg-blue-700 transition-all shadow-lg">LƯU THAY ĐỔI</button>
+                </div>
+              </form>
            </div>
         </div>
       )}
