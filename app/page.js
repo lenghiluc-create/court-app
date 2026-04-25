@@ -137,11 +137,19 @@ export default function PremiumCourtApp() {
     showToast("Đã lấy dữ liệu, vui lòng chọn ngày giờ mới!", "success");
   };
 
-  // ===== THUẬT TOÁN LỌC VÀ SẮP XẾP THÔNG MINH =====
+  // ===== THUẬT TOÁN TÌM KIẾM ĐA NĂNG & SẮP XẾP THÔNG MINH =====
   const processedSchedule = schedule.filter(i => {
-    const caseName = i.caseName || ""; 
-    const search = searchQuery || "";
-    const matchSearch = caseName.toLowerCase().includes(search.toLowerCase());
+    const search = (searchQuery || "").toLowerCase().trim();
+    
+    // Tìm kiếm quét qua tất cả các trường dữ liệu quan trọng
+    const matchSearch = search === "" || 
+      (i.caseName || "").toLowerCase().includes(search) ||
+      (i.plaintiff || "").toLowerCase().includes(search) ||
+      (i.defendant || "").toLowerCase().includes(search) ||
+      (i.judge || "").toLowerCase().includes(search) ||
+      (i.room || "").toLowerCase().includes(search) ||
+      (i.caseType || "").toLowerCase().includes(search);
+      
     const matchStatus = statusFilter === 'all' ? true : i.status === statusFilter;
     return matchSearch && matchStatus;
   }).sort((a, b) => {
@@ -161,7 +169,7 @@ export default function PremiumCourtApp() {
   const exportToExcel = () => {
     if (schedule.length === 0) return showToast("Không có dữ liệu để xuất!", "error");
 
-    const dataToExport = processedSchedule; // Dùng luôn danh sách đã sắp xếp thông minh
+    const dataToExport = processedSchedule; // Dùng luôn danh sách đã sắp xếp & lọc thông minh
 
     if (dataToExport.length === 0) return showToast("Không có dữ liệu trong bộ lọc này!", "error");
 
@@ -381,7 +389,6 @@ export default function PremiumCourtApp() {
       {/* MAIN CONTENT */}
       <main className="flex-1 xl:ml-80 flex flex-col min-h-screen relative z-10">
         
-        {/* HEADER VỚI TIÊU ĐỀ NẰM CHÍNH GIỮA */}
         <header className="bg-white/95 backdrop-blur-md h-24 shadow-sm flex items-center px-12 sticky top-0 z-30 border-b border-gray-200 relative">
           
           <h1 className="font-black text-2xl uppercase text-blue-950 absolute left-1/2 transform -translate-x-1/2 w-max">
@@ -608,7 +615,7 @@ export default function PremiumCourtApp() {
                       <option value="all">📁 Tất cả vụ án</option>
                     </select>
 
-                    <input type="text" placeholder="Tìm kiếm vụ án..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-6 py-4 text-lg w-full md:w-64 focus:border-blue-600 outline-none font-bold" />
+                    <input type="text" placeholder="Tìm tên án, thẩm phán..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-6 py-4 text-lg w-full md:w-64 focus:border-blue-600 outline-none font-bold" />
                     
                     <button onClick={exportToExcel} className="bg-green-600 text-white px-8 py-4 font-black uppercase shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 w-full md:w-auto">
                       📊 XUẤT EXCEL
@@ -627,7 +634,6 @@ export default function PremiumCourtApp() {
                       </tr>
                     </thead>
                     <tbody className="divide-y-2 divide-gray-50">
-                      {/* GỌI processedSchedule Ở ĐÂY */}
                       {processedSchedule.map(item => {
                        const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
 
