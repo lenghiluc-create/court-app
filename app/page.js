@@ -137,16 +137,31 @@ export default function PremiumCourtApp() {
     showToast("Đã lấy dữ liệu, vui lòng chọn ngày giờ mới!", "success");
   };
 
+  // ===== THUẬT TOÁN LỌC VÀ SẮP XẾP THÔNG MINH =====
+  const processedSchedule = schedule.filter(i => {
+    const caseName = i.caseName || ""; 
+    const search = searchQuery || "";
+    const matchSearch = caseName.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === 'all' ? true : i.status === statusFilter;
+    return matchSearch && matchStatus;
+  }).sort((a, b) => {
+    const dateA = a.datetime ? new Date(a.datetime).getTime() : 0;
+    const dateB = b.datetime ? new Date(b.datetime).getTime() : 0;
+    
+    // Nếu cả hai đang chờ xử: Sắp xếp tăng dần (Gần hiện tại nhất ở trên)
+    if (a.status === 'pending' && b.status === 'pending') return dateA - dateB;
+    
+    // Nếu cả hai đã xử xong/hoãn: Sắp xếp giảm dần (Mới xử xong ở trên)
+    if (a.status !== 'pending' && b.status !== 'pending') return dateB - dateA;
+    
+    // Nếu khác trạng thái: Ưu tiên đưa án pending lên trên cùng
+    return a.status === 'pending' ? -1 : 1;
+  });
+
   const exportToExcel = () => {
     if (schedule.length === 0) return showToast("Không có dữ liệu để xuất!", "error");
 
-    const dataToExport = schedule.filter(i => {
-      const caseName = i.caseName || ""; 
-      const search = searchQuery || "";
-      const matchSearch = caseName.toLowerCase().includes(search.toLowerCase());
-      const matchStatus = statusFilter === 'all' ? true : i.status === statusFilter;
-      return matchSearch && matchStatus;
-    });
+    const dataToExport = processedSchedule; // Dùng luôn danh sách đã sắp xếp thông minh
 
     if (dataToExport.length === 0) return showToast("Không có dữ liệu trong bộ lọc này!", "error");
 
@@ -247,13 +262,11 @@ export default function PremiumCourtApp() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-blue-900">ĐANG TẢI...</div>;
 
-  // ===== GIAO DIỆN ĐĂNG NHẬP ÉP STYLE CỨNG BẤT CHẤP CACHE =====
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center relative bg-cover bg-center font-sans" style={{ backgroundImage: "url('/toaan.jpg')" }}>
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
         
-        {/* Khối nền kính trong suốt tuyệt đối */}
         <div 
           className="relative z-10 w-full max-w-[480px] p-10 text-center"
           style={{
@@ -269,7 +282,6 @@ export default function PremiumCourtApp() {
           <h1 className="text-3xl font-black uppercase mb-10 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.8)' }}>TAND KHU VỰC 9 - CẦN THƠ</h1>
           
           <form onSubmit={handleLogin} className="space-y-6 flex flex-col items-center">
-            {/* Ô Email */}
             <input 
               type="email" 
               placeholder="Email..." 
@@ -285,7 +297,6 @@ export default function PremiumCourtApp() {
               required 
             />
             
-            {/* Ô Mật khẩu */}
             <input 
               type="password" 
               placeholder="Mật khẩu..." 
@@ -301,13 +312,12 @@ export default function PremiumCourtApp() {
               required 
             />
             
-            {/* Nút đăng nhập Xanh biển, 50% width */}
             <button 
               type="submit" 
               className="py-4 mt-4 font-black uppercase text-lg transition-all hover:opacity-80 active:scale-95"
               style={{
                 width: '50%',
-                backgroundColor: '#2563eb', // Xanh nước biển đậm
+                backgroundColor: '#2563eb',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '9999px',
@@ -337,7 +347,6 @@ export default function PremiumCourtApp() {
         .rbc-slot-selection { background-color: rgba(0, 0, 0, 0.6) !important; }
         .rbc-day-bg.rbc-today { background-color: #eff6ff !important; }
         
-        /* Trị tận gốc tính năng Autofill của Chrome ép nền trắng chữ đen */
         input:-webkit-autofill,
         input:-webkit-autofill:hover, 
         input:-webkit-autofill:focus, 
@@ -371,9 +380,15 @@ export default function PremiumCourtApp() {
 
       {/* MAIN CONTENT */}
       <main className="flex-1 xl:ml-80 flex flex-col min-h-screen relative z-10">
-        <header className="bg-white/95 backdrop-blur-md h-24 shadow-sm flex items-center px-12 sticky top-0 z-30 justify-between border-b border-gray-200">
-          <h1 className="font-black text-2xl uppercase text-blue-950">Hệ thống quản lý lịch trực tuyến</h1>
-          <div className="flex items-center gap-6">
+        
+        {/* HEADER VỚI TIÊU ĐỀ NẰM CHÍNH GIỮA */}
+        <header className="bg-white/95 backdrop-blur-md h-24 shadow-sm flex items-center px-12 sticky top-0 z-30 border-b border-gray-200 relative">
+          
+          <h1 className="font-black text-2xl uppercase text-blue-950 absolute left-1/2 transform -translate-x-1/2 w-max">
+            HỆ THỐNG QUẢN LÝ LỊCH TRỰC TUYẾN
+          </h1>
+          
+          <div className="ml-auto flex items-center gap-6 relative z-10">
              <div className="bg-blue-50 text-blue-700 px-6 py-3 font-black text-sm border border-blue-100 uppercase tracking-widest hidden md:block">Cần Thơ: {moment().format("DD/MM/YYYY")}</div>
              <button onClick={handleLogout} className="bg-red-50 text-red-600 border border-red-100 px-4 py-2 text-xs font-black uppercase hover:bg-red-600 hover:text-white transition-all">Đăng xuất</button>
           </div>
@@ -612,13 +627,8 @@ export default function PremiumCourtApp() {
                       </tr>
                     </thead>
                     <tbody className="divide-y-2 divide-gray-50">
-                      {schedule.filter(i => {
-                        const caseName = i.caseName || "";
-                        const search = searchQuery || "";
-                        const matchSearch = caseName.toLowerCase().includes(search.toLowerCase());
-                        const matchStatus = statusFilter === 'all' ? true : i.status === statusFilter;
-                        return matchSearch && matchStatus;
-                      }).map(item => {
+                      {/* GỌI processedSchedule Ở ĐÂY */}
+                      {processedSchedule.map(item => {
                        const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
 
                         return (
