@@ -31,9 +31,10 @@ export default function PremiumCourtApp() {
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
 
-  // States cho Lọc theo khoảng thời gian
+  // States cho Lọc theo khoảng thời gian & Người nhập
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [creatorFilter, setCreatorFilter] = useState("all"); // Lọc theo người tạo
 
   const initialForm = {
     datetime: "", room: "Trụ sở", caseType: "Hình sự", trialCount: "Lần 1", caseName: "", 
@@ -131,12 +132,14 @@ export default function PremiumCourtApp() {
     if (userRole === 'thamphan' || userRole === 'viewer') return showToast("Không có quyền!", "error");
     if (!form.datetime || !form.caseName || !form.room) return showToast("Vui lòng nhập đủ thông tin!", "error");
     
+    // Ghi nhận người cập nhật
     const logData = { ...form, status: form.status || 'pending', updatedAt: moment().toISOString(), updatedBy: user.email };
     try {
       if (editingId) {
         await updateDoc(doc(db, "schedule", editingId), logData);
         showToast("💾 Đã cập nhật hồ sơ!", "success");
       } else {
+        // Nếu là tạo mới thì thêm người tạo
         await addDoc(collection(db, "schedule"), { ...logData, createdAt: moment().toISOString(), createdBy: user.email });
         showToast("✅ Lưu lịch mới thành công!", "success");
       }
@@ -146,7 +149,7 @@ export default function PremiumCourtApp() {
 
   const toggleStatus = async (id, newStatus) => {
     try {
-      await updateDoc(doc(db, "schedule", id), { status: newStatus });
+      await updateDoc(doc(db, "schedule", id), { status: newStatus, updatedBy: user.email, updatedAt: moment().toISOString() });
       showToast(newStatus === 'completed' ? "✅ Đã đánh dấu xử xong!" : "⏳ Đã mở lại vụ án!", "success");
       loadData();
     } catch (err) {
@@ -171,7 +174,10 @@ export default function PremiumCourtApp() {
     showToast("Đã lấy dữ liệu, vui lòng chọn ngày giờ mới!", "success");
   };
 
-  // ===== BỘ LỌC ĐA NĂNG (GỒM TÌM KIẾM, TRẠNG THÁI & KHOẢNG THỜI GIAN) =====
+  // Lấy danh sách những người đã từng nhập liệu (để làm bộ lọc)
+  const creatorsList = [...new Set(schedule.map(i => i.createdBy).filter(Boolean))];
+
+  // ===== BỘ LỌC ĐA NĂNG =====
   const processedSchedule = schedule.filter(i => {
     const search = (searchQuery || "").toLowerCase().trim();
     const matchSearch = search === "" || 
@@ -180,16 +186,20 @@ export default function PremiumCourtApp() {
       (i.defendant || "").toLowerCase().includes(search) ||
       (i.judge || "").toLowerCase().includes(search) ||
       (i.room || "").toLowerCase().includes(search) ||
+      (i.createdBy || "").toLowerCase().includes(search) || // Tìm bằng tay tên người tạo
       (i.caseType || "").toLowerCase().includes(search);
       
     const matchStatus = statusFilter === 'all' ? true : i.status === statusFilter;
+    
+    // Lọc theo người nhập
+    const matchCreator = creatorFilter === 'all' ? true : (i.createdBy === creatorFilter);
 
     // Lọc theo mốc thời gian
     let matchDate = true;
     if (startDate || endDate) {
       const itemDateStr = i.datetime ? i.datetime.split('T')[0] : null;
       if (!itemDateStr) {
-        matchDate = false; // Án chưa có ngày sẽ bị loại nếu có lọc ngày
+        matchDate = false; 
       } else {
         const itemTime = moment(itemDateStr).startOf('day').valueOf();
         const start = startDate ? moment(startDate).startOf('day').valueOf() : 0;
@@ -201,7 +211,7 @@ export default function PremiumCourtApp() {
       }
     }
 
-    return matchSearch && matchStatus && matchDate;
+    return matchSearch && matchStatus && matchDate && matchCreator;
   }).sort((a, b) => {
     const dateA = a.datetime ? new Date(a.datetime).getTime() : 0;
     const dateB = b.datetime ? new Date(b.datetime).getTime() : 0;
@@ -212,9 +222,7 @@ export default function PremiumCourtApp() {
 
   const exportToExcel = () => {
     if (schedule.length === 0) return showToast("Không có dữ liệu để xuất!", "error");
-
-    const dataToExport = processedSchedule; // Dùng data đã được lọc thời gian & từ khóa
-
+    const dataToExport = processedSchedule; 
     if (dataToExport.length === 0) return showToast("Không có dữ liệu trong bộ lọc này!", "error");
 
     let tableHtml = `
@@ -233,19 +241,20 @@ export default function PremiumCourtApp() {
         <table>
           <tr>
             <td colspan="2" class="no-border text-center font-bold">TÒA ÁN NHÂN DÂN<br/>KHU VỰC 9 - CẦN THƠ</td>
-            <td colspan="4" class="no-border text-center font-bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/>Độc lập - Tự do - Hạnh Phúc</td>
+            <td colspan="5" class="no-border text-center font-bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/>Độc lập - Tự do - Hạnh Phúc</td>
           </tr>
           <tr>
-            <td colspan="6" class="no-border text-center"><i>Cần Thơ, ngày ${moment().format("DD")} tháng ${moment().format("MM")} năm ${moment().format("YYYY")}</i></td>
+            <td colspan="7" class="no-border text-center"><i>Cần Thơ, ngày ${moment().format("DD")} tháng ${moment().format("MM")} năm ${moment().format("YYYY")}</i></td>
           </tr>
-          <tr><td colspan="6" class="no-border"></td></tr>
+          <tr><td colspan="7" class="no-border"></td></tr>
           <tr>
-            <td colspan="6" class="no-border text-center font-bold" style="font-size: 16pt;">
+            <td colspan="7" class="no-border text-center font-bold" style="font-size: 16pt;">
               LỊCH XÉT XỬ ${statusFilter === 'completed' ? '(ĐÃ XỬ XONG)' : ''}
               ${startDate || endDate ? `<br/><span style="font-size: 12pt; font-weight: normal;">(Từ ngày ${startDate ? moment(startDate).format("DD/MM/YYYY") : "..."} đến ngày ${endDate ? moment(endDate).format("DD/MM/YYYY") : "..."})</span>` : ''}
+              ${creatorFilter !== 'all' ? `<br/><span style="font-size: 12pt; font-weight: normal;">Người nhập: ${creatorFilter}</span>` : ''}
             </td>
           </tr>
-          <tr><td colspan="6" class="no-border"></td></tr>
+          <tr><td colspan="7" class="no-border"></td></tr>
           
           <tr>
             <th class="text-center font-bold" style="background-color: #f2f2f2;">STT</th>
@@ -254,6 +263,7 @@ export default function PremiumCourtApp() {
             <th class="text-center font-bold" style="background-color: #f2f2f2;">CHỦ TỌA, THƯ KÝ</th>
             <th class="text-center font-bold" style="background-color: #f2f2f2;">HỘI THẨM NHÂN DÂN</th>
             <th class="text-center font-bold" style="background-color: #f2f2f2;">PHÒNG XÉT XỬ</th>
+            <th class="text-center font-bold" style="background-color: #f2f2f2;">NGƯỜI NHẬP</th>
           </tr>
     `;
 
@@ -271,6 +281,7 @@ export default function PremiumCourtApp() {
           <td>${hd}</td>
           <td>${htm}</td>
           <td class="text-center font-bold">${item.room || ""}</td>
+          <td class="text-center">${item.createdBy ? item.createdBy.split('@')[0] : ""}</td>
         </tr>
       `;
     });
@@ -308,7 +319,6 @@ export default function PremiumCourtApp() {
   const urgentCount = schedule.filter(i => i.status === 'pending' && isUrgent(i.datetime)).length;
   const pendingCases = schedule.filter(i => i.status === 'pending');
   
-  // Dữ liệu mảng cho Biểu đồ tròn
   const caseTypeStats = {};
   schedule.forEach(i => { if(i.caseType) caseTypeStats[i.caseType] = (caseTypeStats[i.caseType] || 0) + 1 });
   const caseTypeData = Object.keys(caseTypeStats).map(key => ({ name: key, value: caseTypeStats[key] }));
@@ -317,7 +327,6 @@ export default function PremiumCourtApp() {
   pendingCases.forEach(i => { if(i.judge) judgeStats[i.judge] = (judgeStats[i.judge] || 0) + 1 });
   const judgeData = Object.keys(judgeStats).map(key => ({ name: key, value: judgeStats[key] })).sort((a,b) => b.value - a.value); 
 
-  // Bảng 16 màu sắc chuẩn chuyên nghiệp cho Biểu đồ
   const CHART_COLORS = [
     '#3b82f6', '#ef4444', '#10b981', '#f59e0b', 
     '#8b5cf6', '#06b6d4', '#f97316', '#ec4899', 
@@ -353,41 +362,22 @@ export default function PremiumCourtApp() {
               value={loginEmail} 
               onChange={e => setLoginEmail(e.target.value)} 
               className="w-full px-6 py-4 outline-none text-xl font-bold placeholder-gray-200"
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                color: '#ffffff',
-                border: '2px solid rgba(255, 255, 255, 0.5)',
-                borderRadius: '12px'
-              }}
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.5)', borderRadius: '12px' }}
               required 
             />
-            
             <input 
               type="password" 
               placeholder="Mật khẩu..." 
               value={loginPass} 
               onChange={e => setLoginPass(e.target.value)} 
               className="w-full px-6 py-4 outline-none text-xl font-bold placeholder-gray-200"
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                color: '#ffffff',
-                border: '2px solid rgba(255, 255, 255, 0.5)',
-                borderRadius: '12px'
-              }}
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.5)', borderRadius: '12px' }}
               required 
             />
-            
             <button 
               type="submit" 
               className="py-4 mt-4 font-black uppercase text-lg transition-all hover:opacity-80 active:scale-95"
-              style={{
-                width: '50%',
-                backgroundColor: '#2563eb',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '9999px',
-                boxShadow: '0 0 15px rgba(37, 99, 235, 0.6)'
-              }}
+              style={{ width: '50%', backgroundColor: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '9999px', boxShadow: '0 0 15px rgba(37, 99, 235, 0.6)' }}
             >
               ĐĂNG NHẬP
             </button>
@@ -411,11 +401,7 @@ export default function PremiumCourtApp() {
         .rbc-event.rbc-selected { background-color: #000000 !important; box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #000000 !important; z-index: 10 !important; }
         .rbc-slot-selection { background-color: rgba(0, 0, 0, 0.6) !important; }
         .rbc-day-bg.rbc-today { background-color: #eff6ff !important; }
-        
-        input:-webkit-autofill,
-        input:-webkit-autofill:hover, 
-        input:-webkit-autofill:focus, 
-        input:-webkit-autofill:active{
+        input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active {
             -webkit-box-shadow: 0 0 0 30px rgba(255, 255, 255, 0.1) inset !important;
             -webkit-text-fill-color: white !important;
             transition: background-color 5000s ease-in-out 0s;
@@ -451,21 +437,13 @@ export default function PremiumCourtApp() {
         
         <header className="bg-white/95 backdrop-blur-md h-24 shadow-sm flex items-center justify-between px-4 md:px-8 xl:px-12 sticky top-0 z-30 border-b border-gray-200 w-full">
           <div className="flex-1 flex justify-start items-center gap-2 xl:hidden">
-             <button onClick={() => setShowPwdModal(true)} className="bg-blue-50 text-blue-700 px-3 py-2 text-[10px] sm:text-xs font-black uppercase border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm">
-               🔑 Đổi MK
-             </button>
-             <button onClick={handleLogout} className="bg-red-50 text-red-600 border border-red-100 px-3 py-2 text-[10px] sm:text-xs font-black uppercase hover:bg-red-600 hover:text-white transition-all shadow-sm">
-               🚪 Đăng xuất
-             </button>
+             <button onClick={() => setShowPwdModal(true)} className="bg-blue-50 text-blue-700 px-3 py-2 text-[10px] sm:text-xs font-black uppercase border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm">🔑 Đổi MK</button>
+             <button onClick={handleLogout} className="bg-red-50 text-red-600 border border-red-100 px-3 py-2 text-[10px] sm:text-xs font-black uppercase hover:bg-red-600 hover:text-white transition-all shadow-sm">🚪 Đăng xuất</button>
           </div>
           <div className="flex-1 hidden xl:block"></div>
-
           <div className="flex-[2] text-center px-2">
-            <h1 className="font-black text-[14px] sm:text-[16px] md:text-xl xl:text-2xl uppercase text-blue-950 truncate">
-              HỆ THỐNG QUẢN LÝ LỊCH TRỰC TUYẾN
-            </h1>
+            <h1 className="font-black text-[14px] sm:text-[16px] md:text-xl xl:text-2xl uppercase text-blue-950 truncate">HỆ THỐNG QUẢN LÝ LỊCH TRỰC TUYẾN</h1>
           </div>
-          
           <div className="flex-1 flex items-center justify-end">
              <div className="bg-blue-50 text-blue-700 px-3 py-2 sm:px-4 sm:py-2 md:px-6 md:py-3 font-black text-[10px] sm:text-xs md:text-sm border border-blue-100 uppercase tracking-widest text-center w-max">
                Cần Thơ: {moment().format("DD/MM/YYYY")}
@@ -495,7 +473,6 @@ export default function PremiumCourtApp() {
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-12">
-            
             <div className="bg-white p-8 border shadow-sm flex flex-col items-center">
                <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest mb-6 w-full text-left">📊 TỶ LỆ LOẠI ÁN (TỔNG THỂ)</h3>
                {caseTypeData.length > 0 ? (
@@ -527,7 +504,6 @@ export default function PremiumCourtApp() {
                  </div>
                ) : <p className="text-gray-400 font-bold italic mt-10">Chưa có dữ liệu thụ lý</p>}
             </div>
-
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-12">
@@ -540,7 +516,6 @@ export default function PremiumCourtApp() {
                     {editingId ? "Cập nhật hồ sơ" : "Đăng ký lịch"}
                   </h2>
                   <div className="space-y-8">
-                    
                     <div className="grid grid-cols-1 gap-6">
                       <div>
                         <label className="block text-xs font-black text-gray-400 uppercase mb-3 ml-2 tracking-widest">Thời gian xét xử</label>
@@ -681,7 +656,6 @@ export default function PremiumCourtApp() {
                   
                   <div className="flex flex-col md:flex-row flex-wrap gap-4 w-full justify-end items-stretch md:items-center">
                     
-                    {/* KHỐI CHỌN NGÀY THÁNG ĐƯỢC THÊM MỚI Ở ĐÂY */}
                     <div className="flex items-center gap-2 border-2 border-gray-100 px-4 py-3 bg-white w-full xl:w-auto">
                       <span className="text-xs font-black text-gray-400 uppercase">Từ:</span>
                       <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="outline-none text-sm md:text-base font-bold bg-transparent w-full" />
@@ -692,6 +666,12 @@ export default function PremiumCourtApp() {
                       )}
                     </div>
 
+                    {/* BỘ LỌC NGƯỜI NHẬP LIỆU */}
+                    <select value={creatorFilter} onChange={e => setCreatorFilter(e.target.value)} className="border-2 border-gray-100 px-4 py-3 text-sm md:text-base focus:border-blue-600 outline-none font-bold bg-white w-full xl:w-auto">
+                      <option value="all">👤 Tất cả người nhập</option>
+                      {creatorsList.map(email => <option key={email} value={email}>{email.split('@')[0]}</option>)}
+                    </select>
+
                     <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="border-2 border-gray-100 px-6 py-3 text-sm md:text-base focus:border-blue-600 outline-none font-bold bg-white w-full xl:w-auto">
                       <option value="pending">⏳ Đang chờ xử</option>
                       <option value="postponed">⏸ Đã hoãn</option>
@@ -699,7 +679,7 @@ export default function PremiumCourtApp() {
                       <option value="all">📁 Tất cả vụ án</option>
                     </select>
 
-                    <input type="text" placeholder="Tìm tên án, thẩm phán..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-6 py-3 text-sm md:text-base w-full xl:w-64 focus:border-blue-600 outline-none font-bold" />
+                    <input type="text" placeholder="Tìm kiếm tự do..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-6 py-3 text-sm md:text-base w-full xl:w-64 focus:border-blue-600 outline-none font-bold" />
                     
                     <button onClick={exportToExcel} className="bg-green-600 text-white px-8 py-3 font-black uppercase shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 w-full xl:w-auto">
                       📊 XUẤT EXCEL
@@ -709,7 +689,7 @@ export default function PremiumCourtApp() {
 
                 <div className="overflow-auto flex-1">
                   <table className="w-full text-left border-collapse min-w-[800px]">
-                    <thead className="bg-gray-50 text-[11px] font-black uppercase text-gray-400 border-b-2 border-gray-100 sticky top-0">
+                    <thead className="bg-gray-50 text-[11px] font-black uppercase text-gray-400 border-b-2 border-gray-100 sticky top-0 z-10">
                       <tr>
                         <th className="p-6 md:p-10">Thời gian / Địa điểm</th>
                         <th className="p-6 md:p-10">Nội dung vụ việc</th>
@@ -748,6 +728,12 @@ export default function PremiumCourtApp() {
                             <div className="mt-6 text-sm md:text-base text-gray-500 space-y-2 font-bold italic">
                                 <p>📌 NĐ: {item.plaintiff || "N/A"}</p>
                                 <p>📌 BĐ: {item.defendant || "N/A"}</p>
+                            </div>
+                            
+                            {/* HIỂN THỊ DẤU ẤN NGƯỜI NHẬP / SỬA */}
+                            <div className="mt-6 pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                               <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">✍️ Tạo bởi: <span className="text-blue-600">{item.createdBy ? item.createdBy.split('@')[0] : "Hệ thống"}</span></span>
+                               {item.updatedBy && <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">🔄 Sửa bởi: <span className="text-amber-600">{item.updatedBy.split('@')[0]}</span></span>}
                             </div>
                           </td>
                           <td className="p-6 md:p-10 align-top space-y-4">
@@ -822,6 +808,9 @@ export default function PremiumCourtApp() {
                 <p>⚖️ Hội thẩm: {selectedEvent.juror1 || "---"}, {selectedEvent.juror2 || "---"}</p>
                 <p>📝 Thư ký: {selectedEvent.clerk || "---"}</p>
                 <p>🛡️ Kiểm sát: <span className="text-red-600">{selectedEvent.prosecutor || "---"}</span></p>
+                <hr className="border-gray-300 border-2"/>
+                <p className="text-xs text-gray-500 uppercase tracking-widest">✍️ Nhập bởi: {selectedEvent.createdBy || "Không rõ"}</p>
+                
                 <button onClick={() => setSelectedEvent(null)} className="w-full bg-blue-900 text-white py-4 md:py-5 font-black uppercase mt-6 hover:bg-blue-800 transition-colors">ĐÓNG CỬA SỔ</button>
               </div>
            </div>
