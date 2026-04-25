@@ -9,7 +9,6 @@ import { db, auth } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence, browserSessionPersistence } from 'firebase/auth';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
 
-// Bọc thép lỗi SSR của Next.js (Lỗi navigator is not defined)
 const localizer = typeof window !== 'undefined' ? momentLocalizer(moment) : null;
 
 export default function PremiumCourtApp() {
@@ -114,10 +113,7 @@ export default function PremiumCourtApp() {
   const toggleStatus = async (id, newStatus) => {
     try {
       await updateDoc(doc(db, "schedule", id), { status: newStatus });
-      let msg = "⏳ Đã mở lại vụ án!";
-      if(newStatus === 'completed') msg = "✅ Đã đánh dấu xử xong!";
-      if(newStatus === 'postponed') msg = "⏸ Đã hoãn phiên tòa!";
-      showToast(msg, "success");
+      showToast(newStatus === 'completed' ? "✅ Đã đánh dấu xử xong!" : "⏳ Đã mở lại vụ án!", "success");
       loadData();
     } catch (err) {
       showToast("Lỗi cập nhật trạng thái", "error");
@@ -132,9 +128,9 @@ export default function PremiumCourtApp() {
 
     setForm({
       ...item,
-      datetime: "",
-      trialCount: nextTrialCount,
-      status: "pending"
+      datetime: "", 
+      trialCount: nextTrialCount, 
+      status: "pending" 
     });
     setEditingId(item.id);
     window.scrollTo({top:0, behavior:'smooth'});
@@ -177,9 +173,7 @@ export default function PremiumCourtApp() {
           </tr>
           <tr><td colspan="6" class="no-border"></td></tr>
           <tr>
-            <td colspan="6" class="no-border text-center font-bold" style="font-size: 16pt;">
-              LỊCH XÉT XỬ ${statusFilter === 'completed' ? '(ĐÃ XỬ XONG)' : statusFilter === 'postponed' ? '(ĐÃ HOÃN)' : ''}
-            </td>
+            <td colspan="6" class="no-border text-center font-bold" style="font-size: 16pt;">LỊCH XÉT XỬ ${statusFilter === 'completed' ? '(ĐÃ XỬ XONG)' : ''}</td>
           </tr>
           <tr><td colspan="6" class="no-border"></td></tr>
           
@@ -231,22 +225,19 @@ export default function PremiumCourtApp() {
   const isClerkConflict = (form.clerk || "").trim() !== "" && schedule.some(i => i.datetime && i.datetime === form.datetime && (i.clerk || "").trim().toLowerCase() === (form.clerk || "").trim().toLowerCase() && i.id !== editingId && i.status === 'pending');
   const hasConflict = isRoomConflict || isProsecutorConflict || isJudgeConflict || isClerkConflict;
 
-  // --- TẠO DANH SÁCH GỢI Ý NHÂN SỰ ---
   const judgesList = [...new Set(schedule.map(i => i.judge).filter(Boolean))];
   const clerksList = [...new Set(schedule.map(i => i.clerk).filter(Boolean))];
   const prosecutorsList = [...new Set(schedule.map(i => i.prosecutor).filter(Boolean))];
 
-  // --- TÍNH TOÁN DỮ LIỆU THỐNG KÊ (DASHBOARD NÂNG CAO) ---
   const isUrgent = (datetime) => {
     if(!datetime) return false;
     const diffDays = moment(datetime).startOf('day').diff(moment().startOf('day'), 'days');
-    return diffDays === 0 || diffDays === 1; // Hôm nay hoặc Ngày mai
+    return diffDays === 0 || diffDays === 1; 
   };
   
   const urgentCount = schedule.filter(i => i.status === 'pending' && isUrgent(i.datetime)).length;
   const pendingCases = schedule.filter(i => i.status === 'pending');
   
-  // KIỂM TRA ĐÃ CÓ BIẾN caseTypeStats Ở ĐÂY
   const caseTypeStats = {};
   schedule.forEach(i => { if(i.caseType) caseTypeStats[i.caseType] = (caseTypeStats[i.caseType] || 0) + 1 });
   
@@ -256,39 +247,72 @@ export default function PremiumCourtApp() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-blue-900">ĐANG TẢI...</div>;
 
- if (!user) {
+  // ===== GIAO DIỆN ĐĂNG NHẬP ÉP STYLE CỨNG BẤT CHẤP CACHE =====
+  if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center relative bg-cover bg-center font-sans" style={{ backgroundImage: "url('/toaan.jpg')" }}>
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
         
-        {/* Tấm kính mờ không có viền đen */}
-        <div className="relative z-10 w-full max-w-[480px] p-10 bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl text-center shadow-2xl">
+        {/* Khối nền kính trong suốt tuyệt đối */}
+        <div 
+          className="relative z-10 w-full max-w-[480px] p-10 text-center"
+          style={{
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '24px',
+            boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
+          }}
+        >
           <img src="/logo-toa-an-nhan-dan-toi-cao.png" alt="Logo" className="mx-auto mb-6 drop-shadow-2xl" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
           <h1 className="text-3xl font-black uppercase mb-10 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.8)' }}>TAND KHU VỰC 9 - CẦN THƠ</h1>
           
           <form onSubmit={handleLogin} className="space-y-6 flex flex-col items-center">
-            {/* Ép chữ trắng, viền trắng mờ */}
+            {/* Ô Email */}
             <input 
               type="email" 
               placeholder="Email..." 
               value={loginEmail} 
               onChange={e => setLoginEmail(e.target.value)} 
-              className="w-full px-6 py-4 bg-transparent !text-white border-2 border-white/50 rounded-xl outline-none text-xl font-bold placeholder-gray-300 focus:border-white focus:bg-white/20 transition-all" 
+              className="w-full px-6 py-4 outline-none text-xl font-bold placeholder-gray-200"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                color: '#ffffff',
+                border: '2px solid rgba(255, 255, 255, 0.5)',
+                borderRadius: '12px'
+              }}
               required 
             />
+            
+            {/* Ô Mật khẩu */}
             <input 
               type="password" 
               placeholder="Mật khẩu..." 
               value={loginPass} 
               onChange={e => setLoginPass(e.target.value)} 
-              className="w-full px-6 py-4 bg-transparent !text-white border-2 border-white/50 rounded-xl outline-none text-xl font-bold placeholder-gray-300 focus:border-white focus:bg-white/20 transition-all" 
+              className="w-full px-6 py-4 outline-none text-xl font-bold placeholder-gray-200"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                color: '#ffffff',
+                border: '2px solid rgba(255, 255, 255, 0.5)',
+                borderRadius: '12px'
+              }}
               required 
             />
             
-            {/* Nút đăng nhập Xanh biển, thu gọn 50% */}
+            {/* Nút đăng nhập Xanh biển, 50% width */}
             <button 
               type="submit" 
-              className="w-1/2 bg-blue-600 py-4 mt-4 font-black uppercase text-white rounded-full hover:bg-blue-500 text-lg shadow-[0_0_15px_rgba(37,99,235,0.5)] border-none transition-all"
+              className="py-4 mt-4 font-black uppercase text-lg transition-all hover:opacity-80 active:scale-95"
+              style={{
+                width: '50%',
+                backgroundColor: '#2563eb', // Xanh nước biển đậm
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '9999px',
+                boxShadow: '0 0 15px rgba(37, 99, 235, 0.6)'
+              }}
             >
               ĐĂNG NHẬP
             </button>
@@ -302,7 +326,7 @@ export default function PremiumCourtApp() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex font-sans antialiased tracking-tight relative">
-      
+      <div className="absolute inset-0 bg-black/30 z-0"></div>
       <datalist id="judges-list">{judgesList.map((name, i) => <option key={i} value={name} />)}</datalist>
       <datalist id="clerks-list">{clerksList.map((name, i) => <option key={i} value={name} />)}</datalist>
       <datalist id="prosecutors-list">{prosecutorsList.map((name, i) => <option key={i} value={name} />)}</datalist>
@@ -312,6 +336,16 @@ export default function PremiumCourtApp() {
         .rbc-event.rbc-selected { background-color: #000000 !important; box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #000000 !important; z-index: 10 !important; }
         .rbc-slot-selection { background-color: rgba(0, 0, 0, 0.6) !important; }
         .rbc-day-bg.rbc-today { background-color: #eff6ff !important; }
+        
+        /* Trị tận gốc tính năng Autofill của Chrome ép nền trắng chữ đen */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active{
+            -webkit-box-shadow: 0 0 0 30px rgba(255, 255, 255, 0.1) inset !important;
+            -webkit-text-fill-color: white !important;
+            transition: background-color 5000s ease-in-out 0s;
+        }
       `}} />
 
       {/* SIDEBAR */}
@@ -347,7 +381,6 @@ export default function PremiumCourtApp() {
 
         <div className="p-12 flex-1">
           
-          {/* DASHBOARD CON SỐ */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="bg-white p-8 border shadow-sm border-l-8 border-l-blue-900">
                 <p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Tổng vụ án</p>
@@ -367,7 +400,6 @@ export default function PremiumCourtApp() {
             </div>
           </div>
 
-          {/* DASHBOARD BIỂU ĐỒ */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
             <div className="bg-white p-8 border shadow-sm">
                <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest mb-6">📊 Tỷ lệ loại án</h3>
@@ -406,7 +438,6 @@ export default function PremiumCourtApp() {
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-12">
             
-            {/* FORM */}
             {canEdit && (
               <div className="xl:col-span-4">
                 <div className="bg-white p-10 border shadow-2xl sticky top-36">
@@ -526,7 +557,6 @@ export default function PremiumCourtApp() {
               </div>
             )}
 
-            {/* DANH SÁCH LỊCH & SỔ THỤ LÝ */}
             <div className={`space-y-12 ${!canEdit ? 'xl:col-span-12' : 'xl:col-span-8'}`}>
               
               <div className="bg-white p-8 border shadow-2xl h-[500px]">
