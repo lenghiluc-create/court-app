@@ -256,23 +256,24 @@ export default function PremiumCourtApp() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-blue-900">ĐANG TẢI...</div>;
 
-  if (!user) {
+ if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center relative bg-cover bg-center font-sans" style={{ backgroundImage: "url('/toaan.jpg')" }}>
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-        {/* Bỏ viền đen cũ, thêm bo góc tròn trịa và đổ bóng mượt */}
-        <div className="relative z-10 w-full max-w-[480px] p-10 bg-white/10 backdrop-blur-md text-center shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] rounded-3xl border border-white/10">
+        
+        {/* Tấm kính mờ không có viền đen */}
+        <div className="relative z-10 w-full max-w-[480px] p-10 bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl text-center shadow-2xl">
           <img src="/logo-toa-an-nhan-dan-toi-cao.png" alt="Logo" className="mx-auto mb-6 drop-shadow-2xl" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
           <h1 className="text-3xl font-black uppercase mb-10 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.8)' }}>TAND KHU VỰC 9 - CẦN THƠ</h1>
           
           <form onSubmit={handleLogin} className="space-y-6 flex flex-col items-center">
-            {/* Ô nhập trong suốt, chữ trắng, placeholder mờ */}
+            {/* Ép chữ trắng, viền trắng mờ */}
             <input 
               type="email" 
               placeholder="Email..." 
               value={loginEmail} 
               onChange={e => setLoginEmail(e.target.value)} 
-              className="w-full px-6 py-4 bg-transparent text-white border-2 border-white/40 rounded-xl outline-none text-xl font-bold placeholder-white/60 focus:border-white focus:bg-white/10 transition-all" 
+              className="w-full px-6 py-4 bg-transparent !text-white border-2 border-white/50 rounded-xl outline-none text-xl font-bold placeholder-gray-300 focus:border-white focus:bg-white/20 transition-all" 
               required 
             />
             <input 
@@ -280,18 +281,18 @@ export default function PremiumCourtApp() {
               placeholder="Mật khẩu..." 
               value={loginPass} 
               onChange={e => setLoginPass(e.target.value)} 
-              className="w-full px-6 py-4 bg-transparent text-white border-2 border-white/40 rounded-xl outline-none text-xl font-bold placeholder-white/60 focus:border-white focus:bg-white/10 transition-all" 
+              className="w-full px-6 py-4 bg-transparent !text-white border-2 border-white/50 rounded-xl outline-none text-xl font-bold placeholder-gray-300 focus:border-white focus:bg-white/20 transition-all" 
               required 
             />
-            {/* Nút đăng nhập: Gọn 50% (w-1/2), Màu xanh nước biển tinh tế */}
+            
+            {/* Nút đăng nhập Xanh biển, thu gọn 50% */}
             <button 
               type="submit" 
-              className="w-1/2 bg-sky-500 py-4 mt-4 font-black uppercase text-white rounded-full hover:bg-sky-400 text-lg shadow-[0_0_15px_rgba(14,165,233,0.4)] transition-all"
+              className="w-1/2 bg-blue-600 py-4 mt-4 font-black uppercase text-white rounded-full hover:bg-blue-500 text-lg shadow-[0_0_15px_rgba(37,99,235,0.5)] border-none transition-all"
             >
               ĐĂNG NHẬP
             </button>
           </form>
-
         </div>
       </div>
     );
