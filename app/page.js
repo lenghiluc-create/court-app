@@ -324,19 +324,19 @@ export default function PremiumCourtApp() {
               required 
             />
           <input 
-            type="password" 
-            placeholder="Mật khẩu..." 
-            value={loginPass} 
-            onChange={e => setLoginPass(e.target.value)} 
-            className="w-full px-6 py-4 outline-none text-xl font-bold placeholder-gray-200"
-            style={{ 
-              backgroundColor: 'rgba(255, 255, 255, 0.1)', 
-              color: '#ffffff', 
-              border: '2px solid rgba(255, 255, 255, 0.5)', 
-              borderRadius: '4px' // Đã thay đổi bo góc thành rất nhẹ
-            }}
-            required 
-          />
+              type="password" 
+              placeholder="Mật khẩu..." 
+              value={loginPass} 
+              onChange={e => setLoginPass(e.target.value)} 
+              className="w-[80%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                color: '#ffffff',
+                border: '2px solid rgba(255, 255, 255, 0.5)',
+                borderRadius: '6px'
+              }}
+              required 
+            />
           <button 
             type="submit" 
             className="py-4 mt-4 font-black uppercase text-lg transition-all hover:opacity-80 active:scale-95"
