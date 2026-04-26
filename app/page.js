@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
+import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Firebase Imports
@@ -11,6 +13,7 @@ import { onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
 
 const localizer = typeof window !== 'undefined' ? momentLocalizer(moment) : null;
+const DnDCalendar = withDragAndDrop(Calendar)
 
 export default function PremiumCourtApp() {
   const [isMounted, setIsMounted] = useState(false);
@@ -83,6 +86,22 @@ export default function PremiumCourtApp() {
     } catch (error) { showToast("Lỗi tải dữ liệu", "error"); }
   };
 
+  const logAction = async (action, details) => {
+    try {
+      await addDoc(collection(db, "audit_logs"), {
+        action, details, user: user.email, timestamp: moment().toISOString()
+      });
+    } catch(err) { console.error("Lỗi ghi log", err); }
+  };
+
+  const loadAuditLogs = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "audit_logs"));
+      const logs = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+      setAuditLogs(logs);
+      setShowAuditModal(true);
+    } catch(err) { showToast("Lỗi tải nhật ký", "error"); }
+  };
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -145,6 +164,32 @@ export default function PremiumCourtApp() {
       showToast(newStatus === 'completed' ? "✅ Đã đánh dấu xử xong!" : "⏳ Đã mở lại vụ án!", "success");
       loadData();
     } catch (err) { showToast("Lỗi cập nhật trạng thái", "error"); }
+  };
+const handleDelete = async (id, caseName) => {
+    if(confirm("Xóa hồ sơ này?")) {
+      await deleteDoc(doc(db,"schedule", id));
+      await logAction("XÓA HỒ SƠ", `Vụ án: ${caseName}`);
+      loadData();
+    }
+  }
+
+  // ===== HÀM XỬ LÝ KÉO THẢ TRÊN LỊCH =====
+  const onEventDrop = async ({ event, start, end }) => {
+    if (userRole === 'thamphan' || userRole === 'viewer') return showToast("Không có quyền dời lịch!", "error");
+    
+    // Tạo chuỗi datetime mới từ điểm thả chuột
+    const newDatetime = moment(start).format('YYYY-MM-DDTHH:mm');
+    
+    // Kiểm tra trùng phòng ở giờ mới
+    const isConflict = schedule.some(i => i.datetime === newDatetime && i.room === event.room && i.id !== event.id && i.status === 'pending');
+    if (isConflict) return showToast(`⚠️ Trùng phòng ${event.room} ở khung giờ mới!`, "error");
+
+    try {
+      await updateDoc(doc(db, "schedule", event.id), { datetime: newDatetime, updatedBy: user.email, updatedAt: moment().toISOString() });
+      await logAction("KÉO THẢ DỜI LỊCH", `Vụ án "${event.caseName}" sang lúc ${moment(newDatetime).format("HH:mm DD/MM/YYYY")}`);
+      showToast("🔄 Đã dời lịch thành công!", "success");
+      loadData();
+    } catch (err) { showToast("Lỗi khi dời lịch", "error"); }
   };
 
   const handleReschedule = (item) => {
@@ -301,7 +346,7 @@ export default function PremiumCourtApp() {
         <img src="/lgtoaan1.png" alt="Logo" className="mx-auto mb-6 drop-shadow-2xl" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
         
         {/* Thêm văn bản mới phía trên tiêu đề cũ */}
-        <p className="text-2xl text-gray-300 font-serif mb-2 tracking-wide uppercase">TOÀ ÁN NHÂN DÂN THÀNH PHỐ CẦN THƠ</p>
+        <p className="text-2xl font-black uppercase mb-10 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.8)' }}>TOÀ ÁN NHÂN DÂN THÀNH PHỐ CẦN THƠ</p>
         
         <h1 className="text-3xl font-black uppercase mb-10 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.8)' }}>
           TAND KHU VỰC 9 - CẦN THƠ
@@ -518,8 +563,16 @@ export default function PremiumCourtApp() {
 
             <div className={`space-y-12 ${!canEdit ? 'xl:col-span-12' : 'xl:col-span-8'}`}>
               <div className="bg-white p-4 md:p-8 border shadow-2xl h-[500px] overflow-hidden">
+                {canEdit && <p className="text-gray-400 text-xs font-bold text-center mb-2 italic">💡 Bạn có thể dùng chuột kéo thả vụ án để dời sang ngày/giờ khác</p>}
                 {isMounted && localizer ? (
-                  <Calendar localizer={localizer} events={schedule.filter(i => i.datetime && i.status !== 'postponed').map(i => ({ ...i, title: `${i.status === 'completed' ? '✅ ' : ''}[${i.room}] ${i.caseName || 'Chưa có tên'}`, start: new Date(i.datetime), end: new Date(new Date(i.datetime).getTime() + 3600000) }))} style={{ height: "100%" }} onSelectEvent={e => setSelectedEvent(e)} />
+                  <DnDCalendar 
+                    localizer={localizer} 
+                    events={schedule.filter(i => i.datetime && i.status !== 'postponed').map(i => ({ ...i, title: `${i.status === 'completed' ? '✅ ' : ''}[${i.room}] ${i.caseName || 'Chưa có tên'}`, start: new Date(i.datetime), end: new Date(new Date(i.datetime).getTime() + 3600000) }))} 
+                    style={{ height: "100%" }} 
+                    onSelectEvent={e => setSelectedEvent(e)} 
+                    onEventDrop={onEventDrop} 
+                    resizable={false} // Khóa kéo dài khung giờ, chỉ cho phép kéo thả sang chỗ mới
+                  />
                 ) : <div className="w-full h-full flex items-center justify-center font-bold text-gray-400">Đang tải bộ lịch...</div>}
               </div>
 
