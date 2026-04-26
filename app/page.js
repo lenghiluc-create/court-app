@@ -280,22 +280,82 @@ export default function PremiumCourtApp() {
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-blue-900">ĐANG TẢI...</div>;
 
   if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center relative bg-cover bg-center font-sans" style={{ backgroundImage: "url('/toaan.jpg')" }}>
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-        <div className="relative z-10 w-full max-w-[480px] p-10 text-center" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '24px', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)' }}>
-          <img src="/logo-toa-an-nhan-dan-toi-cao.png" alt="Logo" className="mx-auto mb-6 drop-shadow-2xl" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
-          <h1 className="text-3xl font-black uppercase mb-10 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.8)' }}>TAND KHU VỰC 9 - CẦN THƠ</h1>
-          <form onSubmit={handleLogin} className="space-y-6 flex flex-col items-center">
-            <input type="email" placeholder="Email..." value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="w-full px-6 py-4 outline-none text-xl font-bold placeholder-gray-200" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.5)', borderRadius: '12px' }} required />
-            <input type="password" placeholder="Mật khẩu..." value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full px-6 py-4 outline-none text-xl font-bold placeholder-gray-200" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.5)', borderRadius: '12px' }} required />
-            <button type="submit" className="py-4 mt-4 font-black uppercase text-lg transition-all hover:opacity-80 active:scale-95" style={{ width: '50%', backgroundColor: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '9999px', boxShadow: '0 0 15px rgba(37, 99, 235, 0.6)' }}>ĐĂNG NHẬP</button>
-          </form>
-        </div>
+  return (
+    <div className="min-h-screen flex items-center justify-center relative bg-cover bg-center font-sans" style={{ backgroundImage: "url('/toaan.jpg')" }}>
+      {/* Lớp nền mờ */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      
+      {/* Container đăng nhập được cập nhật bo góc vuông */}
+      <div 
+        className="relative z-10 w-full max-w-[480px] p-10 text-center"
+        style={{
+          background: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          borderRadius: '4px', // Đã thay đổi bo góc thành rất nhẹ để tạo góc vuông
+          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
+        }}
+      >
+        {/* Logo và Tiêu đề */}
+        <img src="/logo-toa-an-nhan-dan-toi-cao.png" alt="Logo" className="mx-auto mb-6 drop-shadow-2xl" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
+        
+        {/* Thêm văn bản mới phía trên tiêu đề cũ */}
+        <p className="text-2xl text-gray-300 font-serif mb-2 tracking-wide uppercase">TOÀ ÁN NHÂN DÂN THÀNH PHỐ CẦN THƠ</p>
+        
+        <h1 className="text-3xl font-black uppercase mb-10 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.8)' }}>
+          TAND KHU VỰC 9 - CẦN THƠ
+        </h1>
+        
+        {/* Form đăng nhập */}
+        <form onSubmit={handleLogin} className="space-y-6 flex flex-col items-center">
+          <input 
+            type="email" 
+            placeholder="Email..." 
+            value={loginEmail} 
+            onChange={e => setLoginEmail(e.target.value)} 
+            className="w-full px-6 py-4 outline-none text-xl font-bold placeholder-gray-200"
+            style={{ 
+              backgroundColor: 'rgba(255, 255, 255, 0.1)', 
+              color: '#ffffff', 
+              border: '2px solid rgba(255, 255, 255, 0.5)', 
+              borderRadius: '4px' // Đã thay đổi bo góc thành rất nhẹ
+            }}
+            required 
+          />
+          <input 
+            type="password" 
+            placeholder="Mật khẩu..." 
+            value={loginPass} 
+            onChange={e => setLoginPass(e.target.value)} 
+            className="w-full px-6 py-4 outline-none text-xl font-bold placeholder-gray-200"
+            style={{ 
+              backgroundColor: 'rgba(255, 255, 255, 0.1)', 
+              color: '#ffffff', 
+              border: '2px solid rgba(255, 255, 255, 0.5)', 
+              borderRadius: '4px' // Đã thay đổi bo góc thành rất nhẹ
+            }}
+            required 
+          />
+          <button 
+            type="submit" 
+            className="py-4 mt-4 font-black uppercase text-lg transition-all hover:opacity-80 active:scale-95"
+            style={{ 
+              width: '50%', 
+              backgroundColor: '#2563eb', 
+              color: '#ffffff', 
+              border: 'none', 
+              borderRadius: '4px', // Đã thay đổi bo góc thành rất nhẹ
+              boxShadow: '0 0 15px rgba(37, 99, 235, 0.6)' 
+            }}
+          >
+            ĐĂNG NHẬP
+          </button>
+        </form>
       </div>
-    );
-  }
-
+    </div>
+  );
+}
   const canEdit = userRole === 'admin' || userRole === 'thuky';
 
   return (
@@ -556,7 +616,7 @@ export default function PremiumCourtApp() {
              }}
            >
               {/* HEADER CỦA BẢNG */}
-              <div className="p-6 md:p-8 flex justify-between items-start" style={{ background: 'rgba(30, 58, 138, 0.9)' }}>
+              <div className="p-6 md:p-8 flex justify-between items-start" style={{ background: 'rgba(218, 32, 41, 0.9)' }}>
                 <div>
                   <p className="text-xs font-black uppercase text-blue-200 mb-2 tracking-widest">{selectedEvent.caseType || "---"} - {selectedEvent.trialCount || "---"}</p>
                   <h3 className="text-xl md:text-2xl font-black uppercase leading-tight text-white drop-shadow-md">{selectedEvent.caseName || "Chưa có tên"}</h3>
