@@ -46,8 +46,9 @@ export default function PremiumCourtApp() {
   };
   const [form, setForm] = useState(initialForm);
 
-  const textStyle = "text-[16px] font-bold text-gray-800";
-  const inputBase = `w-full border-2 border-gray-200 p-4 bg-gray-50 outline-none focus:border-blue-600 focus:bg-white transition-all ${textStyle}`;
+  const textStyle = "text-[15px] font-medium text-gray-800";
+  const inputBase = `w-full border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all ${textStyle}`;
+  const labelStyle = "block text-sm font-semibold text-gray-700 mb-2";
 
   const showToast = (message, type = "success") => {
     setToast({ show: true, message, type });
@@ -510,55 +511,77 @@ const handleDelete = async (id, caseName) => {
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-12">
             {canEdit && (
               <div className="xl:col-span-4">
-                <div className="bg-white p-6 md:p-10 border shadow-2xl sticky top-36">
-                  <h2 className="font-black text-2xl text-blue-950 uppercase mb-10 flex items-center gap-4"><span className="w-2 h-10 bg-blue-600"></span>{editingId ? "Cập nhật hồ sơ" : "Đăng ký lịch"}</h2>
-                  <div className="space-y-8">
+                <div className="bg-white p-6 md:p-8 border shadow-xl sticky top-36 rounded-xl">
+                  <h2 className="font-black text-xl text-blue-950 uppercase mb-8 flex items-center gap-4"><span className="w-1.5 h-8 bg-blue-600 rounded-full"></span>{editingId ? "Cập nhật hồ sơ" : "Đăng ký lịch xét xử"}</h2>
+                  
+                  <div className="space-y-6">
+                    {/* HÀNG 1: Thời gian và Phòng xử */}
                     <div className="grid grid-cols-1 gap-6">
                       <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase mb-3 ml-2 tracking-widest">Thời gian xét xử</label>
-                        <div className="flex gap-4">
+                        <label className={labelStyle}>Thời gian xét xử <span className="text-red-500">*</span></label>
+                        <div className="flex gap-3">
                           <input type="date" value={form.datetime ? form.datetime.split('T')[0] : ""} onChange={e => { const time = form.datetime && form.datetime.includes('T') ? form.datetime.split('T')[1] : '07:30'; setForm({...form, datetime: `${e.target.value}T${time}`}); }} className={inputBase} />
-                          <select value={form.datetime && form.datetime.includes('T') ? form.datetime.split('T')[1] : "07:30"} onChange={e => { const date = form.datetime ? form.datetime.split('T')[0] : moment().format('YYYY-MM-DD'); setForm({...form, datetime: `${date}T${e.target.value}`}); }} className={`${inputBase} w-1/2 bg-blue-50/50`}>
+                          <select value={form.datetime && form.datetime.includes('T') ? form.datetime.split('T')[1] : "07:30"} onChange={e => { const date = form.datetime ? form.datetime.split('T')[0] : moment().format('YYYY-MM-DD'); setForm({...form, datetime: `${date}T${e.target.value}`}); }} className={`${inputBase} w-1/3`}>
                             <option value="07:30">07:30</option><option value="08:00">08:00</option><option value="08:30">08:30</option><option value="09:00">09:00</option><option value="09:30">09:30</option><option value="10:00">10:00</option><option value="10:30">10:30</option><option value="11:00">11:00</option><option value="13:30">13:30</option><option value="14:00">14:00</option><option value="14:30">14:30</option><option value="15:00">15:00</option><option value="15:30">15:30</option><option value="16:00">16:00</option><option value="16:30">16:30</option><option value="17:00">17:00</option>
                           </select>
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase mb-3 ml-2 tracking-widest">Phòng xử / Địa điểm</label>
-                        <select value={form.room} onChange={e => setForm({...form, room: e.target.value})} className={inputBase}>
-                          <option value="Trụ sở">🏢 TRỤ SỞ</option><option value="Chi nhánh">🏢 CHI NHÁNH</option><option value="Dự phòng">⚠️ DỰ PHÒNG</option>
-                        </select>
+                        <label className={labelStyle}>Phòng xử / Địa điểm <span className="text-red-500">*</span></label>
+                        <select value={form.room} onChange={e => setForm({...form, room: e.target.value})} className={inputBase}><option value="Trụ sở">🏢 TRỤ SỞ</option><option value="Chi nhánh">🏢 CHI NHÁNH</option><option value="Dự phòng">⚠️ DỰ PHÒNG</option></select>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-6">
+                    {/* HÀNG 2: Loại án và Lần xử */}
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase mb-3 ml-2 tracking-widest">Loại án & Lần xử</label>
-                        <div className="flex gap-4">
-                            <select value={form.caseType} onChange={e => setForm({...form, caseType: e.target.value})} className={inputBase}>
-                                <option value="Hình sự">🚨 Hình sự</option><option value="Dân sự">🤝 Dân sự</option><option value="Hành chính">🏢 Hành chính</option><option value="Hôn nhân & GĐ">💍 Hôn nhân</option><option value="Kinh tế">💰 Kinh tế</option>
-                            </select>
-                            <select value={form.trialCount} onChange={e => setForm({...form, trialCount: e.target.value})} className={`${inputBase} w-1/2 bg-blue-50/50`}><option value="Lần 1">Lần 1</option><option value="Lần 2">Lần 2</option><option value="Mở lại">Mở lại</option></select>
-                        </div>
+                        <label className={labelStyle}>Loại án <span className="text-red-500">*</span></label>
+                        <select value={form.caseType} onChange={e => setForm({...form, caseType: e.target.value})} className={inputBase}><option value="Hình sự">Hình sự</option><option value="Dân sự">Dân sự</option><option value="Hành chính">Hành chính</option><option value="Hôn nhân & GĐ">Hôn nhân & GĐ</option><option value="Kinh tế">Kinh tế</option></select>
+                      </div>
+                      <div>
+                        <label className={labelStyle}>Lần xử <span className="text-red-500">*</span></label>
+                        <select value={form.trialCount} onChange={e => setForm({...form, trialCount: e.target.value})} className={inputBase}><option value="Lần 1">Lần 1</option><option value="Lần 2">Lần 2</option><option value="Mở lại">Mở lại</option></select>
                       </div>
                     </div>
 
-                    <div><label className="block text-xs font-black text-gray-400 uppercase mb-3 ml-2 tracking-widest">Vụ án / Tội danh</label><textarea value={form.caseName} onChange={e => setForm({...form, caseName: e.target.value})} className={inputBase} rows="4" placeholder="Nhập tên vụ án..." /></div>
-                    <div className="grid grid-cols-2 gap-4"><input placeholder="Nguyên đơn..." value={form.plaintiff} onChange={e => setForm({...form, plaintiff: e.target.value})} className={inputBase} /><input placeholder="Bị đơn..." value={form.defendant} onChange={e => setForm({...form, defendant: e.target.value})} className={inputBase} /></div>
-
-                    <div className="bg-gray-50 p-4 md:p-8 space-y-6 border-2 border-gray-100">
-                      <input list="judges-list" placeholder="Thẩm phán chủ tọa" value={form.judge} onChange={e => setForm({...form, judge: e.target.value})} className={inputBase} />
-                      <div className="grid grid-cols-2 gap-4"><input placeholder="Hội thẩm 1" value={form.juror1} onChange={e => setForm({...form, juror1: e.target.value})} className={inputBase} /><input placeholder="Hội thẩm 2" value={form.juror2} onChange={e => setForm({...form, juror2: e.target.value})} className={inputBase} /></div>
-                      <div className="grid grid-cols-2 gap-4"><input list="clerks-list" placeholder="Thư ký" value={form.clerk} onChange={e => setForm({...form, clerk: e.target.value})} className={inputBase} /><input list="prosecutors-list" placeholder="KSV" value={form.prosecutor} onChange={e => setForm({...form, prosecutor: e.target.value})} className={`${inputBase} text-red-600`} /></div>
+                    {/* HÀNG 3: Vụ án / Tội danh */}
+                    <div>
+                       <label className={labelStyle}>Trích yếu vụ án / Tội danh <span className="text-red-500">*</span></label>
+                       <textarea value={form.caseName} onChange={e => setForm({...form, caseName: e.target.value})} className={inputBase} rows="3" placeholder="Ví dụ: Tranh chấp hợp đồng vay tài sản..." />
                     </div>
 
-                    <button onClick={handleSubmit} disabled={hasConflict} className={`w-full text-white font-black py-6 uppercase text-xl shadow-2xl transition-all active:scale-95 shadow-blue-900/20 ${hasConflict ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-900 hover:bg-blue-800'}`}>
-                      {editingId ? "Cập nhật hồ sơ" : "Lưu vào hệ thống"}
-                    </button>
-                    {isRoomConflict && <p className="text-red-500 text-sm font-black text-center mt-2 animate-pulse uppercase">⚠️ TRÙNG PHÒNG XÉT XỬ!</p>}
+                    {/* HÀNG 4: Nguyên đơn / Bị đơn */}
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                      <div><label className={labelStyle}>Nguyên đơn đầu vụ</label><input value={form.plaintiff} onChange={e => setForm({...form, plaintiff: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
+                      <div><label className={labelStyle}>Bị đơn đầu vụ</label><input value={form.defendant} onChange={e => setForm({...form, defendant: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
+                    </div>
+
+                    {/* KHU VỰC HỘI ĐỒNG XÉT XỬ CÓ VẠCH NGĂN CHIA TRÊN */}
+                    <div className="pt-6 mt-2 border-t border-gray-200">
+                       <h3 className="text-base font-bold text-blue-900 mb-5">Thành phần Hội đồng xét xử</h3>
+                       <div className="space-y-6">
+                          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                            <div><label className={labelStyle}>Thẩm phán chủ tọa</label><input list="judges-list" value={form.judge} onChange={e => setForm({...form, judge: e.target.value})} className={inputBase} placeholder="Chọn hoặc nhập..." /></div>
+                            <div><label className={labelStyle}>Thư ký phiên tòa</label><input list="clerks-list" value={form.clerk} onChange={e => setForm({...form, clerk: e.target.value})} className={inputBase} placeholder="Chọn hoặc nhập..." /></div>
+                          </div>
+                          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                            <div><label className={labelStyle}>Hội thẩm nhân dân 1</label><input value={form.juror1} onChange={e => setForm({...form, juror1: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
+                            <div><label className={labelStyle}>Hội thẩm nhân dân 2</label><input value={form.juror2} onChange={e => setForm({...form, juror2: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
+                          </div>
+                          <div><label className={labelStyle}>Kiểm sát viên</label><input list="prosecutors-list" value={form.prosecutor} onChange={e => setForm({...form, prosecutor: e.target.value})} className={inputBase} placeholder="Chọn hoặc nhập..." /></div>
+                       </div>
+                    </div>
+
+                    {/* NÚT LƯU */}
+                    <div className="pt-4">
+                       <button onClick={handleSubmit} disabled={hasConflict} className={`w-full text-white font-bold py-4 rounded-md uppercase text-lg shadow-lg transition-all active:scale-95 ${hasConflict ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                         {editingId ? "Cập nhật thông tin" : "Lưu vào hệ thống"}
+                       </button>
+                       {isRoomConflict && <p className="text-red-500 text-sm font-bold text-center mt-3 animate-pulse">⚠️ Trùng phòng xét xử tại khung giờ này!</p>}
+                    </div>
                   </div>
                 </div>
-              </div>
+           </div>
             )}
 
             <div className={`space-y-12 ${!canEdit ? 'xl:col-span-12' : 'xl:col-span-8'}`}>
