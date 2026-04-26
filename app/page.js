@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -13,7 +13,7 @@ import { onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
 
 const localizer = typeof window !== 'undefined' ? momentLocalizer(moment) : null;
-const DnDCalendar = withDragAndDrop(Calendar)
+const DnDCalendar = withDragAndDrop(Calendar);
 
 export default function PremiumCourtApp() {
   const [isMounted, setIsMounted] = useState(false);
@@ -29,12 +29,13 @@ export default function PremiumCourtApp() {
   const [editingId, setEditingId] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
 
-  // States cho Đổi mật khẩu
   const [showPwdModal, setShowPwdModal] = useState(false);
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
 
-  // States cho Lọc
+  const [showAuditModal, setShowAuditModal] = useState(false);
+  const [auditLogs, setAuditLogs] = useState([]);
+
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [creatorFilter, setCreatorFilter] = useState("all");
@@ -49,8 +50,6 @@ export default function PremiumCourtApp() {
   const textStyle = "text-[15px] font-medium text-gray-800";
   const inputBase = `w-full border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all ${textStyle}`;
   const labelStyle = "block text-sm font-semibold text-gray-700 mb-2";
-
-  // STYLE CHO THANH LỌC BÊN SỔ THỤ LÝ
   const filterStyle = "border border-gray-300 rounded-md px-4 py-2.5 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[14px] font-medium text-gray-800 w-full xl:w-auto cursor-pointer";
 
   const showToast = (message, type = "success") => {
@@ -64,15 +63,10 @@ export default function PremiumCourtApp() {
       if (currentUser) {
         setUser(currentUser);
         const email = currentUser.email ? currentUser.email.toLowerCase() : "";
-        if (email.includes('admin') || email === 'truongphong@gmail.com') {
-          setUserRole('admin');
-        } else if (email.includes('thuky')) {
-          setUserRole('thuky');
-        } else if (email.includes('thamphan')) {
-          setUserRole('thamphan');
-        } else {
-          setUserRole('viewer');
-        }
+        if (email.includes('admin') || email === 'truongphong@gmail.com') setUserRole('admin');
+        else if (email.includes('thuky')) setUserRole('thuky');
+        else if (email.includes('thamphan')) setUserRole('thamphan');
+        else setUserRole('viewer');
         loadData();
       } else {
         setUser(null);
@@ -92,9 +86,7 @@ export default function PremiumCourtApp() {
 
   const logAction = async (action, details) => {
     try {
-      await addDoc(collection(db, "audit_logs"), {
-        action, details, user: user.email, timestamp: moment().toISOString()
-      });
+      await addDoc(collection(db, "audit_logs"), { action, details, user: user.email, timestamp: moment().toISOString() });
     } catch(err) { console.error("Lỗi ghi log", err); }
   };
 
@@ -106,6 +98,7 @@ export default function PremiumCourtApp() {
       setShowAuditModal(true);
     } catch(err) { showToast("Lỗi tải nhật ký", "error"); }
   };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -113,25 +106,19 @@ export default function PremiumCourtApp() {
       await setPersistence(auth, browserSessionPersistence);
       await signInWithEmailAndPassword(auth, loginEmail, loginPass);
       showToast("Đăng nhập thành công!", "success");
-    } catch (err) { 
-      showToast("Sai tài khoản hoặc mật khẩu", "error"); 
-    } finally { 
-      setLoading(false); 
-    }
+    } catch (err) { showToast("Sai tài khoản hoặc mật khẩu", "error"); } 
+    finally { setLoading(false); }
   };
 
   const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      showToast("Đã đăng xuất hệ thống", "success");
-    } catch (error) { showToast("Lỗi khi đăng xuất", "error"); }
+    try { await signOut(auth); showToast("Đã đăng xuất hệ thống", "success"); } 
+    catch (error) { showToast("Lỗi khi đăng xuất", "error"); }
   };
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
     if (newPwd !== confirmPwd) return showToast("Mật khẩu xác nhận không khớp!", "error");
     if (newPwd.length < 6) return showToast("Mật khẩu phải từ 6 ký tự trở lên!", "error");
-    
     try {
       await updatePassword(auth.currentUser, newPwd);
       showToast("✅ Đổi mật khẩu thành công!", "success");
@@ -139,9 +126,7 @@ export default function PremiumCourtApp() {
     } catch (error) {
       if (error.code === 'auth/requires-recent-login') {
          showToast("Vui lòng đăng xuất và đăng nhập lại để thực hiện đổi mật khẩu!", "error");
-      } else {
-         showToast("Lỗi: " + error.message, "error");
-      }
+      } else { showToast("Lỗi: " + error.message, "error"); }
     }
   };
 
@@ -169,22 +154,18 @@ export default function PremiumCourtApp() {
       loadData();
     } catch (err) { showToast("Lỗi cập nhật trạng thái", "error"); }
   };
-const handleDelete = async (id, caseName) => {
+
+  const handleDelete = async (id, caseName) => {
     if(confirm("Xóa hồ sơ này?")) {
       await deleteDoc(doc(db,"schedule", id));
       await logAction("XÓA HỒ SƠ", `Vụ án: ${caseName}`);
       loadData();
     }
-  }
+  };
 
-  // ===== HÀM XỬ LÝ KÉO THẢ TRÊN LỊCH =====
   const onEventDrop = async ({ event, start, end }) => {
     if (userRole === 'thamphan' || userRole === 'viewer') return showToast("Không có quyền dời lịch!", "error");
-    
-    // Tạo chuỗi datetime mới từ điểm thả chuột
     const newDatetime = moment(start).format('YYYY-MM-DDTHH:mm');
-    
-    // Kiểm tra trùng phòng ở giờ mới
     const isConflict = schedule.some(i => i.datetime === newDatetime && i.room === event.room && i.id !== event.id && i.status === 'pending');
     if (isConflict) return showToast(`⚠️ Trùng phòng ${event.room} ở khung giờ mới!`, "error");
 
@@ -201,7 +182,6 @@ const handleDelete = async (id, caseName) => {
     if (item.trialCount === "Lần 1") nextTrialCount = "Lần 2";
     else if (item.trialCount === "Lần 2") nextTrialCount = "Mở lại";
     else nextTrialCount = "Mở lại";
-
     setForm({ ...item, datetime: "", trialCount: nextTrialCount, status: "pending" });
     setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'});
     showToast("Đã lấy dữ liệu, vui lòng chọn ngày giờ mới!", "success");
@@ -211,18 +191,9 @@ const handleDelete = async (id, caseName) => {
 
   const processedSchedule = schedule.filter(i => {
     const search = (searchQuery || "").toLowerCase().trim();
-    const matchSearch = search === "" || 
-      (i.caseName || "").toLowerCase().includes(search) ||
-      (i.plaintiff || "").toLowerCase().includes(search) ||
-      (i.defendant || "").toLowerCase().includes(search) ||
-      (i.judge || "").toLowerCase().includes(search) ||
-      (i.room || "").toLowerCase().includes(search) ||
-      (i.createdBy || "").toLowerCase().includes(search) ||
-      (i.caseType || "").toLowerCase().includes(search);
-      
+    const matchSearch = search === "" || (i.caseName || "").toLowerCase().includes(search) || (i.plaintiff || "").toLowerCase().includes(search) || (i.defendant || "").toLowerCase().includes(search) || (i.judge || "").toLowerCase().includes(search) || (i.room || "").toLowerCase().includes(search) || (i.createdBy || "").toLowerCase().includes(search) || (i.caseType || "").toLowerCase().includes(search);
     const matchStatus = statusFilter === 'all' ? true : i.status === statusFilter;
     const matchCreator = creatorFilter === 'all' ? true : (i.createdBy === creatorFilter);
-
     let matchDate = true;
     if (startDate || endDate) {
       const itemDateStr = i.datetime ? i.datetime.split('T')[0] : null;
@@ -247,51 +218,11 @@ const handleDelete = async (id, caseName) => {
     if (schedule.length === 0) return showToast("Không có dữ liệu để xuất!", "error");
     const dataToExport = processedSchedule; 
     if (dataToExport.length === 0) return showToast("Không có dữ liệu trong bộ lọc này!", "error");
-
-    let tableHtml = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-      <head>
-        <meta charset="utf-8" />
-        <style>
-          table { border-collapse: collapse; width: 100%; font-family: 'Times New Roman', Times, serif; font-size: 13pt; }
-          td, th { border: 1px solid #000000; padding: 8px; vertical-align: top; }
-          .no-border { border: none !important; }
-          .text-center { text-align: center; vertical-align: middle; }
-          .font-bold { font-weight: bold; }
-        </style>
-      </head>
-      <body>
-        <table>
-          <tr><td colspan="2" class="no-border text-center font-bold">TÒA ÁN NHÂN DÂN<br/>KHU VỰC 9 - CẦN THƠ</td><td colspan="5" class="no-border text-center font-bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/>Độc lập - Tự do - Hạnh Phúc</td></tr>
-          <tr><td colspan="7" class="no-border text-center"><i>Cần Thơ, ngày ${moment().format("DD")} tháng ${moment().format("MM")} năm ${moment().format("YYYY")}</i></td></tr>
-          <tr><td colspan="7" class="no-border"></td></tr>
-          <tr>
-            <td colspan="7" class="no-border text-center font-bold" style="font-size: 16pt;">
-              LỊCH XÉT XỬ ${statusFilter === 'completed' ? '(ĐÃ XỬ XONG)' : ''}
-              ${startDate || endDate ? `<br/><span style="font-size: 12pt; font-weight: normal;">(Từ ngày ${startDate ? moment(startDate).format("DD/MM/YYYY") : "..."} đến ngày ${endDate ? moment(endDate).format("DD/MM/YYYY") : "..."})</span>` : ''}
-              ${creatorFilter !== 'all' ? `<br/><span style="font-size: 12pt; font-weight: normal;">Người nhập: ${creatorFilter}</span>` : ''}
-            </td>
-          </tr>
-          <tr><td colspan="7" class="no-border"></td></tr>
-          <tr>
-            <th class="text-center font-bold" style="background-color: #f2f2f2;">STT</th>
-            <th class="text-center font-bold" style="background-color: #f2f2f2;">NỘI DUNG VỤ ÁN</th>
-            <th class="text-center font-bold" style="background-color: #f2f2f2;">NGÀY XÉT XỬ</th>
-            <th class="text-center font-bold" style="background-color: #f2f2f2;">CHỦ TỌA, THƯ KÝ</th>
-            <th class="text-center font-bold" style="background-color: #f2f2f2;">HỘI THẨM NHÂN DÂN</th>
-            <th class="text-center font-bold" style="background-color: #f2f2f2;">PHÒNG XÉT XỬ</th>
-            <th class="text-center font-bold" style="background-color: #f2f2f2;">NGƯỜI NHẬP</th>
-          </tr>
-    `;
+    let tableHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8" /><style>table { border-collapse: collapse; width: 100%; font-family: 'Times New Roman', Times, serif; font-size: 13pt; } td, th { border: 1px solid #000000; padding: 8px; vertical-align: top; } .no-border { border: none !important; } .text-center { text-align: center; vertical-align: middle; } .font-bold { font-weight: bold; }</style></head><body><table><tr><td colspan="2" class="no-border text-center font-bold">TÒA ÁN NHÂN DÂN<br/>KHU VỰC 9 - CẦN THƠ</td><td colspan="5" class="no-border text-center font-bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/>Độc lập - Tự do - Hạnh Phúc</td></tr><tr><td colspan="7" class="no-border text-center"><i>Cần Thơ, ngày ${moment().format("DD")} tháng ${moment().format("MM")} năm ${moment().format("YYYY")}</i></td></tr><tr><td colspan="7" class="no-border"></td></tr><tr><td colspan="7" class="no-border text-center font-bold" style="font-size: 16pt;">LỊCH XÉT XỬ ${statusFilter === 'completed' ? '(ĐÃ XỬ XONG)' : ''} ${startDate || endDate ? `<br/><span style="font-size: 12pt; font-weight: normal;">(Từ ngày ${startDate ? moment(startDate).format("DD/MM/YYYY") : "..."} đến ngày ${endDate ? moment(endDate).format("DD/MM/YYYY") : "..."})</span>` : ''} ${creatorFilter !== 'all' ? `<br/><span style="font-size: 12pt; font-weight: normal;">Người nhập: ${creatorFilter}</span>` : ''}</td></tr><tr><td colspan="7" class="no-border"></td></tr><tr><th class="text-center font-bold" style="background-color: #f2f2f2;">STT</th><th class="text-center font-bold" style="background-color: #f2f2f2;">NỘI DUNG VỤ ÁN</th><th class="text-center font-bold" style="background-color: #f2f2f2;">NGÀY XÉT XỬ</th><th class="text-center font-bold" style="background-color: #f2f2f2;">CHỦ TỌA, THƯ KÝ</th><th class="text-center font-bold" style="background-color: #f2f2f2;">HỘI THẨM NHÂN DÂN</th><th class="text-center font-bold" style="background-color: #f2f2f2;">PHÒNG XÉT XỬ</th><th class="text-center font-bold" style="background-color: #f2f2f2;">NGƯỜI NHẬP</th></tr>`;
     dataToExport.forEach((item, index) => {
       const noidung = `<b>${item.caseName || ""}</b><br/>NĐ: ${item.plaintiff || ""}<br/>BĐ: ${item.defendant || ""}`;
       const thoigian = `${moment(item.datetime).format("HH")} giờ ${moment(item.datetime).format("mm")} phút<br/>Ngày ${moment(item.datetime).format("DD/MM/YYYY")}`;
-      tableHtml += `
-        <tr>
-          <td class="text-center">${index + 1}</td><td>${noidung}</td><td class="text-center">${thoigian}</td>
-          <td>${item.judge || ""}<br/>${item.clerk || ""}</td><td>${item.juror1 || ""}<br/>${item.juror2 || ""}</td>
-          <td class="text-center font-bold">${item.room || ""}</td><td class="text-center">${item.createdBy ? item.createdBy.split('@')[0] : ""}</td>
-        </tr>`;
+      tableHtml += `<tr><td class="text-center">${index + 1}</td><td>${noidung}</td><td class="text-center">${thoigian}</td><td>${item.judge || ""}<br/>${item.clerk || ""}</td><td>${item.juror1 || ""}<br/>${item.juror2 || ""}</td><td class="text-center font-bold">${item.room || ""}</td><td class="text-center">${item.createdBy ? item.createdBy.split('@')[0] : ""}</td></tr>`;
     });
     tableHtml += `</table></body></html>`;
     const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
@@ -326,85 +257,38 @@ const handleDelete = async (id, caseName) => {
 
   const CHART_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899', '#6366f1', '#84cc16', '#14b8a6', '#d946ef', '#0ea5e9', '#f43f5e', '#eab308', '#64748b'];
 
+  // SỬ DỤNG USEMEMO ĐỂ ĐÓNG BĂNG BỘ NHỚ LỊCH - CHỐNG CRASH TRÌNH DUYỆT
+  const calendarEvents = useMemo(() => {
+    return schedule
+      .filter(i => i.datetime && i.status !== 'postponed')
+      .map(i => ({ 
+        ...i, 
+        title: `${i.status === 'completed' ? '✅ ' : ''}[${i.room}] ${i.caseName || 'Chưa có tên'}`, 
+        start: new Date(i.datetime), 
+        end: new Date(new Date(i.datetime).getTime() + 3600000) 
+      }));
+  }, [schedule]);
+
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-blue-900">ĐANG TẢI...</div>;
 
   if (!user) {
-  return (
-    <div className="min-h-screen flex items-center justify-center relative bg-cover bg-center font-sans" style={{ backgroundImage: "url('/toaan.jpg')" }}>
-      {/* Lớp nền mờ */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-      
-      {/* Container đăng nhập được cập nhật bo góc vuông */}
-      <div 
-        className="relative z-10 w-full max-w-[480px] p-10 text-center"
-        style={{
-          background: 'rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          borderRadius: '4px', // Đã thay đổi bo góc thành rất nhẹ để tạo góc vuông
-          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
-        }}
-      >
-        {/* Logo và Tiêu đề */}
-        <img src="/lgtoaan1.png" alt="Logo" className="mx-auto mb-6 drop-shadow-2xl" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
-        
-        {/* Thêm văn bản mới phía trên tiêu đề cũ */}
-        <p className="text-2xl font-black uppercase mb-10 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.8)' }}>TOÀ ÁN NHÂN DÂN THÀNH PHỐ CẦN THƠ</p>
-        
-        <h1 className="text-3xl font-black uppercase mb-10 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.8)' }}>
-          TAND KHU VỰC 9 - CẦN THƠ
-        </h1>
-        
-        {/* Form đăng nhập */}
-        <form onSubmit={handleLogin} className="space-y-6 flex flex-col items-center">
-          <input 
-              type="email" 
-              placeholder="Email..." 
-              value={loginEmail} 
-              onChange={e => setLoginEmail(e.target.value)} 
-              className="w-[80%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center"
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                color: '#ffffff',
-                border: '2px solid rgba(255, 255, 255, 0.5)',
-                borderRadius: '6px'
-              }}
-              required 
-            />
-          <input 
-              type="password" 
-              placeholder="Mật khẩu..." 
-              value={loginPass} 
-              onChange={e => setLoginPass(e.target.value)} 
-              className="w-[80%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center"
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                color: '#ffffff',
-                border: '2px solid rgba(255, 255, 255, 0.5)',
-                borderRadius: '6px'
-              }}
-              required 
-            />
-          <button 
-            type="submit" 
-            className="py-4 mt-4 font-black uppercase text-lg transition-all hover:opacity-80 active:scale-95"
-            style={{ 
-              width: '50%', 
-              backgroundColor: '#2563eb', 
-              color: '#ffffff', 
-              border: 'none', 
-              borderRadius: '4px', // Đã thay đổi bo góc thành rất nhẹ
-              boxShadow: '0 0 15px rgba(37, 99, 235, 0.6)' 
-            }}
-          >
-            ĐĂNG NHẬP
-          </button>
-        </form>
+    return (
+      <div className="min-h-screen flex items-center justify-center relative bg-cover bg-center font-sans" style={{ backgroundImage: "url('/toaan.jpg')" }}>
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+        <div className="relative z-10 w-full max-w-[480px] p-10 text-center" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '4px', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)' }}>
+          <img src="/lgtoaan1.png" alt="Logo" className="mx-auto mb-6 drop-shadow-2xl" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
+          <p className="text-2xl font-black uppercase mb-10 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.8)' }}>TOÀ ÁN NHÂN DÂN THÀNH PHỐ CẦN THƠ</p>
+          <h1 className="text-3xl font-black uppercase mb-10 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.8)' }}>TAND KHU VỰC 9 - CẦN THƠ</h1>
+          <form onSubmit={handleLogin} className="space-y-6 flex flex-col items-center">
+            <input type="email" placeholder="Email..." value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="w-[80%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.5)', borderRadius: '6px' }} required />
+            <input type="password" placeholder="Mật khẩu..." value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-[80%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.5)', borderRadius: '6px' }} required />
+            <button type="submit" className="py-4 mt-4 font-black uppercase text-lg transition-all hover:opacity-80 active:scale-95" style={{ width: '50%', backgroundColor: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '4px', boxShadow: '0 0 15px rgba(37, 99, 235, 0.6)' }}>ĐĂNG NHẬP</button>
+          </form>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+
   const canEdit = userRole === 'admin' || userRole === 'thuky';
 
   return (
@@ -422,14 +306,13 @@ const handleDelete = async (id, caseName) => {
         input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px rgba(255, 255, 255, 0.1) inset !important; -webkit-text-fill-color: white !important; transition: background-color 5000s ease-in-out 0s; }
       `}} />
 
-      {/* SIDEBAR */}
       <aside className="w-80 bg-blue-950 text-white hidden xl:flex flex-col fixed h-screen shadow-2xl border-r border-blue-900 z-20 overflow-y-auto">
         <div className="p-12 text-center border-b border-white/5">
           <div className="text-5xl mb-4">⚖️</div>
           <h2 className="font-black text-2xl uppercase tracking-tighter">TAND KV9</h2>
         </div>
         <div className="p-8 flex-1">
-          <div className="bg-blue-600 px-6 py-4 font-black text-xl shadow-lg shadow-blue-900/50 flex justify-between items-center">
+          <div className="bg-blue-600 px-6 py-4 font-black text-xl shadow-lg shadow-blue-900/50 flex justify-between items-center rounded-lg">
             📅 LỊCH XÉT XỬ {urgentCount > 0 && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded-full animate-bounce">{urgentCount}</span>}
           </div>
         </div>
@@ -445,7 +328,6 @@ const handleDelete = async (id, caseName) => {
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
       <main className="flex-1 xl:ml-80 flex flex-col min-h-screen relative z-10">
         <header className="bg-white/95 backdrop-blur-md h-24 shadow-sm flex items-center justify-between px-4 md:px-8 xl:px-12 sticky top-0 z-30 border-b border-gray-200 w-full">
           <div className="flex-1 flex justify-start items-center gap-2 xl:hidden">
@@ -457,9 +339,7 @@ const handleDelete = async (id, caseName) => {
             <h1 className="font-black text-[14px] sm:text-[16px] md:text-xl xl:text-2xl uppercase text-blue-950 truncate">HỆ THỐNG QUẢN LÝ LỊCH TRỰC TUYẾN</h1>
           </div>
           <div className="flex-1 flex items-center justify-end">
-             <div className="bg-blue-50 text-blue-700 px-3 py-2 sm:px-4 sm:py-2 md:px-6 md:py-3 font-black text-[10px] sm:text-xs md:text-sm border border-blue-100 uppercase tracking-widest text-center w-max">
-               Cần Thơ: {moment().format("DD/MM/YYYY")}
-             </div>
+             <div className="bg-blue-50 text-blue-700 px-3 py-2 sm:px-4 sm:py-2 md:px-6 md:py-3 font-black text-[10px] sm:text-xs md:text-sm border border-blue-100 uppercase tracking-widest text-center w-max">Cần Thơ: {moment().format("DD/MM/YYYY")}</div>
           </div>
         </header>
 
@@ -472,16 +352,14 @@ const handleDelete = async (id, caseName) => {
           </div>
 
           <div className="bg-white p-6 md:p-8 border shadow-sm mb-12">
-             <h3 className="text-lg md:text-xl font-black uppercase text-blue-950 flex items-center gap-4 mb-8">
-               <span className="w-2 h-8 bg-blue-950"></span>
-               Bảng thống kê tổng hợp
-             </h3>
+             <h3 className="text-lg md:text-xl font-black uppercase text-blue-950 flex items-center gap-4 mb-8"><span className="w-2 h-8 bg-blue-950"></span>Bảng thống kê tổng hợp</h3>
              
+             {/* ĐÃ SỬA LẠI KHUNG GRID ĐỂ KHÔNG BỊ INFINITE LOOP */}
              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 divide-y xl:divide-y-0 xl:divide-x divide-gray-100">
-                <div className="flex flex-col items-center xl:pr-8">
+                <div className="flex flex-col xl:pr-8 w-full">
                    <h4 className="text-xs font-black uppercase text-gray-400 tracking-widest mb-4 w-full text-center">📊 TỶ LỆ LOẠI ÁN (TỔNG THỂ)</h4>
                    {caseTypeData.length > 0 ? (
-                     <div className="w-full h-[250px]">
+                     <div className="w-full h-[250px] relative">
                        <ResponsiveContainer width="100%" height="100%">
                          <PieChart>
                            <Pie data={caseTypeData} cx="50%" cy="50%" outerRadius={90} dataKey="value" label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}>
@@ -491,13 +369,13 @@ const handleDelete = async (id, caseName) => {
                          </PieChart>
                        </ResponsiveContainer>
                      </div>
-                   ) : <p className="text-gray-400 font-bold italic mt-10">Chưa có dữ liệu</p>}
+                   ) : <p className="text-gray-400 font-bold italic text-center mt-10">Chưa có dữ liệu</p>}
                 </div>
 
-                <div className="flex flex-col items-center pt-8 xl:pt-0 xl:pl-8">
+                <div className="flex flex-col pt-8 xl:pt-0 xl:pl-8 w-full">
                    <h4 className="text-xs font-black uppercase text-gray-400 tracking-widest mb-4 w-full text-center">👨‍⚖️ NĂNG SUẤT THẨM PHÁN (ĐANG CHỜ XỬ)</h4>
                    {judgeData.length > 0 ? (
-                     <div className="w-full h-[250px]">
+                     <div className="w-full h-[250px] relative">
                        <ResponsiveContainer width="100%" height="100%">
                          <PieChart>
                            <Pie data={judgeData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value" label={({name}) => name}>
@@ -507,18 +385,17 @@ const handleDelete = async (id, caseName) => {
                          </PieChart>
                        </ResponsiveContainer>
                      </div>
-                   ) : <p className="text-gray-400 font-bold italic mt-10">Chưa có dữ liệu thụ lý</p>}
+                   ) : <p className="text-gray-400 font-bold italic text-center mt-10">Chưa có dữ liệu thụ lý</p>}
                 </div>
              </div>
           </div>
+
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-12">
             {canEdit && (
               <div className="xl:col-span-4">
                 <div className="bg-white p-6 md:p-8 border shadow-xl sticky top-36 rounded-xl">
                   <h2 className="font-black text-xl text-blue-950 uppercase mb-8 flex items-center gap-4"><span className="w-1.5 h-8 bg-blue-600 rounded-full"></span>{editingId ? "Cập nhật hồ sơ" : "Đăng ký lịch xét xử"}</h2>
-                  
                   <div className="space-y-6">
-                    {/* HÀNG 1: Thời gian và Phòng xử */}
                     <div className="grid grid-cols-1 gap-6">
                       <div>
                         <label className={labelStyle}>Thời gian xét xử <span className="text-red-500">*</span></label>
@@ -534,8 +411,6 @@ const handleDelete = async (id, caseName) => {
                         <select value={form.room} onChange={e => setForm({...form, room: e.target.value})} className={inputBase}><option value="Trụ sở">🏢 TRỤ SỞ</option><option value="Chi nhánh">🏢 CHI NHÁNH</option><option value="Dự phòng">⚠️ DỰ PHÒNG</option></select>
                       </div>
                     </div>
-
-                    {/* HÀNG 2: Loại án và Lần xử */}
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                       <div>
                         <label className={labelStyle}>Loại án <span className="text-red-500">*</span></label>
@@ -546,20 +421,11 @@ const handleDelete = async (id, caseName) => {
                         <select value={form.trialCount} onChange={e => setForm({...form, trialCount: e.target.value})} className={inputBase}><option value="Lần 1">Lần 1</option><option value="Lần 2">Lần 2</option><option value="Mở lại">Mở lại</option></select>
                       </div>
                     </div>
-
-                    {/* HÀNG 3: Vụ án / Tội danh */}
-                    <div>
-                       <label className={labelStyle}>Trích yếu vụ án / Tội danh <span className="text-red-500">*</span></label>
-                       <textarea value={form.caseName} onChange={e => setForm({...form, caseName: e.target.value})} className={inputBase} rows="3" placeholder="Ví dụ: Tranh chấp hợp đồng vay tài sản..." />
-                    </div>
-
-                    {/* HÀNG 4: Nguyên đơn / Bị đơn */}
+                    <div><label className={labelStyle}>Trích yếu vụ án / Tội danh <span className="text-red-500">*</span></label><textarea value={form.caseName} onChange={e => setForm({...form, caseName: e.target.value})} className={inputBase} rows="3" placeholder="Ví dụ: Tranh chấp hợp đồng vay tài sản..." /></div>
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                       <div><label className={labelStyle}>Nguyên đơn đầu vụ</label><input value={form.plaintiff} onChange={e => setForm({...form, plaintiff: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
                       <div><label className={labelStyle}>Bị đơn đầu vụ</label><input value={form.defendant} onChange={e => setForm({...form, defendant: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
                     </div>
-
-                    {/* KHU VỰC HỘI ĐỒNG XÉT XỬ CÓ VẠCH NGĂN CHIA TRÊN */}
                     <div className="pt-6 mt-2 border-t border-gray-200">
                        <h3 className="text-base font-bold text-blue-900 mb-5">Thành phần Hội đồng xét xử</h3>
                        <div className="space-y-6">
@@ -574,8 +440,6 @@ const handleDelete = async (id, caseName) => {
                           <div><label className={labelStyle}>Kiểm sát viên</label><input list="prosecutors-list" value={form.prosecutor} onChange={e => setForm({...form, prosecutor: e.target.value})} className={inputBase} placeholder="Chọn hoặc nhập..." /></div>
                        </div>
                     </div>
-
-                    {/* NÚT LƯU */}
                     <div className="pt-4">
                        <button onClick={handleSubmit} disabled={hasConflict} className={`w-full text-white font-bold py-4 rounded-md uppercase text-lg shadow-lg transition-all active:scale-95 ${hasConflict ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
                          {editingId ? "Cập nhật thông tin" : "Lưu vào hệ thống"}
@@ -584,33 +448,28 @@ const handleDelete = async (id, caseName) => {
                     </div>
                   </div>
                 </div>
-           </div>
+              </div>
             )}
 
             <div className={`space-y-12 ${!canEdit ? 'xl:col-span-12' : 'xl:col-span-8'}`}>
-              <div className="bg-white p-4 md:p-8 border shadow-2xl h-[500px] overflow-hidden">
+              <div className="bg-white p-4 md:p-8 border shadow-2xl h-[500px] overflow-hidden group">
                 {canEdit && <p className="text-gray-400 text-xs font-bold text-center mb-2 italic">💡 Bạn có thể dùng chuột kéo thả vụ án để dời sang ngày/giờ khác</p>}
                 {isMounted && localizer ? (
                   <DnDCalendar 
                     localizer={localizer} 
-                    events={schedule.filter(i => i.datetime && i.status !== 'postponed').map(i => ({ ...i, title: `${i.status === 'completed' ? '✅ ' : ''}[${i.room}] ${i.caseName || 'Chưa có tên'}`, start: new Date(i.datetime), end: new Date(new Date(i.datetime).getTime() + 3600000) }))} 
+                    events={calendarEvents} 
                     style={{ height: "100%" }} 
                     onSelectEvent={e => setSelectedEvent(e)} 
                     onEventDrop={onEventDrop} 
-                    resizable={false} // Khóa kéo dài khung giờ, chỉ cho phép kéo thả sang chỗ mới
+                    resizable={false} 
                   />
                 ) : <div className="w-full h-full flex items-center justify-center font-bold text-gray-400">Đang tải bộ lịch...</div>}
               </div>
 
-             <div className="bg-white border border-gray-200 shadow-2xl overflow-hidden flex flex-col h-[850px]">
+              <div className="bg-white border border-gray-200 shadow-2xl overflow-hidden flex flex-col h-[850px]">
                 <div className="p-6 md:p-8 border-b border-gray-200 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 sticky top-0 bg-white z-10">
-                  <h3 className="font-black uppercase text-xl md:text-2xl text-blue-950 flex items-center gap-4 whitespace-nowrap">
-                     <span className="w-1.5 h-8 bg-blue-950 rounded-full"></span>Sổ thụ lý
-                  </h3>
-                  
+                  <h3 className="font-black uppercase text-xl md:text-2xl text-blue-950 flex items-center gap-4 whitespace-nowrap"><span className="w-1.5 h-8 bg-blue-950 rounded-full"></span>Sổ thụ lý</h3>
                   <div className="flex flex-col md:flex-row flex-wrap gap-3 w-full justify-end items-stretch md:items-center">
-                    
-                    {/* Cụm bộ lọc ngày tháng */}
                     <div className="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-2.5 bg-white w-full xl:w-auto focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
                       <span className="text-xs font-bold text-gray-500 uppercase">Từ:</span>
                       <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="outline-none text-sm font-medium bg-transparent text-gray-800 w-full" />
@@ -618,23 +477,10 @@ const handleDelete = async (id, caseName) => {
                       <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="outline-none text-sm font-medium bg-transparent text-gray-800 w-full" />
                       {(startDate || endDate) && <button onClick={() => {setStartDate(""); setEndDate("")}} className="text-red-500 font-bold px-1.5 hover:bg-red-50 rounded-full" title="Xóa lộc ngày">✕</button>}
                     </div>
-
-                    <select value={creatorFilter} onChange={e => setCreatorFilter(e.target.value)} className={filterStyle}>
-                       <option value="all">👤 Tất cả người nhập</option>
-                       {creatorsList.map(email => <option key={email} value={email}>{email.split('@')[0]}</option>)}
-                    </select>
-
-                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={filterStyle}>
-                       <option value="pending">⏳ Đang chờ xử</option><option value="postponed">⏸ Đã hoãn</option><option value="completed">✅ Đã xử xong</option><option value="all">📁 Tất cả vụ án</option>
-                    </select>
-
-                    <input type="text" placeholder="Tìm kiếm tên án, nguyên đơn..." onChange={e => setSearchQuery(e.target.value)} className={`${filterStyle} xl:w-64`} />
-                    
-                    <button onClick={exportToExcel} className="bg-green-600 text-white px-6 py-2.5 font-bold uppercase rounded-md shadow-sm hover:bg-green-700 transition-all flex items-center justify-center gap-2 w-full xl:w-auto active:scale-95 text-[14px]">
-                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                       Xuất Excel
-                    </button>
-
+                    <select value={creatorFilter} onChange={e => setCreatorFilter(e.target.value)} className={filterStyle}><option value="all">👤 Tất cả người nhập</option>{creatorsList.map(email => <option key={email} value={email}>{email.split('@')[0]}</option>)}</select>
+                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={filterStyle}><option value="pending">⏳ Đang chờ xử</option><option value="postponed">⏸ Đã hoãn</option><option value="completed">✅ Đã xử xong</option><option value="all">📁 Tất cả vụ án</option></select>
+                    <input type="text" placeholder="Tìm kiếm tự do..." onChange={e => setSearchQuery(e.target.value)} className={`${filterStyle} xl:w-64`} />
+                    <button onClick={exportToExcel} className="bg-green-600 text-white px-6 py-2.5 font-bold uppercase rounded-md shadow-sm hover:bg-green-700 transition-all flex items-center justify-center gap-2 w-full xl:w-auto active:scale-95 text-[14px]">📊 Xuất Excel</button>
                   </div>
                 </div>
 
@@ -653,8 +499,6 @@ const handleDelete = async (id, caseName) => {
                        const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
                         return (
                         <tr key={item.id} className={`transition-all group divide-x divide-gray-200 ${item.status === 'completed' || item.status === 'postponed' ? 'opacity-70 bg-gray-100/50' : isRowUrgent ? 'bg-red-50 hover:bg-red-100' : 'bg-white hover:bg-blue-50/30'}`}>
-                          
-                          {/* CỘT 1: THỜI GIAN VÀ ĐỊA ĐIỂM */}
                           <td className={`p-4 md:p-6 align-top text-center ${isRowUrgent ? 'border-l-4 border-l-red-500' : ''}`}>
                             <div className="space-y-2">
                               {item.status === 'postponed' ? (
@@ -668,8 +512,6 @@ const handleDelete = async (id, caseName) => {
                               <div className="font-bold text-gray-500 uppercase text-sm mt-3">{item.room || "---"}</div>
                             </div>
                           </td>
-
-                          {/* CỘT 2: NỘI DUNG VỤ VIỆC */}
                           <td className="p-4 md:p-6 align-top">
                             <div className="space-y-3">
                               <div className="font-bold uppercase text-gray-900 text-base leading-snug group-hover:text-blue-800 transition-colors">
@@ -678,26 +520,19 @@ const handleDelete = async (id, caseName) => {
                                 {isRowUrgent && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded mr-2 animate-pulse">⚠️ SẮP XỬ</span>}
                                 {item.caseName || "Vụ án chưa có tên"}
                               </div>
-                              
-                              {/* THAY KHUNG BẰNG DẤU GẠCH CHÉO "/" */}
                               <div className="text-gray-700 font-semibold text-sm">
                                 {item.caseType || "---"} / {item.trialCount || "Lần 1"}
                               </div>
-                              
                               <div className="text-sm text-gray-700 space-y-1.5 pt-1">
                                 <p><span className="font-semibold text-gray-500">NĐ:</span> {item.plaintiff || "N/A"}</p>
                                 <p><span className="font-semibold text-gray-500">BĐ:</span> {item.defendant || "N/A"}</p>
                               </div>
-
-                              {/* BỎ GẠCH NGANG TRÊN CHỖ NGƯỜI NHẬP LIỆU */}
                               <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-start gap-3 text-xs font-medium text-gray-500 italic">
                                  <span>✍️ Nhập bởi: <span className="font-bold text-gray-600">{item.createdBy ? item.createdBy.split('@')[0] : "Hệ thống"}</span></span>
                                  {item.updatedBy && <span>🔄 Sửa bởi: <span className="font-bold text-gray-600">{item.updatedBy.split('@')[0]}</span></span>}
                               </div>
                             </div>
                           </td>
-
-                          {/* CỘT 3: HỘI ĐỒNG VÀ THƯ KÝ */}
                           <td className="p-4 md:p-6 align-top">
                             <div className="space-y-3 text-sm md:text-base text-gray-800">
                               <div className="flex gap-2"><span className="font-semibold text-blue-700 w-8 shrink-0">TP:</span> <span className={`font-bold ${isRowUrgent ? 'text-red-900' : 'text-gray-900'}`}>{item.judge || "---"}</span></div>
@@ -706,8 +541,6 @@ const handleDelete = async (id, caseName) => {
                               <div className="flex gap-2"><span className="font-semibold text-red-600 w-8 shrink-0">KS:</span> <span className="font-bold text-red-600">{item.prosecutor || "---"}</span></div>
                             </div>
                           </td>
-
-                          {/* CỘT 4: TÁC VỤ */}
                           {canEdit && (
                             <td className="p-4 md:p-6 text-center align-top">
                               <div className="flex flex-col gap-3">
@@ -737,157 +570,44 @@ const handleDelete = async (id, caseName) => {
         </div>
       </main>
 
-      {/* ========================================================== */}
-      {/* MODAL CHI TIẾT VỤ ÁN: GIAO DIỆN BÓNG MỜ (GLASSMORPHISM)    */}
-      {/* ========================================================== */}
       {selectedEvent && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4 md:p-6" onClick={() => setSelectedEvent(null)}>
-           <div 
-             className="w-full max-w-lg flex flex-col overflow-hidden transition-all transform md:scale-105" 
-             onClick={e => e.stopPropagation()}
-             style={{
-                background: 'rgba(255, 255, 255, 0.85)',
-                backdropFilter: 'blur(24px)',
-                WebkitBackdropFilter: 'blur(24px)',
-                border: '1px solid rgba(255, 255, 255, 0.6)',
-                borderRadius: '28px',
-                boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)'
-             }}
-           >
-              {/* HEADER CỦA BẢNG */}
+           <div className="w-full max-w-lg flex flex-col overflow-hidden transition-all transform md:scale-105" onClick={e => e.stopPropagation()} style={{ background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255, 255, 255, 0.6)', borderRadius: '28px', boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)' }}>
               <div className="p-6 md:p-8 flex justify-between items-start" style={{ background: 'rgba(218, 32, 41, 0.9)' }}>
-                <div>
-                  <p className="text-xs font-black uppercase text-blue-200 mb-2 tracking-widest">{selectedEvent.caseType || "---"} - {selectedEvent.trialCount || "---"}</p>
-                  <h3 className="text-xl md:text-2xl font-black uppercase leading-tight text-white drop-shadow-md">{selectedEvent.caseName || "Chưa có tên"}</h3>
-                </div>
+                <div><p className="text-xs font-black uppercase text-blue-200 mb-2 tracking-widest">{selectedEvent.caseType || "---"} - {selectedEvent.trialCount || "---"}</p><h3 className="text-xl md:text-2xl font-black uppercase leading-tight text-white drop-shadow-md">{selectedEvent.caseName || "Chưa có tên"}</h3></div>
                 <div className="flex flex-col gap-2 shrink-0 ml-4">
                   {selectedEvent.status === 'completed' && <span className="bg-green-500 text-white px-3 py-1 font-black text-xs rounded-full shadow-lg border border-green-400">ĐÃ XONG</span>}
                   {selectedEvent.status === 'postponed' && <span className="bg-amber-500 text-white px-3 py-1 font-black text-xs rounded-full shadow-lg border border-amber-400">ĐÃ HOÃN</span>}
                   {selectedEvent.status === 'pending' && isUrgent(selectedEvent.datetime) && <span className="bg-red-500 text-white px-3 py-1 font-black text-xs rounded-full shadow-lg border border-red-400 animate-pulse">SẮP XỬ</span>}
                 </div>
               </div>
-
-              {/* NỘI DUNG BÊN TRONG BẢNG */}
               <div className="p-6 md:p-8 space-y-5 text-sm md:text-base font-bold text-gray-900">
-                <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 rounded-full bg-blue-100/80 flex items-center justify-center text-2xl shadow-sm">🕒</div>
-                   <p className="flex-1 text-blue-950 text-lg"><span className="font-black">{selectedEvent.datetime ? moment(selectedEvent.datetime).format("HH:mm - DD/MM/YYYY") : "---"}</span> tại <span className="font-black">{selectedEvent.room || "---"}</span></p>
-                </div>
-                
-                <hr className="border-gray-300 border-2 rounded-full opacity-50"/>
-                
-                <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 rounded-full bg-gray-200/60 flex items-center justify-center text-2xl shadow-sm">👨‍⚖️</div>
-                   <p className="flex-1 text-gray-700 text-lg">Thẩm phán: <span className="font-black text-gray-950">{selectedEvent.judge || "---"}</span></p>
-                </div>
-                
-                <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 rounded-full bg-gray-200/60 flex items-center justify-center text-2xl shadow-sm">⚖️</div>
-                   <p className="flex-1 text-gray-700 text-lg">Hội thẩm: <span className="font-black text-gray-900">{selectedEvent.juror1 || "---"}, {selectedEvent.juror2 || "---"}</span></p>
-                </div>
-                
-                <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 rounded-full bg-gray-200/60 flex items-center justify-center text-2xl shadow-sm">📝</div>
-                   <p className="flex-1 text-gray-700 text-lg">Thư ký: <span className="font-black text-gray-900">{selectedEvent.clerk || "---"}</span></p>
-                </div>
-                
-                <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 rounded-full bg-red-100/60 flex items-center justify-center text-2xl shadow-sm">🛡️</div>
-                   <p className="flex-1 text-gray-700 text-lg">Kiểm sát: <span className="font-black text-red-700">{selectedEvent.prosecutor || "---"}</span></p>
-                </div>
-                
-                <hr className="border-gray-300 border-2 rounded-full opacity-50"/>
-                
-                <div className="flex items-center justify-between text-xs font-black uppercase tracking-widest text-gray-600 bg-white/60 p-4 rounded-xl border border-white/80 shadow-inner">
-                   <span>✍️ NHẬP BỞI:</span>
-                   <span className="text-blue-800">{selectedEvent.createdBy || "KHÔNG RÕ"}</span>
-                </div>
-                
+                <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-blue-100/80 flex items-center justify-center text-2xl shadow-sm">🕒</div><p className="flex-1 text-blue-950 text-lg"><span className="font-black">{selectedEvent.datetime ? moment(selectedEvent.datetime).format("HH:mm - DD/MM/YYYY") : "---"}</span> tại <span className="font-black">{selectedEvent.room || "---"}</span></p></div><hr className="border-gray-300 border-2 rounded-full opacity-50"/>
+                <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-gray-200/60 flex items-center justify-center text-2xl shadow-sm">👨‍⚖️</div><p className="flex-1 text-gray-700 text-lg">Thẩm phán: <span className="font-black text-gray-950">{selectedEvent.judge || "---"}</span></p></div>
+                <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-gray-200/60 flex items-center justify-center text-2xl shadow-sm">⚖️</div><p className="flex-1 text-gray-700 text-lg">Hội thẩm: <span className="font-black text-gray-900">{selectedEvent.juror1 || "---"}, {selectedEvent.juror2 || "---"}</span></p></div>
+                <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-gray-200/60 flex items-center justify-center text-2xl shadow-sm">📝</div><p className="flex-1 text-gray-700 text-lg">Thư ký: <span className="font-black text-gray-900">{selectedEvent.clerk || "---"}</span></p></div>
+                <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-red-100/60 flex items-center justify-center text-2xl shadow-sm">🛡️</div><p className="flex-1 text-gray-700 text-lg">Kiểm sát: <span className="font-black text-red-700">{selectedEvent.prosecutor || "---"}</span></p></div><hr className="border-gray-300 border-2 rounded-full opacity-50"/>
+                <div className="flex items-center justify-between text-xs font-black uppercase tracking-widest text-gray-600 bg-white/60 p-4 rounded-xl border border-white/80 shadow-inner"><span>✍️ NHẬP BỞI:</span><span className="text-blue-800">{selectedEvent.createdBy || "KHÔNG RÕ"}</span></div>
                 <button onClick={() => setSelectedEvent(null)} className="w-full bg-blue-900/95 backdrop-blur-md text-white py-4 md:py-5 font-black text-lg uppercase mt-4 rounded-xl hover:bg-blue-800 transition-all shadow-xl active:scale-95 border border-blue-700">ĐÓNG CỬA SỔ</button>
               </div>
            </div>
         </div>
       )}
-{showAuditModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[200] p-4 md:p-6" onClick={() => setShowAuditModal(false)}>
-           <div className="w-full max-w-4xl flex flex-col overflow-hidden h-[80vh]" onClick={e => e.stopPropagation()} style={{ background: 'rgba(255, 255, 255, 0.95)', border: '1px solid rgba(255, 255, 255, 0.6)', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)' }}>
-              <div className="p-6 md:p-8 flex justify-between items-center bg-slate-800 text-white">
-                <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3">📋 Nhật ký hoạt động hệ thống</h3>
-                <button onClick={() => setShowAuditModal(false)} className="bg-red-500 px-4 py-2 text-sm font-black rounded shadow hover:bg-red-600">ĐÓNG</button>
-              </div>
-              <div className="flex-1 overflow-auto p-6 md:p-8 bg-slate-50">
-                {auditLogs.length === 0 ? (
-                  <p className="text-center font-bold text-gray-400 mt-10">Chưa có dữ liệu nhật ký nào được ghi lại.</p>
-                ) : (
-                  <table className="w-full text-left border-collapse">
-                    <thead className="bg-white sticky top-0 shadow-sm z-10 text-xs font-black uppercase text-gray-500">
-                      <tr><th className="p-4 border-b">Thời gian</th><th className="p-4 border-b">Tài khoản</th><th className="p-4 border-b">Hành động</th><th className="p-4 border-b w-1/2">Chi tiết</th></tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {auditLogs.map((log, idx) => (
-                        <tr key={idx} className="hover:bg-blue-50 transition-colors">
-                          <td className="p-4 font-bold text-sm text-gray-700">{moment(log.timestamp).format("HH:mm:ss DD/MM/YYYY")}</td>
-                          <td className="p-4 font-bold text-sm text-blue-700">{log.user ? log.user.split('@')[0] : "---"}</td>
-                          <td className="p-4">
-                            <span className={`px-2 py-1 text-[10px] font-black uppercase rounded ${log.action.includes('XÓA') ? 'bg-red-100 text-red-700' : log.action.includes('KÉO THẢ') ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>{log.action}</span>
-                          </td>
-                          <td className="p-4 text-sm font-medium text-gray-600">{log.details}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-           </div>
-        </div>
-      )}
-      {/* ========================================================== */}
-      {/* MODAL ĐỔI MẬT KHẨU: GIAO DIỆN BÓNG MỜ (GLASSMORPHISM)      */}
-      {/* ========================================================== */}
+
       {showPwdModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4 md:p-6" onClick={() => setShowPwdModal(false)}>
-           <div 
-             className="w-full max-w-md flex flex-col overflow-hidden transition-all transform md:scale-105" 
-             onClick={e => e.stopPropagation()}
-             style={{
-                background: 'rgba(255, 255, 255, 0.85)',
-                backdropFilter: 'blur(24px)',
-                WebkitBackdropFilter: 'blur(24px)',
-                border: '1px solid rgba(255, 255, 255, 0.6)',
-                borderRadius: '28px',
-                boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)'
-             }}
-           >
-              <div className="p-6 md:p-8 flex justify-center items-center" style={{ background: 'rgba(30, 58, 138, 0.9)' }}>
-                <h3 className="text-xl font-black uppercase tracking-widest text-white drop-shadow-md">🔑 ĐỔI MẬT KHẨU</h3>
-              </div>
+           <div className="w-full max-w-md flex flex-col overflow-hidden transition-all transform md:scale-105" onClick={e => e.stopPropagation()} style={{ background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255, 255, 255, 0.6)', borderRadius: '28px', boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)' }}>
+              <div className="p-6 md:p-8 flex justify-center items-center" style={{ background: 'rgba(30, 58, 138, 0.9)' }}><h3 className="text-xl font-black uppercase tracking-widest text-white drop-shadow-md">🔑 ĐỔI MẬT KHẨU</h3></div>
               <form onSubmit={handleChangePassword} className="p-6 md:p-8 space-y-6">
-                <div>
-                   <label className="block text-xs font-black text-gray-600 uppercase mb-2 tracking-widest">Mật khẩu mới</label>
-                   <input type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} required 
-                     className="w-full border-2 border-white/80 p-4 bg-white/60 outline-none focus:border-blue-500 focus:bg-white/90 transition-all font-bold text-gray-900 rounded-xl shadow-inner" 
-                     placeholder="Nhập mật khẩu mới..." minLength={6} />
-                </div>
-                <div>
-                   <label className="block text-xs font-black text-gray-600 uppercase mb-2 tracking-widest">Xác nhận mật khẩu</label>
-                   <input type="password" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} required 
-                     className="w-full border-2 border-white/80 p-4 bg-white/60 outline-none focus:border-blue-500 focus:bg-white/90 transition-all font-bold text-gray-900 rounded-xl shadow-inner" 
-                     placeholder="Nhập lại mật khẩu..." minLength={6} />
-                </div>
-                <div className="flex gap-4 pt-4">
-                   <button type="button" onClick={() => setShowPwdModal(false)} className="w-1/2 bg-gray-200/80 backdrop-blur-sm text-gray-700 font-black py-4 uppercase hover:bg-gray-300 transition-all rounded-xl border border-white/80 shadow-sm active:scale-95">HỦY BỎ</button>
-                   <button type="submit" className="w-1/2 bg-blue-600/95 backdrop-blur-sm text-white font-black py-4 uppercase hover:bg-blue-700 transition-all shadow-lg rounded-xl border border-blue-500 active:scale-95">LƯU ĐỔI</button>
-                </div>
+                <div><label className="block text-xs font-black text-gray-600 uppercase mb-2 tracking-widest">Mật khẩu mới</label><input type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} required className="w-full border-2 border-white/80 p-4 bg-white/60 outline-none focus:border-blue-500 focus:bg-white/90 transition-all font-bold text-gray-900 rounded-xl shadow-inner" placeholder="Nhập mật khẩu mới..." minLength={6} /></div>
+                <div><label className="block text-xs font-black text-gray-600 uppercase mb-2 tracking-widest">Xác nhận mật khẩu</label><input type="password" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} required className="w-full border-2 border-white/80 p-4 bg-white/60 outline-none focus:border-blue-500 focus:bg-white/90 transition-all font-bold text-gray-900 rounded-xl shadow-inner" placeholder="Nhập lại mật khẩu..." minLength={6} /></div>
+                <div className="flex gap-4 pt-4"><button type="button" onClick={() => setShowPwdModal(false)} className="w-1/2 bg-gray-200/80 backdrop-blur-sm text-gray-700 font-black py-4 uppercase hover:bg-gray-300 transition-all rounded-xl border border-white/80 shadow-sm active:scale-95">HỦY BỎ</button><button type="submit" className="w-1/2 bg-blue-600/95 backdrop-blur-sm text-white font-black py-4 uppercase hover:bg-blue-700 transition-all shadow-lg rounded-xl border border-blue-500 active:scale-95">LƯU ĐỔI</button></div>
               </form>
            </div>
         </div>
       )}
 
-      {toast.show && (
-        <div className={`fixed bottom-6 md:bottom-12 right-6 md:right-12 z-[200] px-8 md:px-12 py-4 md:py-6 shadow-2xl font-black text-sm md:text-lg text-white rounded-xl ${toast.type === 'error' ? 'bg-red-600' : 'bg-blue-700'}`}>
-          {toast.message}
-        </div>
-      )}
+      {toast.show && (<div className={`fixed bottom-6 md:bottom-12 right-6 md:right-12 z-[200] px-8 md:px-12 py-4 md:py-6 shadow-2xl font-black text-sm md:text-lg text-white rounded-xl ${toast.type === 'error' ? 'bg-red-600' : 'bg-blue-700'}`}>{toast.message}</div>)}
     </div>
   );
 }

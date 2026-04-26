@@ -1,9 +1,9 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
- apiKey: "AIzaSyB2nBRjYxAu9cjFIGpf1NoFsObS7ZhIV6g",
+  apiKey: "AIzaSyB2nBRjYxAu9cjFIGpf1NoFsObS7ZhIV6g",
   authDomain: "tandkv9-ct.firebaseapp.com",
   projectId: "tandkv9-ct",
   storageBucket: "tandkv9-ct.firebasestorage.app",
@@ -12,6 +12,7 @@ const firebaseConfig = {
   measurementId: "G-QSXLX7K0YJ"
 };
 
+// Kiểm tra để không khởi tạo Firebase nhiều lần gây sập app
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 export const db = getFirestore(app);
