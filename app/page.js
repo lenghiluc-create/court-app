@@ -90,15 +90,6 @@ export default function PremiumCourtApp() {
     } catch(err) { console.error("Lỗi ghi log", err); }
   };
 
-  const loadAuditLogs = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, "audit_logs"));
-      const logs = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-      setAuditLogs(logs);
-      setShowAuditModal(true);
-    } catch(err) { showToast("Lỗi tải nhật ký", "error"); }
-  };
-
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -189,30 +180,33 @@ export default function PremiumCourtApp() {
 
   const creatorsList = [...new Set(schedule.map(i => i.createdBy).filter(Boolean))];
 
-  const processedSchedule = schedule.filter(i => {
-    const search = (searchQuery || "").toLowerCase().trim();
-    const matchSearch = search === "" || (i.caseName || "").toLowerCase().includes(search) || (i.plaintiff || "").toLowerCase().includes(search) || (i.defendant || "").toLowerCase().includes(search) || (i.judge || "").toLowerCase().includes(search) || (i.room || "").toLowerCase().includes(search) || (i.createdBy || "").toLowerCase().includes(search) || (i.caseType || "").toLowerCase().includes(search);
-    const matchStatus = statusFilter === 'all' ? true : i.status === statusFilter;
-    const matchCreator = creatorFilter === 'all' ? true : (i.createdBy === creatorFilter);
-    let matchDate = true;
-    if (startDate || endDate) {
-      const itemDateStr = i.datetime ? i.datetime.split('T')[0] : null;
-      if (!itemDateStr) { matchDate = false; } 
-      else {
-        const itemTime = moment(itemDateStr).startOf('day').valueOf();
-        const start = startDate ? moment(startDate).startOf('day').valueOf() : 0;
-        const end = endDate ? moment(endDate).startOf('day').valueOf() : Infinity;
-        if (itemTime < start || itemTime > end) matchDate = false;
+  // ĐÃ SỬA: SỬ DỤNG USEMEMO CHO SỔ THỤ LÝ (GIỐNG VỚI LỊCH) ĐỂ TỐI ƯU HIỆU NĂNG
+  const processedSchedule = useMemo(() => {
+    return schedule.filter(i => {
+      const search = (searchQuery || "").toLowerCase().trim();
+      const matchSearch = search === "" || (i.caseName || "").toLowerCase().includes(search) || (i.plaintiff || "").toLowerCase().includes(search) || (i.defendant || "").toLowerCase().includes(search) || (i.judge || "").toLowerCase().includes(search) || (i.room || "").toLowerCase().includes(search) || (i.createdBy || "").toLowerCase().includes(search) || (i.caseType || "").toLowerCase().includes(search);
+      const matchStatus = statusFilter === 'all' ? true : i.status === statusFilter;
+      const matchCreator = creatorFilter === 'all' ? true : (i.createdBy === creatorFilter);
+      let matchDate = true;
+      if (startDate || endDate) {
+        const itemDateStr = i.datetime ? i.datetime.split('T')[0] : null;
+        if (!itemDateStr) { matchDate = false; } 
+        else {
+          const itemTime = moment(itemDateStr).startOf('day').valueOf();
+          const start = startDate ? moment(startDate).startOf('day').valueOf() : 0;
+          const end = endDate ? moment(endDate).startOf('day').valueOf() : Infinity;
+          if (itemTime < start || itemTime > end) matchDate = false;
+        }
       }
-    }
-    return matchSearch && matchStatus && matchDate && matchCreator;
-  }).sort((a, b) => {
-    const dateA = a.datetime ? new Date(a.datetime).getTime() : 0;
-    const dateB = b.datetime ? new Date(b.datetime).getTime() : 0;
-    if (a.status === 'pending' && b.status === 'pending') return dateA - dateB;
-    if (a.status !== 'pending' && b.status !== 'pending') return dateB - dateA;
-    return a.status === 'pending' ? -1 : 1;
-  });
+      return matchSearch && matchStatus && matchDate && matchCreator;
+    }).sort((a, b) => {
+      const dateA = a.datetime ? new Date(a.datetime).getTime() : 0;
+      const dateB = b.datetime ? new Date(b.datetime).getTime() : 0;
+      if (a.status === 'pending' && b.status === 'pending') return dateA - dateB;
+      if (a.status !== 'pending' && b.status !== 'pending') return dateB - dateA;
+      return a.status === 'pending' ? -1 : 1;
+    });
+  }, [schedule, searchQuery, statusFilter, creatorFilter, startDate, endDate]);
 
   const exportToExcel = () => {
     if (schedule.length === 0) return showToast("Không có dữ liệu để xuất!", "error");
@@ -257,7 +251,6 @@ export default function PremiumCourtApp() {
 
   const CHART_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899', '#6366f1', '#84cc16', '#14b8a6', '#d946ef', '#0ea5e9', '#f43f5e', '#eab308', '#64748b'];
 
-  // SỬ DỤNG USEMEMO ĐỂ ĐÓNG BĂNG BỘ NHỚ LỊCH - CHỐNG CRASH TRÌNH DUYỆT
   const calendarEvents = useMemo(() => {
     return schedule
       .filter(i => i.datetime && i.status !== 'postponed')
@@ -345,18 +338,21 @@ export default function PremiumCourtApp() {
 
         <div className="p-4 md:p-12 flex-1">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white p-8 border shadow-sm border-l-8 border-l-blue-900"><p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Tổng vụ án</p><p className="text-4xl font-black text-gray-950">{schedule.length}</p></div>
-            <div className="bg-white p-8 border shadow-sm border-l-8 border-l-amber-500"><p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Chờ xử</p><p className="text-4xl font-black text-amber-600">{pendingCases.length}</p></div>
-            <div className="bg-gradient-to-br from-red-500 to-red-700 text-white p-8 shadow-xl transform transition-all hover:scale-105"><p className="text-red-100 text-sm font-black uppercase mb-2 tracking-widest">Sắp xử (24h)</p><p className="text-4xl font-black">{urgentCount}</p></div>
-            <div className="bg-white p-8 border shadow-sm border-l-8 border-l-green-500"><p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Đã xong</p><p className="text-4xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p></div>
+            <div className="bg-white p-8 border shadow-sm border-l-8 border-l-blue-900 rounded-xl"><p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Tổng vụ án</p><p className="text-4xl font-black text-gray-950">{schedule.length}</p></div>
+            <div className="bg-white p-8 border shadow-sm border-l-8 border-l-amber-500 rounded-xl"><p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Chờ xử</p><p className="text-4xl font-black text-amber-600">{pendingCases.length}</p></div>
+            <div className="bg-gradient-to-br from-red-500 to-red-700 text-white p-8 shadow-xl transform transition-all hover:scale-105 rounded-xl"><p className="text-red-100 text-sm font-black uppercase mb-2 tracking-widest">Sắp xử (24h)</p><p className="text-4xl font-black">{urgentCount}</p></div>
+            <div className="bg-white p-8 border shadow-sm border-l-8 border-l-green-500 rounded-xl"><p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Đã xong</p><p className="text-4xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p></div>
           </div>
 
-          <div className="bg-white p-6 md:p-8 border shadow-sm mb-12">
-             <h3 className="text-lg md:text-xl font-black uppercase text-blue-950 flex items-center gap-4 mb-8"><span className="w-2 h-8 bg-blue-950"></span>Bảng thống kê tổng hợp</h3>
+          {/* ĐÃ SỬA: XÓA ĐƯỜNG KẺ, CHIA THÀNH 2 CỘT NGANG HÀNG NHAU */}
+          <div className="bg-white p-6 md:p-8 border shadow-xl rounded-xl mb-12">
+             <h3 className="text-lg md:text-xl font-black uppercase text-blue-950 flex items-center gap-4 mb-8">
+               <span className="w-2 h-8 bg-blue-950"></span>
+               Bảng thống kê tổng hợp
+             </h3>
              
-             {/* ĐÃ SỬA LẠI KHUNG GRID ĐỂ KHÔNG BỊ INFINITE LOOP */}
-             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 divide-y xl:divide-y-0 xl:divide-x divide-gray-100">
-                <div className="flex flex-col xl:pr-8 w-full">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="flex flex-col items-center w-full">
                    <h4 className="text-xs font-black uppercase text-gray-400 tracking-widest mb-4 w-full text-center">📊 TỶ LỆ LOẠI ÁN (TỔNG THỂ)</h4>
                    {caseTypeData.length > 0 ? (
                      <div className="w-full h-[250px] relative">
@@ -372,7 +368,7 @@ export default function PremiumCourtApp() {
                    ) : <p className="text-gray-400 font-bold italic text-center mt-10">Chưa có dữ liệu</p>}
                 </div>
 
-                <div className="flex flex-col pt-8 xl:pt-0 xl:pl-8 w-full">
+                <div className="flex flex-col items-center w-full">
                    <h4 className="text-xs font-black uppercase text-gray-400 tracking-widest mb-4 w-full text-center">👨‍⚖️ NĂNG SUẤT THẨM PHÁN (ĐANG CHỜ XỬ)</h4>
                    {judgeData.length > 0 ? (
                      <div className="w-full h-[250px] relative">
@@ -452,7 +448,9 @@ export default function PremiumCourtApp() {
             )}
 
             <div className={`space-y-12 ${!canEdit ? 'xl:col-span-12' : 'xl:col-span-8'}`}>
-              <div className="bg-white p-4 md:p-8 border shadow-2xl h-[500px] overflow-hidden group">
+              
+              {/* ĐÃ SỬA: Bo góc Calendar giống với form đăng ký */}
+              <div className="bg-white p-4 md:p-8 border shadow-xl rounded-xl h-[500px] overflow-hidden group">
                 {canEdit && <p className="text-gray-400 text-xs font-bold text-center mb-2 italic">💡 Bạn có thể dùng chuột kéo thả vụ án để dời sang ngày/giờ khác</p>}
                 {isMounted && localizer ? (
                   <DnDCalendar 
@@ -466,7 +464,8 @@ export default function PremiumCourtApp() {
                 ) : <div className="w-full h-full flex items-center justify-center font-bold text-gray-400">Đang tải bộ lịch...</div>}
               </div>
 
-              <div className="bg-white border border-gray-200 shadow-2xl overflow-hidden flex flex-col h-[850px]">
+              {/* ĐÃ SỬA: Bo góc Sổ Thụ Lý giống với form đăng ký */}
+              <div className="bg-white border border-gray-200 shadow-xl rounded-xl overflow-hidden flex flex-col h-[850px]">
                 <div className="p-6 md:p-8 border-b border-gray-200 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 sticky top-0 bg-white z-10">
                   <h3 className="font-black uppercase text-xl md:text-2xl text-blue-950 flex items-center gap-4 whitespace-nowrap"><span className="w-1.5 h-8 bg-blue-950 rounded-full"></span>Sổ thụ lý</h3>
                   <div className="flex flex-col md:flex-row flex-wrap gap-3 w-full justify-end items-stretch md:items-center">
@@ -593,7 +592,39 @@ export default function PremiumCourtApp() {
            </div>
         </div>
       )}
-
+{showAuditModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[200] p-4 md:p-6" onClick={() => setShowAuditModal(false)}>
+           <div className="w-full max-w-4xl flex flex-col overflow-hidden h-[80vh]" onClick={e => e.stopPropagation()} style={{ background: 'rgba(255, 255, 255, 0.95)', border: '1px solid rgba(255, 255, 255, 0.6)', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)' }}>
+              <div className="p-6 md:p-8 flex justify-between items-center bg-slate-800 text-white">
+                <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3">📋 Nhật ký hoạt động hệ thống</h3>
+                <button onClick={() => setShowAuditModal(false)} className="bg-red-500 px-4 py-2 text-sm font-black rounded shadow hover:bg-red-600">ĐÓNG</button>
+              </div>
+              <div className="flex-1 overflow-auto p-6 md:p-8 bg-slate-50">
+                {auditLogs.length === 0 ? (
+                  <p className="text-center font-bold text-gray-400 mt-10">Chưa có dữ liệu nhật ký nào được ghi lại.</p>
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-white sticky top-0 shadow-sm z-10 text-xs font-black uppercase text-gray-500">
+                      <tr><th className="p-4 border-b">Thời gian</th><th className="p-4 border-b">Tài khoản</th><th className="p-4 border-b">Hành động</th><th className="p-4 border-b w-1/2">Chi tiết</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {auditLogs.map((log, idx) => (
+                        <tr key={idx} className="hover:bg-blue-50 transition-colors">
+                          <td className="p-4 font-bold text-sm text-gray-700">{moment(log.timestamp).format("HH:mm:ss DD/MM/YYYY")}</td>
+                          <td className="p-4 font-bold text-sm text-blue-700">{log.user ? log.user.split('@')[0] : "---"}</td>
+                          <td className="p-4">
+                            <span className={`px-2 py-1 text-[10px] font-black uppercase rounded ${log.action.includes('XÓA') ? 'bg-red-100 text-red-700' : log.action.includes('KÉO THẢ') ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>{log.action}</span>
+                          </td>
+                          <td className="p-4 text-sm font-medium text-gray-600">{log.details}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+           </div>
+        </div>
+      )}
       {showPwdModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4 md:p-6" onClick={() => setShowPwdModal(false)}>
            <div className="w-full max-w-md flex flex-col overflow-hidden transition-all transform md:scale-105" onClick={e => e.stopPropagation()} style={{ background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255, 255, 255, 0.6)', borderRadius: '28px', boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)' }}>
