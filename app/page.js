@@ -47,10 +47,13 @@ export default function PremiumCourtApp() {
   };
   const [form, setForm] = useState(initialForm);
 
+  // ĐÃ SỬA: Giảm kích thước khung nhập liệu xuống 80%
   const textStyle = "text-[15px] font-medium text-gray-800";
-  const inputBase = `w-full border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all ${textStyle}`;
-  const labelStyle = "block text-sm font-semibold text-gray-700 mb-2";
-  const filterStyle = "border border-gray-300 rounded-md px-4 py-2.5 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[14px] font-medium text-gray-800 w-full xl:w-auto cursor-pointer";
+  const inputBase = `w-[80%] border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all ${textStyle}`;
+  const labelStyle = "block text-sm font-semibold text-gray-700 mb-3"; // Tăng giãn cách chữ và ô nhập
+  
+  // ĐÃ SỬA: Giảm kích thước khung bộ lọc Sổ thụ lý
+  const filterStyle = "border border-gray-300 rounded-md px-4 py-2.5 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[14px] font-medium text-gray-800 w-[80%] xl:w-auto cursor-pointer";
 
   const showToast = (message, type = "success") => {
     setToast({ show: true, message, type });
@@ -180,7 +183,6 @@ export default function PremiumCourtApp() {
 
   const creatorsList = [...new Set(schedule.map(i => i.createdBy).filter(Boolean))];
 
-  // ĐÃ SỬA: SỬ DỤNG USEMEMO CHO SỔ THỤ LÝ (GIỐNG VỚI LỊCH) ĐỂ TỐI ƯU HIỆU NĂNG
   const processedSchedule = useMemo(() => {
     return schedule.filter(i => {
       const search = (searchQuery || "").toLowerCase().trim();
@@ -322,17 +324,21 @@ export default function PremiumCourtApp() {
       </aside>
 
       <main className="flex-1 xl:ml-80 flex flex-col min-h-screen relative z-10">
-        <header className="bg-white/95 backdrop-blur-md h-24 shadow-sm flex items-center justify-between px-4 md:px-8 xl:px-12 sticky top-0 z-30 border-b border-gray-200 w-full">
+        
+        {/* ĐÃ SỬA: Thanh Header đổi nền đỏ nổi bật, chữ trắng */}
+        <header className="bg-red-700 backdrop-blur-md h-24 shadow-md flex items-center justify-between px-4 md:px-8 xl:px-12 sticky top-0 z-30 border-b border-red-800 w-full">
           <div className="flex-1 flex justify-start items-center gap-2 xl:hidden">
-             <button onClick={() => setShowPwdModal(true)} className="bg-blue-50 text-blue-700 px-3 py-2 text-[10px] sm:text-xs font-black uppercase border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm">🔑 Đổi MK</button>
-             <button onClick={handleLogout} className="bg-red-50 text-red-600 border border-red-100 px-3 py-2 text-[10px] sm:text-xs font-black uppercase hover:bg-red-600 hover:text-white transition-all shadow-sm">🚪 Đăng xuất</button>
+             <button onClick={() => setShowPwdModal(true)} className="bg-red-50 text-red-700 px-3 py-2 text-[10px] sm:text-xs font-black uppercase hover:bg-red-800 hover:text-white transition-all shadow-sm">🔑 Đổi MK</button>
+             <button onClick={handleLogout} className="bg-gray-100 text-gray-800 px-3 py-2 text-[10px] sm:text-xs font-black uppercase hover:bg-gray-800 hover:text-white transition-all shadow-sm">🚪 Đăng xuất</button>
           </div>
           <div className="flex-1 hidden xl:block"></div>
           <div className="flex-[2] text-center px-2">
-            <h1 className="font-black text-[14px] sm:text-[16px] md:text-xl xl:text-2xl uppercase text-blue-950 truncate">HỆ THỐNG QUẢN LÝ LỊCH TRỰC TUYẾN</h1>
+            <h1 className="font-black text-[14px] sm:text-[16px] md:text-xl xl:text-2xl uppercase text-white truncate drop-shadow-md">HỆ THỐNG QUẢN LÝ LỊCH TRỰC TUYẾN</h1>
           </div>
           <div className="flex-1 flex items-center justify-end">
-             <div className="bg-blue-50 text-blue-700 px-3 py-2 sm:px-4 sm:py-2 md:px-6 md:py-3 font-black text-[10px] sm:text-xs md:text-sm border border-blue-100 uppercase tracking-widest text-center w-max">Cần Thơ: {moment().format("DD/MM/YYYY")}</div>
+             <div className="bg-red-900 text-white px-3 py-2 sm:px-4 sm:py-2 md:px-6 md:py-3 font-black text-[10px] sm:text-xs md:text-sm border border-red-500 uppercase tracking-widest text-center w-max shadow-inner">
+               Cần Thơ: {moment().format("DD/MM/YYYY")}
+             </div>
           </div>
         </header>
 
@@ -344,7 +350,6 @@ export default function PremiumCourtApp() {
             <div className="bg-white p-8 border shadow-sm border-l-8 border-l-green-500 rounded-xl"><p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Đã xong</p><p className="text-4xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p></div>
           </div>
 
-          {/* ĐÃ SỬA: XÓA ĐƯỜNG KẺ, CHIA THÀNH 2 CỘT NGANG HÀNG NHAU */}
           <div className="bg-white p-6 md:p-8 border shadow-xl rounded-xl mb-12">
              <h3 className="text-lg md:text-xl font-black uppercase text-blue-950 flex items-center gap-4 mb-8">
                <span className="w-2 h-8 bg-blue-950"></span>
@@ -391,13 +396,15 @@ export default function PremiumCourtApp() {
               <div className="xl:col-span-4">
                 <div className="bg-white p-6 md:p-8 border shadow-xl sticky top-36 rounded-xl">
                   <h2 className="font-black text-xl text-blue-950 uppercase mb-8 flex items-center gap-4"><span className="w-1.5 h-8 bg-blue-600 rounded-full"></span>{editingId ? "Cập nhật hồ sơ" : "Đăng ký lịch xét xử"}</h2>
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 gap-6">
+                  
+                  {/* ĐÃ SỬA: Tăng giãn cách dòng bằng space-y-10 và gap-8 */}
+                  <div className="space-y-10">
+                    <div className="grid grid-cols-1 gap-8">
                       <div>
                         <label className={labelStyle}>Thời gian xét xử <span className="text-red-500">*</span></label>
-                        <div className="flex gap-3">
-                          <input type="date" value={form.datetime ? form.datetime.split('T')[0] : ""} onChange={e => { const time = form.datetime && form.datetime.includes('T') ? form.datetime.split('T')[1] : '07:30'; setForm({...form, datetime: `${e.target.value}T${time}`}); }} className={inputBase} />
-                          <select value={form.datetime && form.datetime.includes('T') ? form.datetime.split('T')[1] : "07:30"} onChange={e => { const date = form.datetime ? form.datetime.split('T')[0] : moment().format('YYYY-MM-DD'); setForm({...form, datetime: `${date}T${e.target.value}`}); }} className={`${inputBase} w-1/3`}>
+                        <div className="flex gap-4 w-[80%]">
+                          <input type="date" value={form.datetime ? form.datetime.split('T')[0] : ""} onChange={e => { const time = form.datetime && form.datetime.includes('T') ? form.datetime.split('T')[1] : '07:30'; setForm({...form, datetime: `${e.target.value}T${time}`}); }} className="w-[65%] border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[15px] font-medium text-gray-800" />
+                          <select value={form.datetime && form.datetime.includes('T') ? form.datetime.split('T')[1] : "07:30"} onChange={e => { const date = form.datetime ? form.datetime.split('T')[0] : moment().format('YYYY-MM-DD'); setForm({...form, datetime: `${date}T${e.target.value}`}); }} className="w-[35%] border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[15px] font-medium text-gray-800">
                             <option value="07:30">07:30</option><option value="08:00">08:00</option><option value="08:30">08:30</option><option value="09:00">09:00</option><option value="09:30">09:30</option><option value="10:00">10:00</option><option value="10:30">10:30</option><option value="11:00">11:00</option><option value="13:30">13:30</option><option value="14:00">14:00</option><option value="14:30">14:30</option><option value="15:00">15:00</option><option value="15:30">15:30</option><option value="16:00">16:00</option><option value="16:30">16:30</option><option value="17:00">17:00</option>
                           </select>
                         </div>
@@ -407,7 +414,8 @@ export default function PremiumCourtApp() {
                         <select value={form.room} onChange={e => setForm({...form, room: e.target.value})} className={inputBase}><option value="Trụ sở">🏢 TRỤ SỞ</option><option value="Chi nhánh">🏢 CHI NHÁNH</option><option value="Dự phòng">⚠️ DỰ PHÒNG</option></select>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                       <div>
                         <label className={labelStyle}>Loại án <span className="text-red-500">*</span></label>
                         <select value={form.caseType} onChange={e => setForm({...form, caseType: e.target.value})} className={inputBase}><option value="Hình sự">Hình sự</option><option value="Dân sự">Dân sự</option><option value="Hành chính">Hành chính</option><option value="Hôn nhân & GĐ">Hôn nhân & GĐ</option><option value="Kinh tế">Kinh tế</option></select>
@@ -417,26 +425,30 @@ export default function PremiumCourtApp() {
                         <select value={form.trialCount} onChange={e => setForm({...form, trialCount: e.target.value})} className={inputBase}><option value="Lần 1">Lần 1</option><option value="Lần 2">Lần 2</option><option value="Mở lại">Mở lại</option></select>
                       </div>
                     </div>
+                    
                     <div><label className={labelStyle}>Trích yếu vụ án / Tội danh <span className="text-red-500">*</span></label><textarea value={form.caseName} onChange={e => setForm({...form, caseName: e.target.value})} className={inputBase} rows="3" placeholder="Ví dụ: Tranh chấp hợp đồng vay tài sản..." /></div>
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                       <div><label className={labelStyle}>Nguyên đơn đầu vụ</label><input value={form.plaintiff} onChange={e => setForm({...form, plaintiff: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
                       <div><label className={labelStyle}>Bị đơn đầu vụ</label><input value={form.defendant} onChange={e => setForm({...form, defendant: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
                     </div>
-                    <div className="pt-6 mt-2 border-t border-gray-200">
-                       <h3 className="text-base font-bold text-blue-900 mb-5">Thành phần Hội đồng xét xử</h3>
-                       <div className="space-y-6">
-                          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    
+                    <div className="pt-8 mt-4 border-t border-gray-200">
+                       <h3 className="text-base font-bold text-blue-900 mb-8">Thành phần Hội đồng xét xử</h3>
+                       <div className="space-y-8">
+                          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                             <div><label className={labelStyle}>Thẩm phán chủ tọa</label><input list="judges-list" value={form.judge} onChange={e => setForm({...form, judge: e.target.value})} className={inputBase} placeholder="Chọn hoặc nhập..." /></div>
                             <div><label className={labelStyle}>Thư ký phiên tòa</label><input list="clerks-list" value={form.clerk} onChange={e => setForm({...form, clerk: e.target.value})} className={inputBase} placeholder="Chọn hoặc nhập..." /></div>
                           </div>
-                          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                             <div><label className={labelStyle}>Hội thẩm nhân dân 1</label><input value={form.juror1} onChange={e => setForm({...form, juror1: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
                             <div><label className={labelStyle}>Hội thẩm nhân dân 2</label><input value={form.juror2} onChange={e => setForm({...form, juror2: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
                           </div>
                           <div><label className={labelStyle}>Kiểm sát viên</label><input list="prosecutors-list" value={form.prosecutor} onChange={e => setForm({...form, prosecutor: e.target.value})} className={inputBase} placeholder="Chọn hoặc nhập..." /></div>
                        </div>
                     </div>
-                    <div className="pt-4">
+                    
+                    <div className="pt-6">
                        <button onClick={handleSubmit} disabled={hasConflict} className={`w-full text-white font-bold py-4 rounded-md uppercase text-lg shadow-lg transition-all active:scale-95 ${hasConflict ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
                          {editingId ? "Cập nhật thông tin" : "Lưu vào hệ thống"}
                        </button>
@@ -449,7 +461,6 @@ export default function PremiumCourtApp() {
 
             <div className={`space-y-12 ${!canEdit ? 'xl:col-span-12' : 'xl:col-span-8'}`}>
               
-              {/* ĐÃ SỬA: Bo góc Calendar giống với form đăng ký */}
               <div className="bg-white p-4 md:p-8 border shadow-xl rounded-xl h-[500px] overflow-hidden group">
                 {canEdit && <p className="text-gray-400 text-xs font-bold text-center mb-2 italic">💡 Bạn có thể dùng chuột kéo thả vụ án để dời sang ngày/giờ khác</p>}
                 {isMounted && localizer ? (
@@ -464,12 +475,13 @@ export default function PremiumCourtApp() {
                 ) : <div className="w-full h-full flex items-center justify-center font-bold text-gray-400">Đang tải bộ lịch...</div>}
               </div>
 
-              {/* ĐÃ SỬA: Bo góc Sổ Thụ Lý giống với form đăng ký */}
               <div className="bg-white border border-gray-200 shadow-xl rounded-xl overflow-hidden flex flex-col h-[850px]">
                 <div className="p-6 md:p-8 border-b border-gray-200 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 sticky top-0 bg-white z-10">
                   <h3 className="font-black uppercase text-xl md:text-2xl text-blue-950 flex items-center gap-4 whitespace-nowrap"><span className="w-1.5 h-8 bg-blue-950 rounded-full"></span>Sổ thụ lý</h3>
-                  <div className="flex flex-col md:flex-row flex-wrap gap-3 w-full justify-end items-stretch md:items-center">
-                    <div className="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-2.5 bg-white w-full xl:w-auto focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
+                  
+                  {/* ĐÃ SỬA: Tăng khoảng cách các nút lọc */}
+                  <div className="flex flex-col md:flex-row flex-wrap gap-5 w-full justify-end items-stretch md:items-center">
+                    <div className="flex items-center gap-3 border border-gray-300 rounded-md px-4 py-2.5 bg-white w-[80%] xl:w-auto focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
                       <span className="text-xs font-bold text-gray-500 uppercase">Từ:</span>
                       <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="outline-none text-sm font-medium bg-transparent text-gray-800 w-full" />
                       <span className="text-xs font-bold text-gray-500 uppercase ml-1">Đến:</span>
@@ -479,7 +491,7 @@ export default function PremiumCourtApp() {
                     <select value={creatorFilter} onChange={e => setCreatorFilter(e.target.value)} className={filterStyle}><option value="all">👤 Tất cả người nhập</option>{creatorsList.map(email => <option key={email} value={email}>{email.split('@')[0]}</option>)}</select>
                     <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={filterStyle}><option value="pending">⏳ Đang chờ xử</option><option value="postponed">⏸ Đã hoãn</option><option value="completed">✅ Đã xử xong</option><option value="all">📁 Tất cả vụ án</option></select>
                     <input type="text" placeholder="Tìm kiếm tự do..." onChange={e => setSearchQuery(e.target.value)} className={`${filterStyle} xl:w-64`} />
-                    <button onClick={exportToExcel} className="bg-green-600 text-white px-6 py-2.5 font-bold uppercase rounded-md shadow-sm hover:bg-green-700 transition-all flex items-center justify-center gap-2 w-full xl:w-auto active:scale-95 text-[14px]">📊 Xuất Excel</button>
+                    <button onClick={exportToExcel} className="bg-green-600 text-white px-6 py-2.5 font-bold uppercase rounded-md shadow-sm hover:bg-green-700 transition-all flex items-center justify-center gap-2 w-[80%] xl:w-auto active:scale-95 text-[14px]">📊 Xuất Excel</button>
                   </div>
                 </div>
 
@@ -487,10 +499,11 @@ export default function PremiumCourtApp() {
                   <table className="w-full text-left border-collapse min-w-[900px] border-b border-gray-200">
                     <thead className="bg-gray-100 text-[12px] font-black uppercase text-gray-500 border-b border-gray-300 sticky top-0 z-10">
                       <tr className="divide-x divide-gray-200">
-                        <th className="p-4 md:p-6 w-[15%] text-center">Thời gian / Địa điểm</th>
-                        <th className="p-4 md:p-6 w-[40%]">Nội dung vụ việc</th>
-                        <th className="p-4 md:p-6 w-[30%]">Hội đồng & Thư ký</th>
-                        {canEdit && <th className="p-4 md:p-6 w-[15%] text-center">Tác vụ</th>}
+                        {/* ĐÃ SỬA: Tăng padding trong bảng để tạo độ thông thoáng (p-6 md:p-8) */}
+                        <th className="p-6 md:p-8 w-[15%] text-center">Thời gian / Địa điểm</th>
+                        <th className="p-6 md:p-8 w-[40%]">Nội dung vụ việc</th>
+                        <th className="p-6 md:p-8 w-[30%]">Hội đồng & Thư ký</th>
+                        {canEdit && <th className="p-6 md:p-8 w-[15%] text-center">Tác vụ</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
@@ -498,8 +511,8 @@ export default function PremiumCourtApp() {
                        const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
                         return (
                         <tr key={item.id} className={`transition-all group divide-x divide-gray-200 ${item.status === 'completed' || item.status === 'postponed' ? 'opacity-70 bg-gray-100/50' : isRowUrgent ? 'bg-red-50 hover:bg-red-100' : 'bg-white hover:bg-blue-50/30'}`}>
-                          <td className={`p-4 md:p-6 align-top text-center ${isRowUrgent ? 'border-l-4 border-l-red-500' : ''}`}>
-                            <div className="space-y-2">
+                          <td className={`p-6 md:p-8 align-top text-center ${isRowUrgent ? 'border-l-4 border-l-red-500' : ''}`}>
+                            <div className="space-y-4">
                               {item.status === 'postponed' ? (
                                 <div className="text-amber-600 font-bold text-base animate-pulse">⏸ ĐÃ HOÃN</div>
                               ) : (
@@ -508,11 +521,11 @@ export default function PremiumCourtApp() {
                                   <div className="text-blue-600 font-bold text-base">🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</div>
                                 </>
                               )}
-                              <div className="font-bold text-gray-500 uppercase text-sm mt-3">{item.room || "---"}</div>
+                              <div className="font-bold text-gray-500 uppercase text-sm mt-4">{item.room || "---"}</div>
                             </div>
                           </td>
-                          <td className="p-4 md:p-6 align-top">
-                            <div className="space-y-3">
+                          <td className="p-6 md:p-8 align-top">
+                            <div className="space-y-4">
                               <div className="font-bold uppercase text-gray-900 text-base leading-snug group-hover:text-blue-800 transition-colors">
                                 {item.status === 'completed' && <span className="text-green-600 mr-2">✅</span>}
                                 {item.status === 'postponed' && <span className="text-amber-500 mr-2">⏸</span>}
@@ -522,18 +535,18 @@ export default function PremiumCourtApp() {
                               <div className="text-gray-700 font-semibold text-sm">
                                 {item.caseType || "---"} / {item.trialCount || "Lần 1"}
                               </div>
-                              <div className="text-sm text-gray-700 space-y-1.5 pt-1">
+                              <div className="text-sm text-gray-700 space-y-2 pt-2">
                                 <p><span className="font-semibold text-gray-500">NĐ:</span> {item.plaintiff || "N/A"}</p>
                                 <p><span className="font-semibold text-gray-500">BĐ:</span> {item.defendant || "N/A"}</p>
                               </div>
-                              <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-start gap-3 text-xs font-medium text-gray-500 italic">
+                              <div className="pt-3 flex flex-col sm:flex-row sm:items-center justify-start gap-4 text-xs font-medium text-gray-500 italic">
                                  <span>✍️ Nhập bởi: <span className="font-bold text-gray-600">{item.createdBy ? item.createdBy.split('@')[0] : "Hệ thống"}</span></span>
                                  {item.updatedBy && <span>🔄 Sửa bởi: <span className="font-bold text-gray-600">{item.updatedBy.split('@')[0]}</span></span>}
                               </div>
                             </div>
                           </td>
-                          <td className="p-4 md:p-6 align-top">
-                            <div className="space-y-3 text-sm md:text-base text-gray-800">
+                          <td className="p-6 md:p-8 align-top">
+                            <div className="space-y-4 text-sm md:text-base text-gray-800">
                               <div className="flex gap-2"><span className="font-semibold text-blue-700 w-8 shrink-0">TP:</span> <span className={`font-bold ${isRowUrgent ? 'text-red-900' : 'text-gray-900'}`}>{item.judge || "---"}</span></div>
                               <div className="flex gap-2"><span className="font-semibold text-gray-500 w-8 shrink-0">HT:</span> <span className="font-medium text-gray-700">{item.juror1 || "---"}, {item.juror2 || "---"}</span></div>
                               <div className="flex gap-2"><span className="font-semibold text-gray-500 w-8 shrink-0">TK:</span> <span className="font-medium text-gray-700">{item.clerk || "---"}</span></div>
@@ -541,8 +554,8 @@ export default function PremiumCourtApp() {
                             </div>
                           </td>
                           {canEdit && (
-                            <td className="p-4 md:p-6 text-center align-top">
-                              <div className="flex flex-col gap-3">
+                            <td className="p-6 md:p-8 text-center align-top">
+                              <div className="flex flex-col gap-4">
                                 {item.status === 'pending' || !item.status ? (
                                   <>
                                     <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-50 text-green-700 px-3 py-2.5 font-black uppercase text-xs border border-green-200 hover:bg-green-600 hover:text-white transition-all rounded">✔ XONG</button>
