@@ -47,14 +47,12 @@ export default function PremiumCourtApp() {
   };
   const [form, setForm] = useState(initialForm);
 
-  // ĐÃ SỬA: Giảm kích thước khung nhập liệu xuống 80% và CĂN GIỮA (mx-auto)
+  // ĐÃ SỬA: Đưa input về 100% để tự lấp đầy khung 80% phía ngoài
   const textStyle = "text-[15px] font-medium text-gray-800";
-  const inputBase = `w-[80%] mx-auto border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all ${textStyle}`;
-  // ĐÃ SỬA: Căn giữa tiêu đề nhãn (text-center)
+  const inputBase = `w-full border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all ${textStyle}`;
   const labelStyle = "block text-center text-sm font-semibold text-gray-700 mb-3"; 
   
-  // ĐÃ SỬA: Giảm kích thước khung bộ lọc Sổ thụ lý và CĂN GIỮA
-  const filterStyle = "border border-gray-300 rounded-md px-4 py-2.5 bg-white mx-auto outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[14px] font-medium text-gray-800 w-[80%] xl:w-auto cursor-pointer";
+  const filterStyle = "border border-gray-300 rounded-md px-4 py-2.5 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[14px] font-medium text-gray-800 w-full md:w-auto cursor-pointer";
 
   const showToast = (message, type = "success") => {
     setToast({ show: true, message, type });
@@ -326,7 +324,6 @@ export default function PremiumCourtApp() {
 
       <main className="flex-1 xl:ml-80 flex flex-col min-h-screen relative z-10">
         
-        {/* ĐÃ SỬA: Thanh Header TRẢ VỀ NỀN TRẮNG, chữ xanh đen truyền thống */}
         <header className="bg-white/95 backdrop-blur-md h-24 shadow-sm flex items-center justify-between px-4 md:px-8 xl:px-12 sticky top-0 z-30 border-b border-gray-200 w-full">
           <div className="flex-1 flex justify-start items-center gap-2 xl:hidden">
              <button onClick={() => setShowPwdModal(true)} className="bg-blue-50 text-blue-700 px-3 py-2 text-[10px] sm:text-xs font-black uppercase border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm">🔑 Đổi MK</button>
@@ -396,15 +393,14 @@ export default function PremiumCourtApp() {
             {canEdit && (
               <div className="xl:col-span-4">
                 <div className="bg-white p-6 md:p-8 border shadow-xl sticky top-36 rounded-xl">
-                  <h2 className="font-black text-xl text-blue-950 uppercase mb-8 flex items-center gap-4"><span className="w-1.5 h-8 bg-blue-600 rounded-full"></span>{editingId ? "Cập nhật hồ sơ" : "Đăng ký lịch xét xử"}</h2>
+                  <h2 className="font-black text-xl text-blue-950 uppercase mb-8 flex items-center justify-center gap-4"><span className="w-1.5 h-8 bg-blue-600 rounded-full"></span>{editingId ? "Cập nhật hồ sơ" : "Đăng ký lịch xét xử"}</h2>
                   
-                  {/* ĐÃ SỬA: Giữ nguyên giãn cách dòng rộng rãi và CĂN GIỮA các ô nhập liệu */}
-                  <div className="space-y-10">
+                  {/* ĐÃ SỬA: Bọc toàn bộ form bằng thẻ div rỗng 80% canh giữa (mx-auto) */}
+                  <div className="w-[90%] xl:w-[80%] mx-auto space-y-10">
                     <div className="grid grid-cols-1 gap-8">
                       <div>
                         <label className={labelStyle}>Thời gian xét xử <span className="text-red-500">*</span></label>
-                        {/* ĐÃ SỬA: Căn giữa wrapper thời gian (mx-auto) */}
-                        <div className="flex gap-4 w-[80%] mx-auto">
+                        <div className="flex gap-4 w-full">
                           <input type="date" value={form.datetime ? form.datetime.split('T')[0] : ""} onChange={e => { const time = form.datetime && form.datetime.includes('T') ? form.datetime.split('T')[1] : '07:30'; setForm({...form, datetime: `${e.target.value}T${time}`}); }} className="w-[65%] border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[15px] font-medium text-gray-800" />
                           <select value={form.datetime && form.datetime.includes('T') ? form.datetime.split('T')[1] : "07:30"} onChange={e => { const date = form.datetime ? form.datetime.split('T')[0] : moment().format('YYYY-MM-DD'); setForm({...form, datetime: `${date}T${e.target.value}`}); }} className="w-[35%] border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[15px] font-medium text-gray-800">
                             <option value="07:30">07:30</option><option value="08:00">08:00</option><option value="08:30">08:30</option><option value="09:00">09:00</option><option value="09:30">09:30</option><option value="10:00">10:00</option><option value="10:30">10:30</option><option value="11:00">11:00</option><option value="13:30">13:30</option><option value="14:00">14:00</option><option value="14:30">14:30</option><option value="15:00">15:00</option><option value="15:30">15:30</option><option value="16:00">16:00</option><option value="16:30">16:30</option><option value="17:00">17:00</option>
@@ -413,7 +409,6 @@ export default function PremiumCourtApp() {
                       </div>
                       <div>
                         <label className={labelStyle}>Phòng xử / Địa điểm <span className="text-red-500">*</span></label>
-                        {/* mx-auto nằm trong inputBase */}
                         <select value={form.room} onChange={e => setForm({...form, room: e.target.value})} className={inputBase}><option value="Trụ sở">🏢 TRỤ SỞ</option><option value="Chi nhánh">🏢 CHI NHÁNH</option><option value="Dự phòng">⚠️ DỰ PHÒNG</option></select>
                       </div>
                     </div>
@@ -437,7 +432,7 @@ export default function PremiumCourtApp() {
                     </div>
                     
                     <div className="pt-8 mt-4 border-t border-gray-200">
-                       <h3 className="text-base font-bold text-blue-900 mb-8 w-[80%] mx-auto text-center">Thành phần Hội đồng xét xử</h3>
+                       <h3 className="text-base font-bold text-blue-900 mb-8 text-center">Thành phần Hội đồng xét xử</h3>
                        <div className="space-y-8">
                           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                             <div><label className={labelStyle}>Thẩm phán chủ tọa</label><input list="judges-list" value={form.judge} onChange={e => setForm({...form, judge: e.target.value})} className={inputBase} placeholder=" Chọn hoặc nhập..." /></div>
@@ -452,7 +447,7 @@ export default function PremiumCourtApp() {
                     </div>
                     
                     <div className="pt-6">
-                       <button onClick={handleSubmit} disabled={hasConflict} className={`w-[80%] mx-auto block text-white font-bold py-4 rounded-md uppercase text-lg shadow-lg transition-all active:scale-95 ${hasConflict ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                       <button onClick={handleSubmit} disabled={hasConflict} className={`w-full block text-white font-bold py-4 rounded-md uppercase text-lg shadow-lg transition-all active:scale-95 ${hasConflict ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
                          {editingId ? "Cập nhật thông tin" : "Lưu vào hệ thống"}
                        </button>
                        {isRoomConflict && <p className="text-red-500 text-sm font-bold text-center mt-3 animate-pulse">⚠️ Trùng phòng xét xử tại khung giờ này!</p>}
@@ -479,25 +474,22 @@ export default function PremiumCourtApp() {
               </div>
 
               <div className="bg-white border border-gray-200 shadow-xl rounded-xl overflow-hidden flex flex-col h-[850px]">
-                <div className="p-6 md:p-8 border-b border-gray-200 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 sticky top-0 bg-white z-10">
-                  <h3 className="font-black uppercase text-xl md:text-2xl text-blue-950 flex items-center gap-4 whitespace-nowrap"><span className="w-1.5 h-8 bg-blue-950 rounded-full"></span>Sổ thụ lý</h3>
+                {/* ĐÃ SỬA: Sổ thụ lý Căn Giữa */}
+                <div className="p-6 md:p-8 border-b border-gray-200 flex flex-col items-center gap-6 sticky top-0 bg-white z-10">
+                  <h3 className="font-black uppercase text-xl md:text-2xl text-blue-950 flex items-center justify-center gap-4 whitespace-nowrap"><span className="w-1.5 h-8 bg-blue-950 rounded-full"></span>Sổ thụ lý</h3>
                   
-                  {/* ĐÃ SỬA: Tăng khoảng cách các nút lọc và CĂN GIỮA block bộ lọc ở mobile (justify-center) */}
-                  <div className="flex flex-col items-center md:flex-row flex-wrap gap-5 w-full justify-center md:justify-end">
-                    {/* flex gap-3 mx-auto để căn giữa mobile */}
-                    <div className="flex items-center gap-3 border border-gray-300 rounded-md px-4 py-2.5 bg-white w-[80%] mx-auto xl:mx-0 xl:w-auto focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
+                  <div className="flex flex-col md:flex-row flex-wrap gap-4 w-[90%] xl:w-[80%] mx-auto justify-center items-center">
+                    <div className="flex items-center gap-3 border border-gray-300 rounded-md px-4 py-2.5 bg-white w-full md:w-auto focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
                       <span className="text-xs font-bold text-gray-500 uppercase">Từ:</span>
                       <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="outline-none text-sm font-medium bg-transparent text-gray-800 w-full" />
                       <span className="text-xs font-bold text-gray-500 uppercase ml-1">Đến:</span>
                       <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="outline-none text-sm font-medium bg-transparent text-gray-800 w-full" />
                       {(startDate || endDate) && <button onClick={() => {setStartDate(""); setEndDate("")}} className="text-red-500 font-bold px-1.5 hover:bg-red-50 rounded-full" title="Xóa lộc ngày">✕</button>}
                     </div>
-                    {/* mx-auto nằm trong filterStyle */}
                     <select value={creatorFilter} onChange={e => setCreatorFilter(e.target.value)} className={filterStyle}><option value="all">👤 Tất cả người nhập</option>{creatorsList.map(email => <option key={email} value={email}>{email.split('@')[0]}</option>)}</select>
                     <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={filterStyle}><option value="pending">⏳ Đang chờ xử</option><option value="postponed">⏸ Đã hoãn</option><option value="completed">✅ Đã xử xong</option><option value="all">📁 Tất cả vụ án</option></select>
-                    <input type="text" placeholder="Tìm kiếm tự do..." onChange={e => setSearchQuery(e.target.value)} className={`${filterStyle} xl:w-64`} />
-                    {/* mx-auto block để căn giữa mobile */}
-                    <button onClick={exportToExcel} className="bg-green-600 text-white px-6 py-2.5 font-bold uppercase rounded-md shadow-sm hover:bg-green-700 transition-all flex items-center justify-center gap-2 w-[80%] mx-auto xl:mx-0 xl:w-auto active:scale-95 text-[14px]">📊 Xuất Excel</button>
+                    <input type="text" placeholder="Tìm kiếm tự do..." onChange={e => setSearchQuery(e.target.value)} className={`${filterStyle} w-full md:w-64`} />
+                    <button onClick={exportToExcel} className="bg-green-600 text-white px-6 py-2.5 font-bold uppercase rounded-md shadow-sm hover:bg-green-700 transition-all flex items-center justify-center gap-2 w-full md:w-auto active:scale-95 text-[14px]">📊 Xuất Excel</button>
                   </div>
                 </div>
 
@@ -505,7 +497,6 @@ export default function PremiumCourtApp() {
                   <table className="w-full text-left border-collapse min-w-[900px] border-b border-gray-200">
                     <thead className="bg-gray-100 text-[12px] font-black uppercase text-gray-500 border-b border-gray-300 sticky top-0 z-10">
                       <tr className="divide-x divide-gray-200">
-                        {/* Giữ nguyên padding thông thoáng */}
                         <th className="p-6 md:p-8 w-[15%] text-center">Thời gian / Địa điểm</th>
                         <th className="p-6 md:p-8 w-[40%]">Nội dung vụ việc</th>
                         <th className="p-6 md:p-8 w-[30%]">Hội đồng & Thư ký</th>
