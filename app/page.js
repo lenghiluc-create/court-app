@@ -298,7 +298,7 @@ export default function PremiumCourtApp() {
         }}
       >
         {/* Logo và Tiêu đề */}
-        <img src="/logo-toa-an-nhan-dan-toi-cao.png" alt="Logo" className="mx-auto mb-6 drop-shadow-2xl" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
+        <img src="/logotoaan.jpg" alt="Logo" className="mx-auto mb-6 drop-shadow-2xl" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
         
         {/* Thêm văn bản mới phía trên tiêu đề cũ */}
         <p className="text-2xl text-gray-300 font-serif mb-2 tracking-wide uppercase">TOÀ ÁN NHÂN DÂN THÀNH PHỐ CẦN THƠ</p>
@@ -310,19 +310,19 @@ export default function PremiumCourtApp() {
         {/* Form đăng nhập */}
         <form onSubmit={handleLogin} className="space-y-6 flex flex-col items-center">
           <input 
-            type="email" 
-            placeholder="Email..." 
-            value={loginEmail} 
-            onChange={e => setLoginEmail(e.target.value)} 
-            className="w-full px-6 py-4 outline-none text-xl font-bold placeholder-gray-200"
-            style={{ 
-              backgroundColor: 'rgba(255, 255, 255, 0.1)', 
-              color: '#ffffff', 
-              border: '2px solid rgba(255, 255, 255, 0.5)', 
-              borderRadius: '4px' // Đã thay đổi bo góc thành rất nhẹ
-            }}
-            required 
-          />
+              type="email" 
+              placeholder="Email..." 
+              value={loginEmail} 
+              onChange={e => setLoginEmail(e.target.value)} 
+              className="w-[80%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                color: '#ffffff',
+                border: '2px solid rgba(255, 255, 255, 0.5)',
+                borderRadius: '6px'
+              }}
+              required 
+            />
           <input 
             type="password" 
             placeholder="Mật khẩu..." 
