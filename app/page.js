@@ -50,6 +50,9 @@ export default function PremiumCourtApp() {
   const inputBase = `w-full border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all ${textStyle}`;
   const labelStyle = "block text-sm font-semibold text-gray-700 mb-2";
 
+  // STYLE CHO THANH LỌC BÊN SỔ THỤ LÝ
+  const filterStyle = "border border-gray-300 rounded-md px-4 py-2.5 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[14px] font-medium text-gray-800 w-full xl:w-auto cursor-pointer";
+
   const showToast = (message, type = "success") => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3500);
@@ -600,20 +603,38 @@ const handleDelete = async (id, caseName) => {
               </div>
 
              <div className="bg-white border border-gray-200 shadow-2xl overflow-hidden flex flex-col h-[850px]">
-                <div className="p-6 md:p-8 border-b-2 border-gray-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 sticky top-0 bg-white z-10">
-                  <h3 className="font-black uppercase text-xl md:text-2xl text-blue-950 flex items-center gap-4 whitespace-nowrap"><span className="w-2 h-10 bg-blue-950"></span>Sổ thụ lý</h3>
-                  <div className="flex flex-col md:flex-row flex-wrap gap-4 w-full justify-end items-stretch md:items-center">
-                    <div className="flex items-center gap-2 border-2 border-gray-100 px-4 py-3 bg-white w-full xl:w-auto">
-                      <span className="text-xs font-black text-gray-400 uppercase">Từ:</span>
-                      <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="outline-none text-sm md:text-base font-bold bg-transparent w-full" />
-                      <span className="text-xs font-black text-gray-400 uppercase ml-2">Đến:</span>
-                      <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="outline-none text-sm md:text-base font-bold bg-transparent w-full" />
-                      {(startDate || endDate) && <button onClick={() => {setStartDate(""); setEndDate("")}} className="text-red-500 font-bold px-2 hover:bg-red-50 rounded" title="Xóa lộc ngày">✕</button>}
+                <div className="p-6 md:p-8 border-b border-gray-200 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 sticky top-0 bg-white z-10">
+                  <h3 className="font-black uppercase text-xl md:text-2xl text-blue-950 flex items-center gap-4 whitespace-nowrap">
+                     <span className="w-1.5 h-8 bg-blue-950 rounded-full"></span>Sổ thụ lý
+                  </h3>
+                  
+                  <div className="flex flex-col md:flex-row flex-wrap gap-3 w-full justify-end items-stretch md:items-center">
+                    
+                    {/* Cụm bộ lọc ngày tháng */}
+                    <div className="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-2.5 bg-white w-full xl:w-auto focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
+                      <span className="text-xs font-bold text-gray-500 uppercase">Từ:</span>
+                      <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="outline-none text-sm font-medium bg-transparent text-gray-800 w-full" />
+                      <span className="text-xs font-bold text-gray-500 uppercase ml-1">Đến:</span>
+                      <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="outline-none text-sm font-medium bg-transparent text-gray-800 w-full" />
+                      {(startDate || endDate) && <button onClick={() => {setStartDate(""); setEndDate("")}} className="text-red-500 font-bold px-1.5 hover:bg-red-50 rounded-full" title="Xóa lộc ngày">✕</button>}
                     </div>
-                    <select value={creatorFilter} onChange={e => setCreatorFilter(e.target.value)} className="border-2 border-gray-100 px-4 py-3 text-sm md:text-base focus:border-blue-600 outline-none font-bold bg-white w-full xl:w-auto"><option value="all">👤 Tất cả người nhập</option>{creatorsList.map(email => <option key={email} value={email}>{email.split('@')[0]}</option>)}</select>
-                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="border-2 border-gray-100 px-6 py-3 text-sm md:text-base focus:border-blue-600 outline-none font-bold bg-white w-full xl:w-auto"><option value="pending">⏳ Đang chờ xử</option><option value="postponed">⏸ Đã hoãn</option><option value="completed">✅ Đã xử xong</option><option value="all">📁 Tất cả vụ án</option></select>
-                    <input type="text" placeholder="Tìm kiếm tự do..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-6 py-3 text-sm md:text-base w-full xl:w-64 focus:border-blue-600 outline-none font-bold" />
-                    <button onClick={exportToExcel} className="bg-green-600 text-white px-8 py-3 font-black uppercase shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 w-full xl:w-auto">📊 XUẤT EXCEL</button>
+
+                    <select value={creatorFilter} onChange={e => setCreatorFilter(e.target.value)} className={filterStyle}>
+                       <option value="all">👤 Tất cả người nhập</option>
+                       {creatorsList.map(email => <option key={email} value={email}>{email.split('@')[0]}</option>)}
+                    </select>
+
+                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={filterStyle}>
+                       <option value="pending">⏳ Đang chờ xử</option><option value="postponed">⏸ Đã hoãn</option><option value="completed">✅ Đã xử xong</option><option value="all">📁 Tất cả vụ án</option>
+                    </select>
+
+                    <input type="text" placeholder="Tìm kiếm tên án, nguyên đơn..." onChange={e => setSearchQuery(e.target.value)} className={`${filterStyle} xl:w-64`} />
+                    
+                    <button onClick={exportToExcel} className="bg-green-600 text-white px-6 py-2.5 font-bold uppercase rounded-md shadow-sm hover:bg-green-700 transition-all flex items-center justify-center gap-2 w-full xl:w-auto active:scale-95 text-[14px]">
+                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                       Xuất Excel
+                    </button>
+
                   </div>
                 </div>
 
@@ -787,7 +808,39 @@ const handleDelete = async (id, caseName) => {
            </div>
         </div>
       )}
-
+{showAuditModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[200] p-4 md:p-6" onClick={() => setShowAuditModal(false)}>
+           <div className="w-full max-w-4xl flex flex-col overflow-hidden h-[80vh]" onClick={e => e.stopPropagation()} style={{ background: 'rgba(255, 255, 255, 0.95)', border: '1px solid rgba(255, 255, 255, 0.6)', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)' }}>
+              <div className="p-6 md:p-8 flex justify-between items-center bg-slate-800 text-white">
+                <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3">📋 Nhật ký hoạt động hệ thống</h3>
+                <button onClick={() => setShowAuditModal(false)} className="bg-red-500 px-4 py-2 text-sm font-black rounded shadow hover:bg-red-600">ĐÓNG</button>
+              </div>
+              <div className="flex-1 overflow-auto p-6 md:p-8 bg-slate-50">
+                {auditLogs.length === 0 ? (
+                  <p className="text-center font-bold text-gray-400 mt-10">Chưa có dữ liệu nhật ký nào được ghi lại.</p>
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-white sticky top-0 shadow-sm z-10 text-xs font-black uppercase text-gray-500">
+                      <tr><th className="p-4 border-b">Thời gian</th><th className="p-4 border-b">Tài khoản</th><th className="p-4 border-b">Hành động</th><th className="p-4 border-b w-1/2">Chi tiết</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {auditLogs.map((log, idx) => (
+                        <tr key={idx} className="hover:bg-blue-50 transition-colors">
+                          <td className="p-4 font-bold text-sm text-gray-700">{moment(log.timestamp).format("HH:mm:ss DD/MM/YYYY")}</td>
+                          <td className="p-4 font-bold text-sm text-blue-700">{log.user ? log.user.split('@')[0] : "---"}</td>
+                          <td className="p-4">
+                            <span className={`px-2 py-1 text-[10px] font-black uppercase rounded ${log.action.includes('XÓA') ? 'bg-red-100 text-red-700' : log.action.includes('KÉO THẢ') ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>{log.action}</span>
+                          </td>
+                          <td className="p-4 text-sm font-medium text-gray-600">{log.details}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+           </div>
+        </div>
+      )}
       {/* ========================================================== */}
       {/* MODAL ĐỔI MẬT KHẨU: GIAO DIỆN BÓNG MỜ (GLASSMORPHISM)      */}
       {/* ========================================================== */}
