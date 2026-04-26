@@ -576,8 +576,8 @@ const handleDelete = async (id, caseName) => {
                 ) : <div className="w-full h-full flex items-center justify-center font-bold text-gray-400">Đang tải bộ lịch...</div>}
               </div>
 
-              <div className="bg-white border shadow-2xl overflow-hidden flex flex-col h-[850px]">
-                <div className="p-6 md:p-10 border-b-2 border-gray-50 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 sticky top-0 bg-white z-10">
+             <div className="bg-white border border-gray-200 shadow-2xl overflow-hidden flex flex-col h-[850px]">
+                <div className="p-6 md:p-8 border-b-2 border-gray-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 sticky top-0 bg-white z-10">
                   <h3 className="font-black uppercase text-xl md:text-2xl text-blue-950 flex items-center gap-4 whitespace-nowrap"><span className="w-2 h-10 bg-blue-950"></span>Sổ thụ lý</h3>
                   <div className="flex flex-col md:flex-row flex-wrap gap-4 w-full justify-end items-stretch md:items-center">
                     <div className="flex items-center gap-2 border-2 border-gray-100 px-4 py-3 bg-white w-full xl:w-auto">
@@ -587,55 +587,98 @@ const handleDelete = async (id, caseName) => {
                       <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="outline-none text-sm md:text-base font-bold bg-transparent w-full" />
                       {(startDate || endDate) && <button onClick={() => {setStartDate(""); setEndDate("")}} className="text-red-500 font-bold px-2 hover:bg-red-50 rounded" title="Xóa lộc ngày">✕</button>}
                     </div>
-                    <select value={creatorFilter} onChange={e => setCreatorFilter(e.target.value)} className="border-2 border-gray-100 px-4 py-3 text-sm md:text-base focus:border-blue-600 outline-none font-bold bg-white w-full xl:w-auto">
-                      <option value="all">👤 Tất cả người nhập</option>
-                      {creatorsList.map(email => <option key={email} value={email}>{email.split('@')[0]}</option>)}
-                    </select>
-                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="border-2 border-gray-100 px-6 py-3 text-sm md:text-base focus:border-blue-600 outline-none font-bold bg-white w-full xl:w-auto">
-                      <option value="pending">⏳ Đang chờ xử</option><option value="postponed">⏸ Đã hoãn</option><option value="completed">✅ Đã xử xong</option><option value="all">📁 Tất cả vụ án</option>
-                    </select>
+                    <select value={creatorFilter} onChange={e => setCreatorFilter(e.target.value)} className="border-2 border-gray-100 px-4 py-3 text-sm md:text-base focus:border-blue-600 outline-none font-bold bg-white w-full xl:w-auto"><option value="all">👤 Tất cả người nhập</option>{creatorsList.map(email => <option key={email} value={email}>{email.split('@')[0]}</option>)}</select>
+                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="border-2 border-gray-100 px-6 py-3 text-sm md:text-base focus:border-blue-600 outline-none font-bold bg-white w-full xl:w-auto"><option value="pending">⏳ Đang chờ xử</option><option value="postponed">⏸ Đã hoãn</option><option value="completed">✅ Đã xử xong</option><option value="all">📁 Tất cả vụ án</option></select>
                     <input type="text" placeholder="Tìm kiếm tự do..." onChange={e => setSearchQuery(e.target.value)} className="border-2 border-gray-100 px-6 py-3 text-sm md:text-base w-full xl:w-64 focus:border-blue-600 outline-none font-bold" />
                     <button onClick={exportToExcel} className="bg-green-600 text-white px-8 py-3 font-black uppercase shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 w-full xl:w-auto">📊 XUẤT EXCEL</button>
                   </div>
                 </div>
 
-                <div className="overflow-auto flex-1">
-                  <table className="w-full text-left border-collapse min-w-[800px]">
-                    <thead className="bg-gray-50 text-[11px] font-black uppercase text-gray-400 border-b-2 border-gray-100 sticky top-0 z-10">
-                      <tr><th className="p-6 md:p-10">Thời gian / Địa điểm</th><th className="p-6 md:p-10">Nội dung vụ việc</th><th className="p-6 md:p-10">Hội đồng & Thư ký</th>{canEdit && <th className="p-6 md:p-10 text-center">Tác vụ</th>}</tr>
+                <div className="overflow-auto flex-1 bg-gray-50/30">
+                  <table className="w-full text-left border-collapse min-w-[900px] border-b border-gray-200">
+                    <thead className="bg-gray-100 text-[12px] font-black uppercase text-gray-500 border-b border-gray-300 sticky top-0 z-10">
+                      <tr className="divide-x divide-gray-200">
+                        <th className="p-4 md:p-6 w-[15%] text-center">Thời gian / Địa điểm</th>
+                        <th className="p-4 md:p-6 w-[40%]">Nội dung vụ việc</th>
+                        <th className="p-4 md:p-6 w-[30%]">Hội đồng & Thư ký</th>
+                        {canEdit && <th className="p-4 md:p-6 w-[15%] text-center">Tác vụ</th>}
+                      </tr>
                     </thead>
-                    <tbody className="divide-y-2 divide-gray-50">
+                    <tbody className="divide-y divide-gray-200">
                       {processedSchedule.map(item => {
                        const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
                         return (
-                        <tr key={item.id} className={`transition-all group ${item.status === 'completed' || item.status === 'postponed' ? 'opacity-70 bg-gray-50/50' : isRowUrgent ? 'bg-red-50 hover:bg-red-100' : 'bg-white hover:bg-blue-50/20'}`}>
-                          <td className={`p-6 md:p-10 align-top ${isRowUrgent ? 'border-l-4 border-red-500' : ''}`}>
-                            {item.status === 'postponed' ? <div className="text-amber-600 font-black text-lg md:text-xl mb-2 animate-pulse">⏸ ĐÃ HOÃN</div> : <><div className="font-black text-gray-950 text-xl md:text-2xl">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div><div className="text-blue-600 font-black text-lg md:text-xl mt-2">🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</div></>}
-                            <div className="mt-4 font-black text-gray-400 uppercase text-xs tracking-widest">{item.room || "---"}</div>
-                          </td>
-                          <td className="p-6 md:p-10 align-top">
-                            <div className="font-black uppercase text-gray-900 text-lg md:text-xl leading-tight mb-6 group-hover:text-blue-900 transition-colors">
-                              {item.status === 'completed' && <span className="text-green-600 mr-2">✅</span>}{item.status === 'postponed' && <span className="text-amber-500 mr-2">⏸</span>}{isRowUrgent && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded mr-2 animate-pulse">⚠️ SẮP XỬ</span>}{item.caseName || "Vụ án chưa có tên"}
+                        <tr key={item.id} className={`transition-all group divide-x divide-gray-200 ${item.status === 'completed' || item.status === 'postponed' ? 'opacity-70 bg-gray-100/50' : isRowUrgent ? 'bg-red-50 hover:bg-red-100' : 'bg-white hover:bg-blue-50/30'}`}>
+                          
+                          {/* CỘT 1: THỜI GIAN VÀ ĐỊA ĐIỂM */}
+                          <td className={`p-4 md:p-6 align-top text-center ${isRowUrgent ? 'border-l-4 border-l-red-500' : ''}`}>
+                            <div className="space-y-2">
+                              {item.status === 'postponed' ? (
+                                <div className="text-amber-600 font-bold text-base animate-pulse">⏸ ĐÃ HOÃN</div>
+                              ) : (
+                                <>
+                                  <div className="font-bold text-gray-900 text-base">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
+                                  <div className="text-blue-600 font-bold text-base">🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</div>
+                                </>
+                              )}
+                              <div className="font-bold text-gray-500 uppercase text-sm mt-3">{item.room || "---"}</div>
                             </div>
-                            <div className="flex gap-4"><span className="bg-blue-50 text-blue-800 px-5 py-2 text-xs font-black uppercase border border-blue-100">{item.caseType || "---"}</span><span className="bg-amber-50 text-amber-700 px-5 py-2 text-xs font-black uppercase border border-amber-100">{item.trialCount || "Lần 1"}</span></div>
-                            <div className="mt-6 text-sm md:text-base text-gray-500 space-y-2 font-bold italic"><p>📌 NĐ: {item.plaintiff || "N/A"}</p><p>📌 BĐ: {item.defendant || "N/A"}</p></div>
-                            <div className="mt-6 pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                               <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">✍️ Tạo bởi: <span className="text-blue-600">{item.createdBy ? item.createdBy.split('@')[0] : "Hệ thống"}</span></span>
-                               {item.updatedBy && <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">🔄 Sửa bởi: <span className="text-amber-600">{item.updatedBy.split('@')[0]}</span></span>}
+                          </td>
+
+                          {/* CỘT 2: NỘI DUNG VỤ VIỆC */}
+                          <td className="p-4 md:p-6 align-top">
+                            <div className="space-y-3">
+                              <div className="font-bold uppercase text-gray-900 text-base leading-snug group-hover:text-blue-800 transition-colors">
+                                {item.status === 'completed' && <span className="text-green-600 mr-2">✅</span>}
+                                {item.status === 'postponed' && <span className="text-amber-500 mr-2">⏸</span>}
+                                {isRowUrgent && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded mr-2 animate-pulse">⚠️ SẮP XỬ</span>}
+                                {item.caseName || "Vụ án chưa có tên"}
+                              </div>
+                              
+                              {/* THAY KHUNG BẰNG DẤU GẠCH CHÉO "/" */}
+                              <div className="text-gray-700 font-semibold text-sm">
+                                {item.caseType || "---"} / {item.trialCount || "Lần 1"}
+                              </div>
+                              
+                              <div className="text-sm text-gray-700 space-y-1.5 pt-1">
+                                <p><span className="font-semibold text-gray-500">NĐ:</span> {item.plaintiff || "N/A"}</p>
+                                <p><span className="font-semibold text-gray-500">BĐ:</span> {item.defendant || "N/A"}</p>
+                              </div>
+
+                              {/* BỎ GẠCH NGANG TRÊN CHỖ NGƯỜI NHẬP LIỆU */}
+                              <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-start gap-3 text-xs font-medium text-gray-500 italic">
+                                 <span>✍️ Nhập bởi: <span className="font-bold text-gray-600">{item.createdBy ? item.createdBy.split('@')[0] : "Hệ thống"}</span></span>
+                                 {item.updatedBy && <span>🔄 Sửa bởi: <span className="font-bold text-gray-600">{item.updatedBy.split('@')[0]}</span></span>}
+                              </div>
                             </div>
                           </td>
-                          <td className="p-6 md:p-10 align-top space-y-4">
-                            <div className="flex items-center gap-4"><div className="w-10 h-10 bg-blue-100 flex items-center justify-center text-blue-600 font-black text-sm shrink-0">TP</div><span className={`font-black text-lg md:text-xl ${isRowUrgent ? 'text-red-900' : 'text-gray-900'}`}>{item.judge || "---"}</span></div>
-                            <div className="flex items-center gap-4 text-sm md:text-base text-gray-500 font-bold"><div className="w-10 h-10 bg-gray-100 flex items-center justify-center font-black text-xs shrink-0">HT</div><span>{item.juror1 || "---"}, {item.juror2 || "---"}</span></div>
-                            <div className="flex items-center gap-4 text-sm md:text-base text-gray-500 font-bold"><div className="w-10 h-10 bg-gray-100 flex items-center justify-center font-black text-xs shrink-0">TK</div><span>{item.clerk || "---"}</span></div>
-                            <div className="flex items-center gap-4 text-sm md:text-base text-red-600 font-black"><div className="w-10 h-10 bg-red-50 flex items-center justify-center font-black text-xs shrink-0">KS</div><span>{item.prosecutor || "---"}</span></div>
+
+                          {/* CỘT 3: HỘI ĐỒNG VÀ THƯ KÝ */}
+                          <td className="p-4 md:p-6 align-top">
+                            <div className="space-y-3 text-sm md:text-base text-gray-800">
+                              <div className="flex gap-2"><span className="font-semibold text-blue-700 w-8 shrink-0">TP:</span> <span className={`font-bold ${isRowUrgent ? 'text-red-900' : 'text-gray-900'}`}>{item.judge || "---"}</span></div>
+                              <div className="flex gap-2"><span className="font-semibold text-gray-500 w-8 shrink-0">HT:</span> <span className="font-medium text-gray-700">{item.juror1 || "---"}, {item.juror2 || "---"}</span></div>
+                              <div className="flex gap-2"><span className="font-semibold text-gray-500 w-8 shrink-0">TK:</span> <span className="font-medium text-gray-700">{item.clerk || "---"}</span></div>
+                              <div className="flex gap-2"><span className="font-semibold text-red-600 w-8 shrink-0">KS:</span> <span className="font-bold text-red-600">{item.prosecutor || "---"}</span></div>
+                            </div>
                           </td>
+
+                          {/* CỘT 4: TÁC VỤ */}
                           {canEdit && (
-                            <td className="p-6 md:p-10 text-center align-top">
-                              <div className="flex flex-col gap-4">
-                                {item.status === 'pending' || !item.status ? (<><button onClick={() => toggleStatus(item.id, 'completed')} className="bg-green-50 text-green-700 px-4 py-3 font-black uppercase text-xs border border-green-100 hover:bg-green-600 hover:text-white transition-all">✔ XONG</button><button onClick={() => toggleStatus(item.id, 'postponed')} className="bg-amber-50 text-amber-700 px-4 py-3 font-black uppercase text-xs border border-amber-100 hover:bg-amber-600 hover:text-white transition-all">⏸ HOÃN</button></>) : item.status === 'postponed' ? (<button onClick={() => handleReschedule(item)} className="bg-blue-600 text-white px-4 py-3 font-black uppercase text-xs shadow-lg hover:bg-blue-700 transition-all">📅 LÊN LỊCH LẠI</button>) : (<button onClick={() => toggleStatus(item.id, 'pending')} className="bg-gray-200 text-gray-700 px-4 py-3 font-black uppercase text-xs hover:bg-gray-400 transition-all">↺ MỞ LẠI</button>)}
-                                <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 px-4 py-3 font-black uppercase text-xs border border-blue-100 hover:bg-blue-600 hover:text-white transition-all mt-4">SỬA</button>
-                                {userRole === 'admin' && <button onClick={async () => {if(confirm("Xóa hồ sơ này?")) {await deleteDoc(doc(db,"schedule",item.id)); loadData()}}} className="bg-red-50 text-red-700 px-4 py-3 font-black uppercase text-xs border border-red-100 hover:bg-red-600 hover:text-white transition-all">XÓA</button>}
+                            <td className="p-4 md:p-6 text-center align-top">
+                              <div className="flex flex-col gap-3">
+                                {item.status === 'pending' || !item.status ? (
+                                  <>
+                                    <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-50 text-green-700 px-3 py-2.5 font-black uppercase text-xs border border-green-200 hover:bg-green-600 hover:text-white transition-all rounded">✔ XONG</button>
+                                    <button onClick={() => toggleStatus(item.id, 'postponed', item.caseName)} className="bg-amber-50 text-amber-700 px-3 py-2.5 font-black uppercase text-xs border border-amber-200 hover:bg-amber-600 hover:text-white transition-all rounded">⏸ HOÃN</button>
+                                  </>
+                                ) : item.status === 'postponed' ? (
+                                  <button onClick={() => handleReschedule(item)} className="bg-blue-600 text-white px-3 py-2.5 font-black uppercase text-xs shadow-md hover:bg-blue-700 transition-all rounded">📅 LÊN LỊCH LẠI</button>
+                                ) : (
+                                  <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="bg-gray-200 text-gray-700 px-3 py-2.5 font-black uppercase text-xs hover:bg-gray-300 transition-all rounded">↺ MỞ LẠI</button>
+                                )}
+                                <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 px-3 py-2.5 font-black uppercase text-xs border border-blue-200 hover:bg-blue-600 hover:text-white transition-all mt-2 rounded">SỬA</button>
+                                {userRole === 'admin' && <button onClick={() => handleDelete(item.id, item.caseName)} className="bg-red-50 text-red-700 px-3 py-2.5 font-black uppercase text-xs border border-red-200 hover:bg-red-600 hover:text-white transition-all rounded">XÓA</button>}
                               </div>
                             </td>
                           )}
@@ -646,7 +689,6 @@ const handleDelete = async (id, caseName) => {
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </main>
