@@ -298,7 +298,7 @@ export default function PremiumCourtApp() {
         }}
       >
         {/* Logo và Tiêu đề */}
-        <img src="/logotoaan.jpg" alt="Logo" className="mx-auto mb-6 drop-shadow-2xl" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
+        <img src="/lgtoaan1.png" alt="Logo" className="mx-auto mb-6 drop-shadow-2xl" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
         
         {/* Thêm văn bản mới phía trên tiêu đề cũ */}
         <p className="text-2xl text-gray-300 font-serif mb-2 tracking-wide uppercase">TOÀ ÁN NHÂN DÂN THÀNH PHỐ CẦN THƠ</p>
