@@ -29,16 +29,21 @@ export default function PremiumCourtApp() {
   const [editingId, setEditingId] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
 
+  // Modal States
   const [showPwdModal, setShowPwdModal] = useState(false);
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
-
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [auditLogs, setAuditLogs] = useState([]);
 
+  // Filter States
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [creatorFilter, setCreatorFilter] = useState("all");
+  const [judgeFilter, setJudgeFilter] = useState("all");
+  const [clerkFilter, setClerkFilter] = useState("all");
+
+  const calendarSectionRef = useRef(null);
 
   const initialForm = {
     datetime: "", room: "Trụ sở", caseType: "Hình sự", trialCount: "Lần 1", caseName: "", 
@@ -98,16 +103,16 @@ export default function PremiumCourtApp() {
 
   const loadData = async () => {
     try {
-      const q = query(collection(db, "schedule"), orderBy("datetime", "desc"));
+      const threeMonthsAgo = moment().subtract(3, 'months').toISOString();
+      const q = query(collection(db, "schedule"), where("datetime", ">=", threeMonthsAgo), orderBy("datetime", "desc"));
       const querySnapshot = await getDocs(q);
       setSchedule(querySnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (error) { showToast("Lỗi tải dữ liệu", "error"); }
   };
 
   const logAction = async (action, details) => {
-    try {
-      await addDoc(collection(db, "audit_logs"), { action, details, user: user.email, timestamp: moment().toISOString() });
-    } catch(err) { console.error("Lỗi ghi log", err); }
+    try { await addDoc(collection(db, "audit_logs"), { action, details, user: user.email, timestamp: moment().toISOString() }); } 
+    catch(err) { console.error("Lỗi ghi log", err); }
   };
 
   const handleLogin = async (e) => {
@@ -141,10 +146,38 @@ export default function PremiumCourtApp() {
     }
   };
 
+const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) => {
+    try {
+      const startNew = moment(newStartStr);
+      const endNew = moment(startNew).add(durationMins, 'minutes');
+      
+      const q = query(collection(db, "schedule"), where("room", "==", room), where("status", "==", "pending"));
+      const snap = await getDocs(q);
+      
+      let hasConflict = false;
+      snap.forEach(doc => {
+        if (doc.id === excludeId) return;
+        const data = doc.data();
+        if (!data.datetime) return;
+        const startEx = moment(data.datetime);
+        const endEx = moment(startEx).add(data.duration || 60, 'minutes');
+        if (startNew.isBefore(endEx) && startEx.isBefore(endNew)) {
+          hasConflict = true;
+        }
+      });
+      return hasConflict;
+    } catch (error) {
+      return true; // Nếu lỗi mạng, block luôn cho an toàn
+    }
+  };
+
   const handleSubmit = async () => {
     if (userRole === 'thamphan' || userRole === 'viewer') return showToast("Không có quyền!", "error");
     if (!form.datetime || !form.caseName || !form.room) return showToast("Vui lòng nhập đủ thông tin!", "error");
     
+    const isConflict = await isConflictServerSide(form.datetime, form.room, editingId, form.duration);
+    if(isConflict) return showToast("⚠️ Xin lỗi, phòng này vừa được người khác đặt trước vài giây. Vui lòng chọn giờ khác!", "error");
+
     const logData = { ...form, status: form.status || 'pending', updatedAt: moment().toISOString(), updatedBy: user.email };
     try {
       if (editingId) {
@@ -218,7 +251,33 @@ export default function PremiumCourtApp() {
     showToast("Đã lấy dữ liệu, vui lòng chọn ngày giờ mới!", "success");
   };
 
+  const handleSendEmail = (item) => {
+    const subject = encodeURIComponent(`[TAND KV9] Thông báo Lịch xét xử: ${item.caseName || "Chưa có tên"}`);
+    const body = encodeURIComponent(
+      `Kính gửi Hội đồng xét xử,\n\n`+
+      `Hệ thống xin thông báo lịch xét xử chi tiết như sau:\n`+
+      `- Vụ án: ${item.caseName}\n`+
+      `- Loại án: ${item.caseType} (${item.trialCount})\n`+
+      `- Thời gian: ${moment(item.datetime).format("HH:mm - DD/MM/YYYY")}\n`+
+      `- Địa điểm: Phòng xử ${item.room}\n\n`+
+      `Thành phần HĐXX:\n`+
+      `- Thẩm phán: ${item.judge || "..."}\n`+
+      `- Thư ký: ${item.clerk || "..."}\n`+
+      `- Kiểm sát viên: ${item.prosecutor || "..."}\n`+
+      `- Hội thẩm: ${item.juror1 || "..."} & ${item.juror2 || "..."}\n\n`+
+      `Trân trọng thông báo!`
+    );
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  };
+
+  const scrollToCalendar = () => {
+    if(calendarSectionRef.current) calendarSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+  };
+
   const creatorsList = [...new Set(schedule.map(i => i.createdBy).filter(Boolean))];
+  const judgesList = [...new Set(schedule.map(i => i.judge).filter(Boolean))];
+  const clerksList = [...new Set(schedule.map(i => i.clerk).filter(Boolean))];
+  const prosecutorsList = [...new Set(schedule.map(i => i.prosecutor).filter(Boolean))];
 
   const processedSchedule = useMemo(() => {
     return schedule.filter(i => {
@@ -404,7 +463,7 @@ export default function PremiumCourtApp() {
      <aside 
         className="w-64 text-white hidden xl:flex flex-col fixed h-screen z-20 overflow-y-auto"
         style={{ 
-          background: 'rgba(220, 38, 38, 0.75)', /* Màu đỏ trong suốt 75% */
+          background: 'rgba(236, 37, 37, 0.75)', /* Màu đỏ trong suốt 75% */
           backdropFilter: 'blur(16px)', 
           WebkitBackdropFilter: 'blur(16px)', 
           borderRight: '1px solid rgba(255, 255, 255, 0.2)',
@@ -417,7 +476,7 @@ export default function PremiumCourtApp() {
         </div>
         
         <div className="p-6 flex-1">
-          <div className="bg-blue-600/90 backdrop-blur-md px-4 py-4 font-black text-sm shadow-xl border border-white/20 flex justify-between items-center rounded-lg">
+          <div onClick={scrollToCalendar} className="cursor-pointer bg-blue-600/90 backdrop-blur-md px-4 py-4 font-black text-sm shadow-xl border border-white/20 flex justify-between items-center rounded-lg hover:bg-blue-500 transition-colors">
             <span className="drop-shadow-md">📅 LỊCH XÉT XỬ</span> 
             {urgentCount > 0 && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded-full animate-bounce shadow-md border border-white/30">{urgentCount}</span>}
           </div>
@@ -444,7 +503,7 @@ export default function PremiumCourtApp() {
           </div>
           <div className="flex-1 hidden xl:block"></div>
           <div className="flex-[2] text-center px-2">
-            <h1 className="font-black text-[14px] sm:text-[16px] md:text-xl xl:text-2xl uppercase text-blue-950 truncate">HỆ THỐNG QUẢN LÝ LỊCH TRỰC TUYẾN</h1>
+            <h1 className="font-black text-[14px] sm:text-[16px] md:text-xl xl:text-2xl uppercase text-blue-950 truncate">QUẢN LÝ LỊCH TRỰC TUYẾN</h1>
           </div>
           <div className="flex-1 flex items-center justify-end">
              <div className="bg-blue-50 text-blue-700 px-3 py-2 sm:px-4 sm:py-2 md:px-6 md:py-3 font-black text-[10px] sm:text-xs md:text-sm border border-blue-100 uppercase tracking-widest text-center w-max">
@@ -582,10 +641,19 @@ export default function PremiumCourtApp() {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <div>
                     <label className={labelStyle}>Loại án <span className="text-red-500">*</span></label>
-                    <select value={form.caseType} onChange={e => setForm({...form, caseType: e.target.value})} className={inputBase}><option value="Hình sự">Hình sự</option><option value="Dân sự">Dân sự</option><option value="Hành chính">Hành chính</option><option value="Hôn nhân & GĐ">Hôn nhân & GĐ</option><option value="Kinh tế">Kinh tế</option></select>
+                    <select value={form.caseType} onChange={e => setForm({...form, caseType: e.target.value, duration: e.target.value === 'Hình sự' ? 120 : 60})} className={inputBase}><option value="Hình sự">Hình sự</option><option value="Dân sự">Dân sự</option><option value="Hành chính">Hành chính</option><option value="Hôn nhân & GĐ">Hôn nhân & GĐ</option><option value="Kinh tế">Kinh tế</option></select>
+                  </div>
+                  <div>
+                    <label className={labelStyle}>Thời lượng <span className="text-red-500">*</span></label>
+                    <select value={form.duration} onChange={e => setForm({...form, duration: parseInt(e.target.value)})} className={inputBase}>
+                      <option value={60}>⏱ 1 giờ (Án thường)</option>
+                      <option value={120}>⏱ 2 giờ (Án hình sự)</option>
+                      <option value={240}>⏱ 1 buổi (4 giờ)</option>
+                      <option value={480}>⏱ 1 ngày (8 giờ)</option>
+                    </select>
                   </div>
                   <div>
                     <label className={labelStyle}>Lần xử <span className="text-red-500">*</span></label>
@@ -647,12 +715,13 @@ export default function PremiumCourtApp() {
                     <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="outline-none text-sm font-medium bg-transparent text-gray-800 w-full" />
                     <span className="text-xs font-bold text-gray-500 uppercase ml-1">Đến:</span>
                     <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="outline-none text-sm font-medium bg-transparent text-gray-800 w-full" />
-                    {(startDate || endDate) && <button onClick={() => {setStartDate(""); setEndDate("")}} className="text-red-500 font-bold px-1.5 hover:bg-red-50 rounded-full" title="Xóa lộc ngày">✕</button>}
+                    {(startDate || endDate) && <button onClick={() => {setStartDate(""); setEndDate("")}} className="text-red-500 font-bold px-1.5 hover:bg-red-50 rounded-full">✕</button>}
                   </div>
-                  <select value={creatorFilter} onChange={e => setCreatorFilter(e.target.value)} className={filterStyle}><option value="all">👤 Tất cả người nhập</option>{creatorsList.map(email => <option key={email} value={email}>{email.split('@')[0]}</option>)}</select>
-                  <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={filterStyle}><option value="pending">⏳ Đang chờ xử</option><option value="postponed">⏸ Đã hoãn</option><option value="completed">✅ Đã xử xong</option><option value="all">📁 Tất cả vụ án</option></select>
-                  <input type="text" placeholder="Tìm kiếm tự do..." onChange={e => setSearchQuery(e.target.value)} className={`${filterStyle} w-full md:w-64`} />
-                  <button onClick={exportToExcel} className="bg-green-600 text-white px-6 py-2.5 font-bold uppercase rounded-md shadow-sm hover:bg-green-700 transition-all flex items-center justify-center gap-2 w-full md:w-auto active:scale-95 text-[14px]">📊 Xuất Excel</button>
+                  <select value={judgeFilter} onChange={e => setJudgeFilter(e.target.value)} className={filterStyle}><option value="all">👨‍⚖️ Lọc Thẩm phán</option>{judgesList.map(name => <option key={name} value={name}>{name}</option>)}</select>
+                  <select value={clerkFilter} onChange={e => setClerkFilter(e.target.value)} className={filterStyle}><option value="all">📝 Lọc Thư ký</option>{clerksList.map(name => <option key={name} value={name}>{name}</option>)}</select>
+                  <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={filterStyle}><option value="pending">⏳ Đang chờ xử</option><option value="postponed">⏸ Đã hoãn</option><option value="completed">✅ Đã xử xong</option><option value="all">📁 Tất cả</option></select>
+                  <input type="text" placeholder="Tìm kiếm tự do..." onChange={e => setSearchQuery(e.target.value)} className={`${filterStyle} flex-1 min-w-[200px]`} />
+                  <button onClick={exportToExcel} className="bg-green-600 text-white px-6 py-2.5 font-bold uppercase rounded-md shadow-sm hover:bg-green-700 transition-all active:scale-95 text-[14px]">📊 Xuất Excel</button>
                 </div>
               </div>
 
@@ -731,6 +800,7 @@ export default function PremiumCourtApp() {
                                 <>
                                   <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-50 text-green-700 px-3 py-2.5 font-black uppercase text-xs border border-green-200 hover:bg-green-600 hover:text-white transition-all rounded">✔ XONG</button>
                                   <button onClick={() => toggleStatus(item.id, 'postponed', item.caseName)} className="bg-amber-50 text-amber-700 px-3 py-2.5 font-black uppercase text-xs border border-amber-200 hover:bg-amber-600 hover:text-white transition-all rounded">⏸ HOÃN</button>
+                                  <button onClick={() => handleSendEmail(item)} className="bg-purple-50 text-purple-700 px-3 py-2 font-black uppercase text-xs border border-purple-200 hover:bg-purple-600 hover:text-white transition-all rounded flex justify-center items-center gap-1">✉️ BÁO LỊCH</button>
                                 </>
                               ) : item.status === 'postponed' ? (
                                 <button onClick={() => handleReschedule(item)} className="bg-blue-600 text-white px-3 py-2.5 font-black uppercase text-xs shadow-md hover:bg-blue-700 transition-all rounded">📅 LÊN LỊCH LẠI</button>
