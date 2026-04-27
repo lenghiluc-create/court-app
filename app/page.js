@@ -377,7 +377,7 @@ export default function PremiumCourtApp() {
         <div className="py-10 px-6 text-center border-b border-white/5">
           {/* ĐÃ SỬA: Thay đổi logo cán cân thành logo tòa án mới, điều chỉnh kích cỡ cho phù hợp */}
           <img src="/lgtoaan1.png" alt="Logo Tòa án" className="w-20 h-20 mx-auto mb-4 drop-shadow-lg" />
-          <h2 className="font-black text-2xl uppercase tracking-tighter">TAND KV9</h2>
+          <h2 className="font-black text-2xl uppercase tracking-tighter">KV9 - Cần Thơ</h2>
         </div>
         <div className="p-6 flex-1">
           {/* ĐÃ SỬA: Cập nhật màu bóng đổ của khối lịch xét xử cho phù hợp với nền đỏ */}
@@ -536,7 +536,13 @@ export default function PremiumCourtApp() {
                   </div>
                   <div>
                     <label className={labelStyle}>Phòng xử / Địa điểm <span className="text-red-500">*</span></label>
-                    <select value={form.room} onChange={e => setForm({...form, room: e.target.value})} className={inputBase}><option value="Trụ sở">🏢 TRỤ SỞ</option><option value="Chi nhánh">🏢 CHI NHÁNH</option><option value="Dự phòng">⚠️ DỰ PHÒNG</option></select>
+                    <select value={form.room} onChange={e => setForm({...form, room: e.target.value})} className={inputBase}>
+                      <option value="Trụ sở">🏢 Trụ sở</option>
+                      <option value="Chi nhánh">🏢 Chi nhánh</option>
+                      <option value="Trực tuyến">💻 Trực tuyến</option>
+                      <option value="Lưu động">🚚 Lưu động</option>
+                      <option value="Dự phòng">⚠️ DỰ PHÒNG</option>
+                    </select>
                   </div>
                 </div>
                 
