@@ -328,8 +328,28 @@ export default function PremiumCourtApp() {
       <datalist id="prosecutors-list">{prosecutorsList.map((name, i) => <option key={i} value={name} />)}</datalist>
 
       <style dangerouslySetInnerHTML={{__html: `
-        .rbc-event { background-color: #1e3a8a !important; border-radius: 0px !important; padding: 4px 8px !important; font-weight: 800 !important; border: none !important; }
-        .rbc-event.rbc-selected { background-color: #000000 !important; box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #000000 !important; z-index: 10 !important; }
+        .rbc-event { 
+          background-color: rgba(59, 130, 246, 0.15) !important; 
+          backdrop-filter: blur(4px) !important;
+          -webkit-backdrop-filter: blur(4px) !important;
+          border: 1px solid rgba(59, 130, 246, 0.4) !important;
+          border-radius: 6px !important; 
+          padding: 3px 6px !important; 
+          font-size: 11px !important; 
+          font-weight: 700 !important; 
+          color: #1e3a8a !important;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+          transition: all 0.2s ease-in-out;
+        }
+        .rbc-event:hover {
+          background-color: rgba(59, 130, 246, 0.25) !important; 
+        }
+        .rbc-event.rbc-selected { 
+          background-color: #1e3a8a !important; 
+          color: #ffffff !important;
+          box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #1e3a8a !important; 
+          z-index: 10 !important; 
+        }
         .rbc-slot-selection { background-color: rgba(0, 0, 0, 0.6) !important; }
         .rbc-day-bg.rbc-today { background-color: #eff6ff !important; }
         input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px rgba(255, 255, 255, 0.1) inset !important; -webkit-text-fill-color: white !important; transition: background-color 5000s ease-in-out 0s; }
