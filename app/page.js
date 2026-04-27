@@ -72,10 +72,21 @@ export default function PremiumCourtApp() {
       if (currentUser) {
         setUser(currentUser);
         const email = currentUser.email ? currentUser.email.toLowerCase() : "";
-        if (email.includes('admin') || email === 'truongphong@gmail.com') setUserRole('admin');
-        else if (email.includes('thuky')) setUserRole('thuky');
-        else if (email.includes('thamphan')) setUserRole('thamphan');
-        else setUserRole('viewer');
+        if (email === 'ltcnhung@thamphan.vn') {
+          setUserRole('chanhan');
+        } 
+        else if (email.includes('admin') || email === 'truongphong@gmail.com') {
+          setUserRole('admin');
+        } 
+        else if (email.includes('thuky')) {
+          setUserRole('thuky');
+        } 
+        else if (email.includes('thamphan')) {
+          setUserRole('thamphan');
+        } 
+        else {
+          setUserRole('viewer');
+        }
         loadData();
       } else {
         setUser(null);
@@ -362,24 +373,28 @@ export default function PremiumCourtApp() {
         input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px rgba(255, 255, 255, 0.1) inset !important; -webkit-text-fill-color: white !important; transition: background-color 5000s ease-in-out 0s; }
       `}} />
 
-      <aside className="w-64 bg-blue-950 text-white hidden xl:flex flex-col fixed h-screen shadow-2xl border-r border-blue-900 z-20 overflow-y-auto">
+     <aside className="w-64 bg-red-600 text-white hidden xl:flex flex-col fixed h-screen shadow-2xl border-r border-red-700 z-20 overflow-y-auto">
         <div className="py-10 px-6 text-center border-b border-white/5">
-          <div className="text-5xl mb-4">⚖️</div>
+          {/* ĐÃ SỬA: Thay đổi logo cán cân thành logo tòa án mới, điều chỉnh kích cỡ cho phù hợp */}
+          <img src="/lgtoaan1.png" alt="Logo Tòa án" className="w-20 h-20 mx-auto mb-4 drop-shadow-lg" />
           <h2 className="font-black text-2xl uppercase tracking-tighter">TAND KV9</h2>
         </div>
         <div className="p-6 flex-1">
-          <div className="bg-blue-600 px-4 py-4 font-black text-sm shadow-lg shadow-blue-900/50 flex justify-between items-center rounded-lg">
+          {/* ĐÃ SỬA: Cập nhật màu bóng đổ của khối lịch xét xử cho phù hợp với nền đỏ */}
+          <div className="bg-blue-600 px-4 py-4 font-black text-sm shadow-lg shadow-red-900/50 flex justify-between items-center rounded-lg">
             📅 LỊCH XÉT XỬ {urgentCount > 0 && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded-full animate-bounce">{urgentCount}</span>}
           </div>
         </div>
-        <div className="p-6 border-t border-white/5 bg-black/10 mt-auto">
-          <div className="mb-6 p-4 bg-white/5 border border-white/10">
-             <p className="text-[10px] text-blue-400 font-black uppercase mb-1 tracking-widest">Quyền: {userRole}</p>
+        <div className="p-6 border-t border-white/5 bg-white/10 mt-auto">
+          <div className="mb-6 p-4 bg-white/5 border border-white/10 rounded-lg">
+             {/* ĐÃ SỬA: Đổi màu văn bản "Quyền:" sang màu hổ phách để nổi bật trên nền đỏ */}
+             <p className="text-[10px] text-amber-300 font-black uppercase mb-1 tracking-widest">Quyền: {roleDisplayNames[userRole]}</p>
              <p className="text-sm font-bold truncate opacity-70">{user?.email}</p>
           </div>
           <div className="space-y-3">
-             <button onClick={() => setShowPwdModal(true)} className="w-full bg-blue-600 hover:bg-blue-700 py-3 font-black uppercase text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20">🔑 ĐỔI MẬT KHẨU</button>
-             <button onClick={handleLogout} className="w-full bg-red-600 hover:bg-red-700 py-3 font-black uppercase text-xs transition-all flex items-center justify-center gap-2">🚪 ĐĂNG XUẤT</button>
+             {/* ĐÃ SỬA: Cập nhật màu bóng đổ của nút cho phù hợp với nền đỏ */}
+             <button onClick={() => setShowPwdModal(true)} className="w-full bg-blue-600 hover:bg-blue-700 py-3 font-black uppercase text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/20 rounded">🔑 ĐỔI MẬT KHẨU</button>
+             <button onClick={handleLogout} className="w-full bg-red-600 hover:bg-red-700 py-3 font-black uppercase text-xs transition-all flex items-center justify-center gap-2 rounded border border-red-500">🚪 ĐĂNG XUẤT</button>
           </div>
         </div>
       </aside>
@@ -670,7 +685,7 @@ export default function PremiumCourtApp() {
                                 <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="bg-gray-200 text-gray-700 px-3 py-2.5 font-black uppercase text-xs hover:bg-gray-300 transition-all rounded">↺ MỞ LẠI</button>
                               )}
                               <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 px-3 py-2.5 font-black uppercase text-xs border border-blue-200 hover:bg-blue-600 hover:text-white transition-all mt-2 rounded">SỬA</button>
-                              {userRole === 'admin' && <button onClick={() => handleDelete(item.id, item.caseName)} className="bg-red-50 text-red-700 px-3 py-2.5 font-black uppercase text-xs border border-red-200 hover:bg-red-600 hover:text-white transition-all rounded">XÓA</button>}
+                             {(userRole === 'admin' || userRole === 'chanhan') && <button onClick={() => handleDelete(item.id, item.caseName)} className="bg-red-50 text-red-700 px-3 py-2.5 font-black uppercase text-xs border border-red-200 hover:bg-red-600 hover:text-white transition-all rounded">XÓA</button>}
                             </div>
                           </td>
                         )}
