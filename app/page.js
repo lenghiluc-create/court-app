@@ -625,8 +625,19 @@ export default function PremiumCourtApp() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {processedSchedule.map(item => {
-                     const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
+                    {processedSchedule.map((item, index) => {
+                      const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
+                      const isEven = index % 2 === 0;
+                      
+                      let rowBgClass = "";
+                      if (item.status === 'completed' || item.status === 'postponed') {
+                        rowBgClass = "opacity-70 bg-gray-100/50";
+                      } else if (isRowUrgent) {
+                        rowBgClass = "bg-red-50 hover:bg-red-100";
+                      } else {
+                        // Xen kẽ màu trắng và xám nhạt
+                        rowBgClass = isEven ? "bg-white hover:bg-blue-50/30" : "bg-slate-50 hover:bg-blue-50/30";
+                      }
                       return (
                       <tr key={item.id} className={`transition-all group divide-x divide-gray-200 ${item.status === 'completed' || item.status === 'postponed' ? 'opacity-70 bg-gray-100/50' : isRowUrgent ? 'bg-red-50 hover:bg-red-100' : 'bg-white hover:bg-blue-50/30'}`}>
                         <td className={`p-6 md:p-8 align-top text-center ${isRowUrgent ? 'border-l-4 border-l-red-500' : ''}`}>
