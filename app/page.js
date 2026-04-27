@@ -401,28 +401,36 @@ export default function PremiumCourtApp() {
         input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px rgba(255, 255, 255, 0.1) inset !important; -webkit-text-fill-color: white !important; transition: background-color 5000s ease-in-out 0s; }
       `}} />
 
-     <aside className="w-64 bg-red-600 text-white hidden xl:flex flex-col fixed h-screen shadow-2xl border-r border-red-700 z-20 overflow-y-auto">
-        <div className="py-10 px-6 text-center border-b border-white/5">
-          {/* ĐÃ SỬA: Thay đổi logo cán cân thành logo tòa án mới, điều chỉnh kích cỡ cho phù hợp */}
-          <img src="/lgtoaan1.png" alt="Logo Tòa án" className="w-20 h-20 mx-auto mb-4 drop-shadow-lg" />
-          <h2 className="font-black text-2xl uppercase tracking-tighter">KV9 - Cần Thơ</h2>
+     <aside 
+        className="w-64 text-white hidden xl:flex flex-col fixed h-screen z-20 overflow-y-auto"
+        style={{ 
+          background: 'rgba(220, 38, 38, 0.75)', /* Màu đỏ trong suốt 75% */
+          backdropFilter: 'blur(16px)', 
+          WebkitBackdropFilter: 'blur(16px)', 
+          borderRight: '1px solid rgba(255, 255, 255, 0.2)',
+          boxShadow: '4px 0 32px 0 rgba(0, 0, 0, 0.2)'
+        }}
+      >
+        <div className="py-10 px-6 text-center border-b border-white/20">
+          <img src="/lgtoaan1.png" alt="Logo Tòa án" className="w-20 h-20 mx-auto mb-4 drop-shadow-xl" />
+          <h2 className="font-black text-2xl uppercase tracking-tighter drop-shadow-md">TAND KV9</h2>
         </div>
+        
         <div className="p-6 flex-1">
-          {/* ĐÃ SỬA: Cập nhật màu bóng đổ của khối lịch xét xử cho phù hợp với nền đỏ */}
-          <div className="bg-blue-600 px-4 py-4 font-black text-sm shadow-lg shadow-red-900/50 flex justify-between items-center rounded-lg">
-            📅 LỊCH XÉT XỬ {urgentCount > 0 && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded-full animate-bounce">{urgentCount}</span>}
+          <div className="bg-blue-600/90 backdrop-blur-md px-4 py-4 font-black text-sm shadow-xl border border-white/20 flex justify-between items-center rounded-lg">
+            <span className="drop-shadow-md">📅 LỊCH XÉT XỬ</span> 
+            {urgentCount > 0 && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded-full animate-bounce shadow-md border border-white/30">{urgentCount}</span>}
           </div>
         </div>
-        <div className="p-6 border-t border-white/5 bg-white/10 mt-auto">
-          <div className="mb-6 p-4 bg-white/5 border border-white/10 rounded-lg">
-             {/* ĐÃ SỬA: Đổi màu văn bản "Quyền:" sang màu hổ phách để nổi bật trên nền đỏ */}
-             <p className="text-[10px] text-amber-300 font-black uppercase mb-1 tracking-widest">Quyền: {roleDisplayNames[userRole]}</p>
-             <p className="text-sm font-bold truncate opacity-70">{user?.email}</p>
+
+        <div className="p-6 border-t border-white/20 mt-auto bg-black/10">
+          <div className="mb-6 p-4 bg-white/10 border border-white/20 rounded-lg shadow-inner">
+             <p className="text-[10px] text-amber-300 font-black uppercase mb-1 tracking-widest drop-shadow-md">Quyền: {roleDisplayNames[userRole]}</p>
+             <p className="text-sm font-bold truncate opacity-90 drop-shadow-md">{user?.email}</p>
           </div>
           <div className="space-y-3">
-             {/* ĐÃ SỬA: Cập nhật màu bóng đổ của nút cho phù hợp với nền đỏ */}
-             <button onClick={() => setShowPwdModal(true)} className="w-full bg-blue-600 hover:bg-blue-700 py-3 font-black uppercase text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/20 rounded">🔑 ĐỔI MẬT KHẨU</button>
-             <button onClick={handleLogout} className="w-full bg-red-600 hover:bg-red-700 py-3 font-black uppercase text-xs transition-all flex items-center justify-center gap-2 rounded border border-red-500">🚪 ĐĂNG XUẤT</button>
+             <button onClick={() => setShowPwdModal(true)} className="w-full bg-blue-600/80 hover:bg-blue-600 py-3 font-black uppercase text-xs transition-all flex items-center justify-center gap-2 shadow-lg border border-white/20 rounded backdrop-blur-sm">🔑 ĐỔI MẬT KHẨU</button>
+             <button onClick={handleLogout} className="w-full bg-black/20 hover:bg-black/40 py-3 font-black uppercase text-xs transition-all flex items-center justify-center gap-2 rounded border border-white/20 shadow-lg backdrop-blur-sm">🚪 ĐĂNG XUẤT</button>
           </div>
         </div>
       </aside>
