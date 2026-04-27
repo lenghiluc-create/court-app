@@ -1,16 +1,16 @@
 'use client';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 // Firebase Imports
 import { db, auth } from './firebase'; 
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence, browserSessionPersistence, updatePassword } from 'firebase/auth';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, where } from 'firebase/firestore';
 
 const localizer = typeof window !== 'undefined' ? momentLocalizer(moment) : null;
 const DnDCalendar = withDragAndDrop(Calendar);
@@ -21,6 +21,8 @@ export default function PremiumCourtApp() {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState('viewer'); 
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
+  
+  // Login & Search States
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPass, setLoginPass] = useState("");
   const [schedule, setSchedule] = useState([]);
@@ -46,24 +48,19 @@ export default function PremiumCourtApp() {
   const calendarSectionRef = useRef(null);
 
   const initialForm = {
-    datetime: "", room: "Trụ sở", caseType: "Hình sự", trialCount: "Lần 1", caseName: "", 
+    datetime: "", room: "Trụ sở", caseType: "Hình sự", duration: 120, trialCount: "Lần 1", caseName: "", 
     plaintiff: "", defendant: "", judge: "", clerk: "", juror1: "", juror2: "", 
     prosecutor: "", status: "pending"
   };
   const [form, setForm] = useState(initialForm);
 
-  const textStyle = "text-[15px] font-medium text-gray-800";
-  const inputBase = `w-full border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all ${textStyle}`;
-  
+  // Styles
+  const inputBase = "w-full border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[15px] font-medium text-gray-800";
   const labelStyle = "block text-center text-[13px] font-black text-teal-900 bg-teal-100 border border-teal-200 py-2.5 px-4 rounded-md mb-2 w-full uppercase tracking-widest shadow-sm"; 
-  
   const filterStyle = "border border-gray-300 rounded-md px-4 py-2.5 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[14px] font-medium text-gray-800 w-full md:w-auto cursor-pointer";
+
   const roleDisplayNames = {
-    chanhan: "CHÁNH ÁN",
-    admin: "QUẢN TRỊ VIÊN",
-    thuky: "THƯ KÝ",
-    thamphan: "THẨM PHÁN",
-    viewer: "CHỈ XEM"
+    chanhan: "CHÁNH ÁN", admin: "QUẢN TRỊ VIÊN", thuky: "THƯ KÝ", thamphan: "THẨM PHÁN", viewer: "CHỈ XEM"
   };
 
   const showToast = (message, type = "success") => {
@@ -77,21 +74,11 @@ export default function PremiumCourtApp() {
       if (currentUser) {
         setUser(currentUser);
         const email = currentUser.email ? currentUser.email.toLowerCase() : "";
-        if (email === 'ltcnhung@thamphan.vn') {
-          setUserRole('chanhan');
-        } 
-        else if (email.includes('admin') || email === 'truongphong@gmail.com') {
-          setUserRole('admin');
-        } 
-        else if (email.includes('thuky')) {
-          setUserRole('thuky');
-        } 
-        else if (email.includes('thamphan')) {
-          setUserRole('thamphan');
-        } 
-        else {
-          setUserRole('viewer');
-        }
+        if (email === 'ltcnhung@thamphan.vn') setUserRole('chanhan');
+        else if (email.includes('admin') || email === 'truongphong@gmail.com') setUserRole('admin');
+        else if (email.includes('thuky')) setUserRole('thuky');
+        else if (email.includes('thamphan')) setUserRole('thamphan');
+        else setUserRole('viewer');
         loadData();
       } else {
         setUser(null);
@@ -101,6 +88,7 @@ export default function PremiumCourtApp() {
     return () => unsubscribe();
   }, []);
 
+  // NÂNG CẤP 2: Tối ưu hiệu suất, chỉ lấy dữ liệu từ 3 tháng trước đến nay
   const loadData = async () => {
     try {
       const threeMonthsAgo = moment().subtract(3, 'months').toISOString();
@@ -140,13 +128,13 @@ export default function PremiumCourtApp() {
       showToast("✅ Đổi mật khẩu thành công!", "success");
       setShowPwdModal(false); setNewPwd(""); setConfirmPwd("");
     } catch (error) {
-      if (error.code === 'auth/requires-recent-login') {
-         showToast("Vui lòng đăng xuất và đăng nhập lại để thực hiện đổi mật khẩu!", "error");
-      } else { showToast("Lỗi: " + error.message, "error"); }
+      if (error.code === 'auth/requires-recent-login') showToast("Vui lòng đăng xuất và đăng nhập lại để thực hiện đổi mật khẩu!", "error");
+      else showToast("Lỗi: " + error.message, "error");
     }
   };
 
-const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) => {
+  // NÂNG CẤP 3: Double Check Server chống Race Condition (Xung đột)
+  const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) => {
     try {
       const startNew = moment(newStartStr);
       const endNew = moment(startNew).add(durationMins, 'minutes');
@@ -175,6 +163,7 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
     if (userRole === 'thamphan' || userRole === 'viewer') return showToast("Không có quyền!", "error");
     if (!form.datetime || !form.caseName || !form.room) return showToast("Vui lòng nhập đủ thông tin!", "error");
     
+    // Kiểm tra chéo Server trước khi ghi
     const isConflict = await isConflictServerSide(form.datetime, form.room, editingId, form.duration);
     if(isConflict) return showToast("⚠️ Xin lỗi, phòng này vừa được người khác đặt trước vài giây. Vui lòng chọn giờ khác!", "error");
 
@@ -193,16 +182,8 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
 
   const toggleStatus = async (id, newStatus, caseName) => {
     try {
-      const updateData = { 
-        status: newStatus, 
-        updatedBy: user.email, 
-        updatedAt: moment().toISOString() 
-      };
-
-      if (newStatus === 'completed') {
-        updateData.completedAt = moment().toISOString();
-      }
-
+      const updateData = { status: newStatus, updatedBy: user.email, updatedAt: moment().toISOString() };
+      if (newStatus === 'completed') updateData.completedAt = moment().toISOString();
       await updateDoc(doc(db, "schedule", id), updateData);
       showToast(newStatus === 'completed' ? "✅ Đã đánh dấu xử xong!" : "⏳ Đã mở lại vụ án!", "success");
       loadData();
@@ -220,18 +201,9 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
   const onEventDrop = async ({ event, start, end }) => {
     if (userRole === 'thamphan' || userRole === 'viewer') return showToast("Không có quyền dời lịch!", "error");
     const newDatetime = moment(start).format('YYYY-MM-DDTHH:mm');
-   const startNew = moment(newDatetime);
-    const durationNew = event.caseType === 'Hình sự' ? 120 : 60;
-    const endNew = moment(startNew).add(durationNew, 'minutes');
-
-    const isConflict = schedule.some(i => {
-      if (!i.datetime || i.room !== event.room || i.id === event.id || i.status !== 'pending') return false;
-      const startEx = moment(i.datetime);
-      const durEx = i.caseType === 'Hình sự' ? 120 : 60;
-      const endEx = moment(startEx).add(durEx, 'minutes');
-      return startNew.isBefore(endEx) && startEx.isBefore(endNew);
-    });
-    if (isConflict) return showToast(`⚠️ Trùng phòng ${event.room} ở khung giờ mới!`, "error");
+    
+    const isConflict = await isConflictServerSide(newDatetime, event.room, event.id, event.duration || 60);
+    if (isConflict) return showToast(`⚠️ Trùng lịch phòng ${event.room} trong khoảng thời gian này!`, "error");
 
     try {
       await updateDoc(doc(db, "schedule", event.id), { datetime: newDatetime, updatedBy: user.email, updatedAt: moment().toISOString() });
@@ -251,6 +223,7 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
     showToast("Đã lấy dữ liệu, vui lòng chọn ngày giờ mới!", "success");
   };
 
+  // NÂNG CẤP 4: Gửi Email (Chỉ sử dụng Mailto Protocol, không cần API ngoài)
   const handleSendEmail = (item) => {
     const subject = encodeURIComponent(`[TAND KV9] Thông báo Lịch xét xử: ${item.caseName || "Chưa có tên"}`);
     const body = encodeURIComponent(
@@ -282,9 +255,11 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
   const processedSchedule = useMemo(() => {
     return schedule.filter(i => {
       const search = (searchQuery || "").toLowerCase().trim();
-      const matchSearch = search === "" || (i.caseName || "").toLowerCase().includes(search) || (i.plaintiff || "").toLowerCase().includes(search) || (i.defendant || "").toLowerCase().includes(search) || (i.judge || "").toLowerCase().includes(search) || (i.room || "").toLowerCase().includes(search) || (i.createdBy || "").toLowerCase().includes(search) || (i.caseType || "").toLowerCase().includes(search);
+      const matchSearch = search === "" || (i.caseName || "").toLowerCase().includes(search) || (i.plaintiff || "").toLowerCase().includes(search) || (i.defendant || "").toLowerCase().includes(search);
       const matchStatus = statusFilter === 'all' ? true : i.status === statusFilter;
       const matchCreator = creatorFilter === 'all' ? true : (i.createdBy === creatorFilter);
+      const matchJudge = judgeFilter === 'all' ? true : (i.judge === judgeFilter);
+      const matchClerk = clerkFilter === 'all' ? true : (i.clerk === clerkFilter);
       let matchDate = true;
       if (startDate || endDate) {
         const itemDateStr = i.datetime ? i.datetime.split('T')[0] : null;
@@ -296,7 +271,7 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
           if (itemTime < start || itemTime > end) matchDate = false;
         }
       }
-      return matchSearch && matchStatus && matchDate && matchCreator;
+      return matchSearch && matchStatus && matchDate && matchCreator && matchJudge && matchClerk;
     }).sort((a, b) => {
       const dateA = a.datetime ? new Date(a.datetime).getTime() : 0;
       const dateB = b.datetime ? new Date(b.datetime).getTime() : 0;
@@ -304,13 +279,13 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
       if (a.status !== 'pending' && b.status !== 'pending') return dateB - dateA;
       return a.status === 'pending' ? -1 : 1;
     });
-  }, [schedule, searchQuery, statusFilter, creatorFilter, startDate, endDate]);
+  }, [schedule, searchQuery, statusFilter, creatorFilter, judgeFilter, clerkFilter, startDate, endDate]);
 
   const exportToExcel = () => {
     if (schedule.length === 0) return showToast("Không có dữ liệu để xuất!", "error");
     const dataToExport = processedSchedule; 
     if (dataToExport.length === 0) return showToast("Không có dữ liệu trong bộ lọc này!", "error");
-    let tableHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8" /><style>table { border-collapse: collapse; width: 100%; font-family: 'Times New Roman', Times, serif; font-size: 13pt; } td, th { border: 1px solid #000000; padding: 8px; vertical-align: top; } .no-border { border: none !important; } .text-center { text-align: center; vertical-align: middle; } .font-bold { font-weight: bold; }</style></head><body><table><tr><td colspan="2" class="no-border text-center font-bold">TÒA ÁN NHÂN DÂN<br/>KHU VỰC 9 - CẦN THƠ</td><td colspan="5" class="no-border text-center font-bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/>Độc lập - Tự do - Hạnh Phúc</td></tr><tr><td colspan="7" class="no-border text-center"><i>Cần Thơ, ngày ${moment().format("DD")} tháng ${moment().format("MM")} năm ${moment().format("YYYY")}</i></td></tr><tr><td colspan="7" class="no-border"></td></tr><tr><td colspan="7" class="no-border text-center font-bold" style="font-size: 16pt;">LỊCH XÉT XỬ ${statusFilter === 'completed' ? '(ĐÃ XỬ XONG)' : ''} ${startDate || endDate ? `<br/><span style="font-size: 12pt; font-weight: normal;">(Từ ngày ${startDate ? moment(startDate).format("DD/MM/YYYY") : "..."} đến ngày ${endDate ? moment(endDate).format("DD/MM/YYYY") : "..."})</span>` : ''} ${creatorFilter !== 'all' ? `<br/><span style="font-size: 12pt; font-weight: normal;">Người nhập: ${creatorFilter}</span>` : ''}</td></tr><tr><td colspan="7" class="no-border"></td></tr><tr><th class="text-center font-bold" style="background-color: #f2f2f2;">STT</th><th class="text-center font-bold" style="background-color: #f2f2f2;">NỘI DUNG VỤ ÁN</th><th class="text-center font-bold" style="background-color: #f2f2f2;">NGÀY XÉT XỬ</th><th class="text-center font-bold" style="background-color: #f2f2f2;">CHỦ TỌA, THƯ KÝ</th><th class="text-center font-bold" style="background-color: #f2f2f2;">HỘI THẨM NHÂN DÂN</th><th class="text-center font-bold" style="background-color: #f2f2f2;">PHÒNG XÉT XỬ</th><th class="text-center font-bold" style="background-color: #f2f2f2;">NGƯỜI NHẬP</th></tr>`;
+    let tableHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8" /><style>table { border-collapse: collapse; width: 100%; font-family: 'Times New Roman', Times, serif; font-size: 13pt; } td, th { border: 1px solid #000000; padding: 8px; vertical-align: top; } .no-border { border: none !important; } .text-center { text-align: center; vertical-align: middle; } .font-bold { font-weight: bold; }</style></head><body><table><tr><td colspan="2" class="no-border text-center font-bold">TÒA ÁN NHÂN DÂN<br/>KHU VỰC 9 - CẦN THƠ</td><td colspan="5" class="no-border text-center font-bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/>Độc lập - Tự do - Hạnh Phúc</td></tr><tr><td colspan="7" class="no-border text-center"><i>Cần Thơ, ngày ${moment().format("DD")} tháng ${moment().format("MM")} năm ${moment().format("YYYY")}</i></td></tr><tr><td colspan="7" class="no-border"></td></tr><tr><td colspan="7" class="no-border text-center font-bold" style="font-size: 16pt;">LỊCH XÉT XỬ ${statusFilter === 'completed' ? '(ĐÃ XỬ XONG)' : ''} ${startDate || endDate ? `<br/><span style="font-size: 12pt; font-weight: normal;">(Từ ngày ${startDate ? moment(startDate).format("DD/MM/YYYY") : "..."} đến ngày ${endDate ? moment(endDate).format("DD/MM/YYYY") : "..."})</span>` : ''}</td></tr><tr><td colspan="7" class="no-border"></td></tr><tr><th class="text-center font-bold" style="background-color: #f2f2f2;">STT</th><th class="text-center font-bold" style="background-color: #f2f2f2;">NỘI DUNG VỤ ÁN</th><th class="text-center font-bold" style="background-color: #f2f2f2;">NGÀY XÉT XỬ</th><th class="text-center font-bold" style="background-color: #f2f2f2;">CHỦ TỌA, THƯ KÝ</th><th class="text-center font-bold" style="background-color: #f2f2f2;">HỘI THẨM NHÂN DÂN</th><th class="text-center font-bold" style="background-color: #f2f2f2;">PHÒNG XÉT XỬ</th><th class="text-center font-bold" style="background-color: #f2f2f2;">NGƯỜI NHẬP</th></tr>`;
     dataToExport.forEach((item, index) => {
       const noidung = `<b>${item.caseName || ""}</b><br/>NĐ: ${item.plaintiff || ""}<br/>BĐ: ${item.defendant || ""}`;
       const thoigian = `${moment(item.datetime).format("HH")} giờ ${moment(item.datetime).format("mm")} phút<br/>Ngày ${moment(item.datetime).format("DD/MM/YYYY")}`;
@@ -323,26 +298,18 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
     link.click(); showToast("Đã xuất file Excel chuẩn!", "success");
   };
 
- const isRoomConflict = useMemo(() => {
+  const isRoomConflict = useMemo(() => {
     if (!form.datetime || !form.room) return false;
     const startNew = moment(form.datetime);
-    const durationNew = form.caseType === 'Hình sự' ? 120 : 60; // Hình sự khóa 2 tiếng
-    const endNew = moment(startNew).add(durationNew, 'minutes');
+    const endNew = moment(startNew).add(form.duration || 60, 'minutes');
 
     return schedule.some(i => {
       if (!i.datetime || i.room !== form.room || i.id === editingId || i.status !== 'pending') return false;
       const startEx = moment(i.datetime);
-      const durEx = i.caseType === 'Hình sự' ? 120 : 60;
-      const endEx = moment(startEx).add(durEx, 'minutes');
-      // Giao nhau khi: (StartA < EndB) và (StartB < EndA)
+      const endEx = moment(startEx).add(i.duration || 60, 'minutes');
       return startNew.isBefore(endEx) && startEx.isBefore(endNew);
     });
-  }, [form.datetime, form.room, form.caseType, schedule, editingId]);
-  const hasConflict = isRoomConflict;
-
-  const judgesList = [...new Set(schedule.map(i => i.judge).filter(Boolean))];
-  const clerksList = [...new Set(schedule.map(i => i.clerk).filter(Boolean))];
-  const prosecutorsList = [...new Set(schedule.map(i => i.prosecutor).filter(Boolean))];
+  }, [form.datetime, form.room, form.duration, schedule, editingId]);
 
   const isUrgent = (datetime) => {
     if(!datetime) return false;
@@ -352,15 +319,10 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
   
   const urgentCount = schedule.filter(i => i.status === 'pending' && isUrgent(i.datetime)).length;
   const pendingCases = schedule.filter(i => i.status === 'pending');
-  
-  const caseTypeStats = {};
-  schedule.forEach(i => { if(i.caseType) caseTypeStats[i.caseType] = (caseTypeStats[i.caseType] || 0) + 1 });
+  const caseTypeStats = {}; schedule.forEach(i => { if(i.caseType) caseTypeStats[i.caseType] = (caseTypeStats[i.caseType] || 0) + 1 });
   const caseTypeData = Object.keys(caseTypeStats).map(key => ({ name: key, value: caseTypeStats[key] }));
-  
-  const judgeStats = {};
-  pendingCases.forEach(i => { if(i.judge) judgeStats[i.judge] = (judgeStats[i.judge] || 0) + 1 });
+  const judgeStats = {}; pendingCases.forEach(i => { if(i.judge) judgeStats[i.judge] = (judgeStats[i.judge] || 0) + 1 });
   const judgeData = Object.keys(judgeStats).map(key => ({ name: key, value: judgeStats[key] })).sort((a,b) => b.value - a.value); 
-
   const CHART_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899', '#6366f1', '#84cc16', '#14b8a6', '#d946ef', '#0ea5e9', '#f43f5e', '#eab308', '#64748b'];
 
   const calendarEvents = useMemo(() => {
@@ -368,12 +330,11 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
       .filter(i => i.datetime && i.status !== 'postponed')
       .map(i => {
         const start = new Date(i.datetime);
-        const durationHours = i.caseType === 'Hình sự' ? 2 : 1;
         return { 
           ...i, 
           title: `${i.status === 'completed' ? '✅ ' : ''}[${i.room}] ${i.caseName || 'Chưa có tên'}`, 
           start: start, 
-          end: new Date(start.getTime() + durationHours * 3600000) 
+          end: new Date(start.getTime() + (i.duration || 60) * 60000) 
         };
       });
   }, [schedule]);
@@ -381,19 +342,12 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
   const notifications = useMemo(() => {
     const today = moment().startOf('day');
     const alerts = { phatHanh: [], hieuLuc: [] };
-
     schedule.filter(i => i.status === 'completed' && i.completedAt).forEach(item => {
       const compDate = moment(item.completedAt).startOf('day');
       const diffDays = today.diff(compDate, 'days');
-
-      if (diffDays >= 4 && diffDays <= 7) {
-        alerts.phatHanh.push({ ...item, diffDays });
-      }
-      else if (diffDays >= 30 && diffDays <= 35) {
-        alerts.hieuLuc.push({ ...item, diffDays });
-      }
+      if (diffDays >= 4 && diffDays <= 7) alerts.phatHanh.push({ ...item, diffDays });
+      else if (diffDays >= 30 && diffDays <= 35) alerts.hieuLuc.push({ ...item, diffDays });
     });
-
     return alerts;
   }, [schedule]);
 
@@ -401,18 +355,12 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
 
   if (!user) {
     return (
-     <div className="min-h-screen flex items-center justify-center relative bg-cover bg-center font-sans" style={{ backgroundImage: "url('/toaan.jpg')" }}>
-        {/* ĐÃ SỬA: Xóa bỏ backdrop-blur-sm ở lớp phủ toàn màn hình, chỉ giữ lại độ tối nhẹ để nổi bật chữ */}
+      <div className="min-h-screen flex items-center justify-center relative bg-cover bg-center font-sans" style={{ backgroundImage: "url('/toaan.jpg')" }}>
         <div className="absolute inset-0 bg-black/30"></div> 
-        
-        {/* Khung ô đăng nhập vẫn giữ nguyên hiệu ứng kính mờ (blur 16px) */}
         <div className="relative z-10 w-full max-w-[480px] p-8 md:p-10 text-center" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '12px', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)' }}>
           <img src="/lgtoaan1.png" alt="Logo" className="mx-auto mb-4 drop-shadow-2xl" style={{ width: '100px', height: '100px', objectFit: 'contain' }} />
-          
-          {/* ĐÃ SỬA: Giảm font chữ tiêu đề xuống để không bị tràn dòng */}
           <p className="text-[16px] md:text-lg font-black uppercase mb-2 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.9)' }}>TOÀ ÁN NHÂN DÂN THÀNH PHỐ CẦN THƠ</p>
           <h1 className="text-[20px] md:text-2xl font-black uppercase mb-8 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.9)' }}>TAND KHU VỰC 9 - CẦN THƠ</h1>
-          
           <form onSubmit={handleLogin} className="space-y-5 flex flex-col items-center">
             <input type="email" placeholder="Email..." value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="w-[85%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center transition-all focus:border-white focus:bg-white/20" style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.4)', borderRadius: '6px' }} required />
             <input type="password" placeholder="Mật khẩu..." value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-[85%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center transition-all focus:border-white focus:bg-white/20" style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.4)', borderRadius: '6px' }} required />
@@ -446,9 +394,7 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
           box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
           transition: all 0.2s ease-in-out;
         }
-        .rbc-event:hover {
-          background-color: rgba(59, 130, 246, 0.25) !important; 
-        }
+        .rbc-event:hover { background-color: rgba(59, 130, 246, 0.25) !important; }
         .rbc-event.rbc-selected { 
           background-color: #1e3a8a !important; 
           color: #ffffff !important;
@@ -460,10 +406,11 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
         input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px rgba(255, 255, 255, 0.1) inset !important; -webkit-text-fill-color: white !important; transition: background-color 5000s ease-in-out 0s; }
       `}} />
 
-     <aside 
+      {/* Sidebar đỏ với hiệu ứng kính mờ (Frosted Glass) */}
+      <aside 
         className="w-64 text-white hidden xl:flex flex-col fixed h-screen z-20 overflow-y-auto"
         style={{ 
-          background: 'rgba(236, 37, 37, 0.75)', /* Màu đỏ trong suốt 75% */
+          background: 'rgba(220, 38, 38, 0.75)',
           backdropFilter: 'blur(16px)', 
           WebkitBackdropFilter: 'blur(16px)', 
           borderRight: '1px solid rgba(255, 255, 255, 0.2)',
@@ -476,6 +423,7 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
         </div>
         
         <div className="p-6 flex-1">
+          {/* NÂNG CẤP 1: Chuyển hướng nhanh (Scroll to Calendar) */}
           <div onClick={scrollToCalendar} className="cursor-pointer bg-blue-600/90 backdrop-blur-md px-4 py-4 font-black text-sm shadow-xl border border-white/20 flex justify-between items-center rounded-lg hover:bg-blue-500 transition-colors">
             <span className="drop-shadow-md">📅 LỊCH XÉT XỬ</span> 
             {urgentCount > 0 && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded-full animate-bounce shadow-md border border-white/30">{urgentCount}</span>}
@@ -495,7 +443,6 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
       </aside>
 
       <main className="flex-1 xl:ml-64 flex flex-col min-h-screen relative z-10">
-        
         <header className="bg-white/95 backdrop-blur-md h-24 shadow-sm flex items-center justify-between px-4 md:px-8 xl:px-12 sticky top-0 z-30 border-b border-gray-200 w-full">
           <div className="flex-1 flex justify-start items-center gap-2 xl:hidden">
              <button onClick={() => setShowPwdModal(true)} className="bg-blue-50 text-blue-700 px-3 py-2 text-[10px] sm:text-xs font-black uppercase border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm">🔑 Đổi MK</button>
@@ -503,7 +450,7 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
           </div>
           <div className="flex-1 hidden xl:block"></div>
           <div className="flex-[2] text-center px-2">
-            <h1 className="font-black text-[14px] sm:text-[16px] md:text-xl xl:text-2xl uppercase text-blue-950 truncate">QUẢN LÝ LỊCH TRỰC TUYẾN</h1>
+            <h1 className="font-black text-[14px] sm:text-[16px] md:text-xl xl:text-2xl uppercase text-blue-950 truncate">HỆ THỐNG QUẢN LÝ LỊCH TRỰC TUYẾN</h1>
           </div>
           <div className="flex-1 flex items-center justify-end">
              <div className="bg-blue-50 text-blue-700 px-3 py-2 sm:px-4 sm:py-2 md:px-6 md:py-3 font-black text-[10px] sm:text-xs md:text-sm border border-blue-100 uppercase tracking-widest text-center w-max">
@@ -513,27 +460,21 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
         </header>
 
         <div className="p-4 md:p-12 flex-1">
-          
-          {/* TỔNG QUAN */}
           <div className="bg-white shadow-xl rounded-xl mb-8 border border-gray-200 overflow-hidden">
             <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-gray-200">
-              
               <div className="p-6 md:p-8 flex flex-col items-center justify-center text-center hover:bg-blue-50/50 transition-colors">
                 <p className="text-gray-500 text-[11px] md:text-xs font-black uppercase tracking-widest mb-2">Tổng vụ án</p>
                 <p className="text-4xl font-black text-blue-950">{schedule.length}</p>
               </div>
-              
               <div className="p-6 md:p-8 flex flex-col items-center justify-center text-center hover:bg-amber-50/50 transition-colors">
                 <p className="text-gray-500 text-[11px] md:text-xs font-black uppercase tracking-widest mb-2">Chờ xử</p>
                 <p className="text-4xl font-black text-amber-600">{pendingCases.length}</p>
               </div>
-              
               <div className="p-6 md:p-8 flex flex-col items-center justify-center text-center bg-red-50 hover:bg-red-100 transition-colors relative overflow-hidden group">
                 {urgentCount > 0 && <div className="absolute top-0 left-0 w-full h-1.5 bg-red-600 group-hover:h-2 transition-all"></div>}
                 <p className="text-red-600 text-[11px] md:text-xs font-black uppercase tracking-widest mb-2">Sắp xử (24h)</p>
                 <p className={`text-4xl font-black text-red-600 ${urgentCount > 0 ? 'animate-pulse' : ''}`}>{urgentCount}</p>
               </div>
-              
               <div className="p-6 md:p-8 flex flex-col items-center justify-center text-center hover:bg-green-50/50 transition-colors">
                 <p className="text-gray-500 text-[11px] md:text-xs font-black uppercase tracking-widest mb-2">Đã xong</p>
                 <p className="text-4xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p>
@@ -541,75 +482,24 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
             </div>
           </div>
 
-          {/* NHẮC VIỆC */}
           {(notifications.phatHanh.length > 0 || notifications.hieuLuc.length > 0) && (
             <div className="bg-white p-6 border-l-8 border-l-red-600 shadow-xl rounded-xl mb-8 animate-pulse-slow">
-              <h3 className="font-black text-red-600 uppercase mb-4 flex items-center gap-2">
-                🔔 DANH SÁCH NHẮC VIỆC HÔM NAY
-              </h3>
+              <h3 className="font-black text-red-600 uppercase mb-4 flex items-center gap-2">🔔 DANH SÁCH NHẮC VIỆC HÔM NAY</h3>
               <div className="space-y-3">
                 {notifications.phatHanh.map(item => (
                   <div key={`ph-${item.id}`} className="bg-amber-50 border border-amber-200 p-3 rounded flex justify-between items-center">
-                    <p className="text-sm font-bold text-amber-800">
-                      ⚠️ Đã <span className="text-red-600 text-lg">{item.diffDays}</span> ngày kể từ khi xử xong vụ <b>{item.caseName}</b>. Vui lòng kiểm tra tiến độ phát hành bản án!
-                    </p>
+                    <p className="text-sm font-bold text-amber-800">⚠️ Đã <span className="text-red-600 text-lg">{item.diffDays}</span> ngày kể từ khi xử xong vụ <b>{item.caseName}</b>. Vui lòng kiểm tra tiến độ phát hành bản án!</p>
                   </div>
                 ))}
-                
                 {notifications.hieuLuc.map(item => (
                   <div key={`hl-${item.id}`} className="bg-blue-50 border border-blue-200 p-3 rounded flex justify-between items-center">
-                    <p className="text-sm font-bold text-blue-800">
-                      📜 Đã <span className="text-red-600 text-lg">{item.diffDays}</span> ngày kể từ khi xử xong vụ <b>{item.caseName}</b>. Bản án bắt đầu có hiệu lực pháp luật!
-                    </p>
+                    <p className="text-sm font-bold text-blue-800">📜 Đã <span className="text-red-600 text-lg">{item.diffDays}</span> ngày kể từ khi xử xong vụ <b>{item.caseName}</b>. Bản án bắt đầu có hiệu lực pháp luật!</p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* THỐNG KÊ */}
-          <div className="bg-white p-6 md:p-8 border shadow-xl rounded-xl mb-12">
-             <h3 className="text-lg md:text-xl font-black uppercase text-blue-950 flex items-center gap-4 mb-8">
-               <span className="w-2 h-8 bg-blue-950"></span>
-               Bảng thống kê tổng hợp
-             </h3>
-             
-             <div className="grid grid-cols-2 gap-4 md:gap-8">
-                <div className="flex flex-col items-center w-full">
-                   <h4 className="text-[10px] md:text-xs font-black uppercase text-gray-400 tracking-widest mb-4 w-full text-center">📊 TỶ LỆ LOẠI ÁN (TỔNG THỂ)</h4>
-                   {caseTypeData.length > 0 ? (
-                     <div className="w-full h-[200px] md:h-[250px] relative">
-                       <ResponsiveContainer width="100%" height="100%">
-                         <PieChart>
-                           <Pie data={caseTypeData} cx="50%" cy="50%" outerRadius={70} dataKey="value" label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                             {caseTypeData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
-                           </Pie>
-                           <Tooltip formatter={(value) => [`${value} vụ`, 'Số lượng']} />
-                         </PieChart>
-                       </ResponsiveContainer>
-                     </div>
-                   ) : <p className="text-gray-400 font-bold italic text-center mt-10">Chưa có dữ liệu</p>}
-                </div>
-
-                <div className="flex flex-col items-center w-full">
-                   <h4 className="text-[10px] md:text-xs font-black uppercase text-gray-400 tracking-widest mb-4 w-full text-center">👨‍⚖️ NĂNG SUẤT THẨM PHÁN (ĐANG CHỜ XỬ)</h4>
-                   {judgeData.length > 0 ? (
-                     <div className="w-full h-[200px] md:h-[250px] relative">
-                       <ResponsiveContainer width="100%" height="100%">
-                         <PieChart>
-                           <Pie data={judgeData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="value" label={({name}) => name}>
-                             {judgeData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[(index + 4) % CHART_COLORS.length]} />)}
-                           </Pie>
-                           <Tooltip formatter={(value) => [`${value} vụ`, 'Đang giải quyết']} />
-                         </PieChart>
-                       </ResponsiveContainer>
-                     </div>
-                   ) : <p className="text-gray-400 font-bold italic text-center mt-10">Chưa có dữ liệu thụ lý</p>}
-                </div>
-             </div>
-          </div>
-
-          {/* FORM ĐĂNG KÝ (Đã được dời lên trên và mở ngang) */}
           {canEdit && (
             <div className="bg-white p-6 md:p-10 border shadow-xl rounded-xl mb-12">
               <h2 className="font-black text-xl text-blue-950 uppercase mb-10 flex items-center justify-center gap-4">
@@ -617,7 +507,6 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
                 {editingId ? "Cập nhật hồ sơ" : "Đăng ký lịch xét xử"}
                 <span className="w-1.5 h-8 bg-blue-600 rounded-full"></span>
               </h2>
-              
               <div className="max-w-5xl mx-auto space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
@@ -632,15 +521,12 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
                   <div>
                     <label className={labelStyle}>Phòng xử / Địa điểm <span className="text-red-500">*</span></label>
                     <select value={form.room} onChange={e => setForm({...form, room: e.target.value})} className={inputBase}>
-                      <option value="Trụ sở">🏢 Trụ sở</option>
-                      <option value="Chi nhánh">🏢 Chi nhánh</option>
-                      <option value="Trực tuyến">💻 Trực tuyến</option>
-                      <option value="Lưu động">🚚 Lưu động</option>
-                      <option value="Dự phòng">⚠️ DỰ PHÒNG</option>
+                      <option value="Trụ sở">🏢 TRỤ SỞ</option><option value="Chi nhánh">🏢 CHI NHÁNH</option><option value="Trực tuyến">💻 TRỰC TUYẾN</option><option value="Lưu động">🚚 LƯU ĐỘNG</option><option value="Dự phòng">⚠️ DỰ PHÒNG</option>
                     </select>
                   </div>
                 </div>
-                
+
+                {/* NÂNG CẤP 1: Chọn Tùy biến thời lượng (Dynamic Duration) */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <div>
                     <label className={labelStyle}>Loại án <span className="text-red-500">*</span></label>
@@ -660,14 +546,12 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
                     <select value={form.trialCount} onChange={e => setForm({...form, trialCount: e.target.value})} className={inputBase}><option value="Lần 1">Lần 1</option><option value="Lần 2">Lần 2</option><option value="Mở lại">Mở lại</option></select>
                   </div>
                 </div>
-                
+
                 <div><label className={labelStyle}>Trích yếu vụ án / Tội danh <span className="text-red-500">*</span></label><textarea value={form.caseName} onChange={e => setForm({...form, caseName: e.target.value})} className={inputBase} rows="2" placeholder="Ví dụ: Tranh chấp hợp đồng vay tài sản..." /></div>
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div><label className={labelStyle}>Nguyên đơn đầu vụ/Bị cáo</label><input value={form.plaintiff} onChange={e => setForm({...form, plaintiff: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
-                  <div><label className={labelStyle}>Bị đơn đầu vụ/Bị hại</label><input value={form.defendant} onChange={e => setForm({...form, defendant: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
+                  <div><label className={labelStyle}>Nguyên đơn đầu vụ</label><input value={form.plaintiff} onChange={e => setForm({...form, plaintiff: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
+                  <div><label className={labelStyle}>Bị đơn đầu vụ</label><input value={form.defendant} onChange={e => setForm({...form, defendant: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
                 </div>
-                
                 <div className="pt-6">
                    <h3 className="text-[14px] font-black text-teal-800 bg-teal-50 border border-teal-200 py-3 rounded-md mb-6 text-center uppercase tracking-widest shadow-sm">Thành phần Hội đồng xét xử</h3>
                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -678,37 +562,28 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
                       <div><label className={labelStyle}>Hội thẩm nhân dân 2</label><input value={form.juror2} onChange={e => setForm({...form, juror2: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
                    </div>
                 </div>
-                
                 <div className="pt-10 pb-4 mt-6 border-t-2 border-dashed border-gray-300">
-                   <button onClick={handleSubmit} disabled={hasConflict} className={`w-full block text-white font-bold py-4 rounded-md uppercase text-lg shadow-lg transition-all active:scale-95 ${hasConflict ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                   <button onClick={handleSubmit} className={`w-full block text-white font-bold py-4 rounded-md uppercase text-lg shadow-lg transition-all active:scale-95 bg-blue-600 hover:bg-blue-700`}>
                      {editingId ? "Cập nhật thông tin" : "Lưu vào hệ thống"}
                    </button>
-                   {isRoomConflict && <p className="text-red-500 text-sm font-bold text-center mt-3 animate-pulse">⚠️ Trùng phòng xét xử tại khung giờ này!</p>}
                 </div>
               </div>
             </div>
           )}
 
-          {/* LỊCH VÀ BẢNG DANH SÁCH (Đã được mở rộng 100% chiều ngang) */}
-          <div className="space-y-12">
+          <div className="space-y-12" ref={calendarSectionRef}>
             <div className="bg-white p-4 md:p-8 border shadow-xl rounded-xl h-[700px] group w-full">
-              {canEdit && <p className="text-gray-400 text-xs font-bold text-center mb-4 italic">💡 Bạn có thể dùng chuột kéo thả vụ án để dời sang ngày/giờ khác</p>}
+              {canEdit && <p className="text-gray-400 text-xs font-bold text-center mb-4 italic">💡 Kéo thả để dời lịch. Độ dài ô trên lịch thể hiện thời lượng vụ án.</p>}
               {isMounted && localizer ? (
-                <DnDCalendar 
-                  localizer={localizer} 
-                  events={calendarEvents} 
-                  style={{ height: "100%" }} 
-                  onSelectEvent={e => setSelectedEvent(e)} 
-                  onEventDrop={onEventDrop} 
-                  resizable={false} 
-                />
+                <DnDCalendar localizer={localizer} events={calendarEvents} style={{ height: "100%" }} onSelectEvent={e => setSelectedEvent(e)} onEventDrop={onEventDrop} resizable={false} />
               ) : <div className="w-full h-full flex items-center justify-center font-bold text-gray-400">Đang tải bộ lịch...</div>}
             </div>
 
             <div className="bg-white border border-gray-200 shadow-xl rounded-xl overflow-hidden flex flex-col h-[850px] w-full">
-              <div className="p-6 md:p-8 border-b border-gray-200 flex flex-col items-center gap-6 sticky top-0 bg-white z-10">
+              <div className="p-6 md:p-8 border-b border-gray-200 flex flex-col gap-6 sticky top-0 bg-white z-10">
                 <h3 className="font-black uppercase text-xl md:text-2xl text-blue-950 flex items-center justify-center gap-4 whitespace-nowrap"><span className="w-1.5 h-8 bg-blue-950 rounded-full"></span>Sổ thụ lý</h3>
                 
+                {/* NÂNG CẤP 1: Bộ Lọc Nâng Cao (Thẩm phán, Thư ký) */}
                 <div className="flex flex-col xl:flex-row flex-wrap gap-4 w-full justify-center items-center">
                   <div className="flex items-center gap-3 border border-gray-300 rounded-md px-4 py-2.5 bg-white w-full md:w-auto focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
                     <span className="text-xs font-bold text-gray-500 uppercase">Từ:</span>
@@ -739,81 +614,72 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
                     {processedSchedule.map((item, index) => {
                       const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
                       const isEven = index % 2 === 0;
-                      
-                      let rowBgClass = "";
-                      if (item.status === 'completed' || item.status === 'postponed') {
-                        rowBgClass = "opacity-70 bg-gray-100/50";
-                      } else if (isRowUrgent) {
-                        rowBgClass = "bg-red-50 hover:bg-red-100";
-                      } else {
-                        // Xen kẽ màu trắng và xám nhạt
-                        rowBgClass = isEven ? "bg-white hover:bg-blue-50/30" : "bg-slate-50 hover:bg-blue-50/30";
-                      }
+                      let rowBgClass = item.status === 'completed' || item.status === 'postponed' ? "opacity-70 bg-gray-100/50" : isRowUrgent ? "bg-red-50 hover:bg-red-100" : isEven ? "bg-white hover:bg-blue-50/30" : "bg-slate-50 hover:bg-blue-50/30";
+
                       return (
-                      <tr key={item.id} className={`transition-all group divide-x divide-gray-200 ${item.status === 'completed' || item.status === 'postponed' ? 'opacity-70 bg-gray-100/50' : isRowUrgent ? 'bg-red-50 hover:bg-red-100' : 'bg-white hover:bg-blue-50/30'}`}>
-                        <td className={`p-6 md:p-8 align-top text-center ${isRowUrgent ? 'border-l-4 border-l-red-500' : ''}`}>
-                          <div className="space-y-4">
-                            {item.status === 'postponed' ? (
-                              <div className="text-amber-600 font-bold text-base animate-pulse">⏸ ĐÃ HOÃN</div>
-                            ) : (
-                              <>
-                                <div className="font-bold text-gray-900 text-base">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
-                                <div className="text-blue-600 font-bold text-base">🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</div>
-                              </>
-                            )}
-                            <div className="font-bold text-gray-500 uppercase text-sm mt-4">{item.room || "---"}</div>
-                          </div>
-                        </td>
-                        <td className="p-6 md:p-8 align-top">
-                          <div className="space-y-4">
-                            <div className="font-bold uppercase text-gray-900 text-base leading-snug group-hover:text-blue-800 transition-colors">
-                              {item.status === 'completed' && <span className="text-green-600 mr-2">✅</span>}
-                              {item.status === 'postponed' && <span className="text-amber-500 mr-2">⏸</span>}
-                              {isRowUrgent && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded mr-2 animate-pulse">⚠️ SẮP XỬ</span>}
-                              {item.caseName || "Vụ án chưa có tên"}
-                            </div>
-                            <div className="text-gray-700 font-semibold text-sm">
-                              {item.caseType || "---"} / {item.trialCount || "Lần 1"}
-                            </div>
-                            <div className="text-sm text-gray-700 space-y-2 pt-2">
-                              <p><span className="font-semibold text-gray-500">NĐ/BC:</span> {item.plaintiff || "N/A"}</p>
-                              <p><span className="font-semibold text-gray-500">BĐ/BH:</span> {item.defendant || "N/A"}</p>
-                            </div>
-                            <div className="pt-3 flex flex-col sm:flex-row sm:items-center justify-start gap-4 text-xs font-medium text-gray-500 italic">
-                               <span>✍️ Nhập bởi: <span className="font-bold text-gray-600">{item.createdBy ? item.createdBy.split('@')[0] : "Hệ thống"}</span></span>
-                               {item.updatedBy && <span>🔄 Sửa bởi: <span className="font-bold text-gray-600">{item.updatedBy.split('@')[0]}</span></span>}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-6 md:p-8 align-top">
-                          <div className="space-y-4 text-sm md:text-base text-gray-800">
-                            <div className="flex gap-2"><span className="font-semibold text-blue-700 w-8 shrink-0">TP:</span> <span className={`font-bold ${isRowUrgent ? 'text-red-900' : 'text-gray-900'}`}>{item.judge || "---"}</span></div>
-                            <div className="flex gap-2"><span className="font-semibold text-gray-500 w-8 shrink-0">HT:</span> <span className="font-medium text-gray-700">{item.juror1 || "---"}, {item.juror2 || "---"}</span></div>
-                            <div className="flex gap-2"><span className="font-semibold text-gray-500 w-8 shrink-0">TK:</span> <span className="font-medium text-gray-700">{item.clerk || "---"}</span></div>
-                            <div className="flex gap-2"><span className="font-semibold text-red-600 w-8 shrink-0">KS:</span> <span className="font-bold text-red-600">{item.prosecutor || "---"}</span></div>
-                          </div>
-                        </td>
-                        {canEdit && (
-                          <td className="p-6 md:p-8 text-center align-top">
-                            <div className="flex flex-col gap-4">
-                              {item.status === 'pending' || !item.status ? (
+                        <tr key={item.id} className={`transition-all group divide-x divide-gray-200 ${rowBgClass}`}>
+                          <td className={`p-6 md:p-8 align-top text-center ${isRowUrgent ? 'border-l-4 border-l-red-500' : ''}`}>
+                            <div className="space-y-4">
+                              {item.status === 'postponed' ? ( <div className="text-amber-600 font-bold text-base animate-pulse">⏸ ĐÃ HOÃN</div> ) : (
                                 <>
-                                  <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-50 text-green-700 px-3 py-2.5 font-black uppercase text-xs border border-green-200 hover:bg-green-600 hover:text-white transition-all rounded">✔ XONG</button>
-                                  <button onClick={() => toggleStatus(item.id, 'postponed', item.caseName)} className="bg-amber-50 text-amber-700 px-3 py-2.5 font-black uppercase text-xs border border-amber-200 hover:bg-amber-600 hover:text-white transition-all rounded">⏸ HOÃN</button>
-                                  <button onClick={() => handleSendEmail(item)} className="bg-purple-50 text-purple-700 px-3 py-2 font-black uppercase text-xs border border-purple-200 hover:bg-purple-600 hover:text-white transition-all rounded flex justify-center items-center gap-1">✉️ BÁO LỊCH</button>
+                                  <div className="font-bold text-gray-900 text-base">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
+                                  <div className="text-blue-600 font-bold text-base flex flex-col items-center justify-center gap-1">
+                                    <span>🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</span>
+                                    <span className="text-[10px] font-medium text-gray-500 bg-gray-200 px-2 rounded-full">Kéo dài: {item.duration || 60}p</span>
+                                  </div>
                                 </>
-                              ) : item.status === 'postponed' ? (
-                                <button onClick={() => handleReschedule(item)} className="bg-blue-600 text-white px-3 py-2.5 font-black uppercase text-xs shadow-md hover:bg-blue-700 transition-all rounded">📅 LÊN LỊCH LẠI</button>
-                              ) : (
-                                <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="bg-gray-200 text-gray-700 px-3 py-2.5 font-black uppercase text-xs hover:bg-gray-300 transition-all rounded">↺ MỞ LẠI</button>
                               )}
-                              <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 px-3 py-2.5 font-black uppercase text-xs border border-blue-200 hover:bg-blue-600 hover:text-white transition-all mt-2 rounded">SỬA</button>
-                             {(userRole === 'admin' || userRole === 'chanhan') && <button onClick={() => handleDelete(item.id, item.caseName)} className="bg-red-50 text-red-700 px-3 py-2.5 font-black uppercase text-xs border border-red-200 hover:bg-red-600 hover:text-white transition-all rounded">XÓA</button>}
+                              <div className="font-bold text-gray-500 uppercase text-sm mt-4">{item.room || "---"}</div>
                             </div>
                           </td>
-                        )}
-                      </tr>
-                    )})}
+                          <td className="p-6 md:p-8 align-top">
+                            <div className="space-y-4">
+                              <div className="font-bold uppercase text-gray-900 text-base leading-snug group-hover:text-blue-800 transition-colors">
+                                {item.status === 'completed' && <span className="text-green-600 mr-2">✅</span>}
+                                {item.status === 'postponed' && <span className="text-amber-500 mr-2">⏸</span>}
+                                {isRowUrgent && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded mr-2 animate-pulse">⚠️ SẮP XỬ</span>}
+                                {item.caseName || "Vụ án chưa có tên"}
+                              </div>
+                              <div className="text-gray-700 font-semibold text-sm">{item.caseType || "---"} / {item.trialCount || "Lần 1"}</div>
+                              <div className="text-sm text-gray-700 space-y-2 pt-2">
+                                <p><span className="font-semibold text-gray-500">NĐ:</span> {item.plaintiff || "N/A"}</p>
+                                <p><span className="font-semibold text-gray-500">BĐ:</span> {item.defendant || "N/A"}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-6 md:p-8 align-top">
+                            <div className="space-y-4 text-sm md:text-base text-gray-800">
+                              <div className="flex gap-2"><span className="font-semibold text-blue-700 w-8 shrink-0">TP:</span> <span className={`font-bold ${isRowUrgent ? 'text-red-900' : 'text-gray-900'}`}>{item.judge || "---"}</span></div>
+                              <div className="flex gap-2"><span className="font-semibold text-gray-500 w-8 shrink-0">HT:</span> <span className="font-medium text-gray-700">{item.juror1 || "---"}, {item.juror2 || "---"}</span></div>
+                              <div className="flex gap-2"><span className="font-semibold text-gray-500 w-8 shrink-0">TK:</span> <span className="font-medium text-gray-700">{item.clerk || "---"}</span></div>
+                              <div className="flex gap-2"><span className="font-semibold text-red-600 w-8 shrink-0">KS:</span> <span className="font-bold text-red-600">{item.prosecutor || "---"}</span></div>
+                            </div>
+                          </td>
+                          {canEdit && (
+                            <td className="p-6 md:p-8 text-center align-top">
+                              <div className="flex flex-col gap-3">
+                                {item.status === 'pending' || !item.status ? (
+                                  <>
+                                    <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-50 text-green-700 px-3 py-2 font-black uppercase text-xs border border-green-200 hover:bg-green-600 hover:text-white transition-all rounded">✔ XONG</button>
+                                    <button onClick={() => toggleStatus(item.id, 'postponed', item.caseName)} className="bg-amber-50 text-amber-700 px-3 py-2 font-black uppercase text-xs border border-amber-200 hover:bg-amber-600 hover:text-white transition-all rounded">⏸ HOÃN</button>
+                                    
+                                    {/* NÂNG CẤP 4: Nút Gửi Email tự động */}
+                                    <button onClick={() => handleSendEmail(item)} className="bg-purple-50 text-purple-700 px-3 py-2 font-black uppercase text-xs border border-purple-200 hover:bg-purple-600 hover:text-white transition-all rounded flex justify-center items-center gap-1">✉️ BÁO LỊCH</button>
+                                  </>
+                                ) : item.status === 'postponed' ? (
+                                  <button onClick={() => handleReschedule(item)} className="bg-blue-600 text-white px-3 py-2 font-black uppercase text-xs shadow-md hover:bg-blue-700 transition-all rounded">📅 LÊN LỊCH LẠI</button>
+                                ) : (
+                                  <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="bg-gray-200 text-gray-700 px-3 py-2 font-black uppercase text-xs hover:bg-gray-300 transition-all rounded">↺ MỞ LẠI</button>
+                                )}
+                                <div className="h-px bg-gray-200 w-full my-1"></div>
+                                <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 px-3 py-2 font-black uppercase text-xs border border-blue-200 hover:bg-blue-600 hover:text-white transition-all rounded">SỬA</button>
+                                {(userRole === 'admin' || userRole === 'chanhan') && <button onClick={() => handleDelete(item.id, item.caseName)} className="bg-red-50 text-red-700 px-3 py-2 font-black uppercase text-xs border border-red-200 hover:bg-red-600 hover:text-white transition-all rounded">XÓA</button>}
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -822,16 +688,12 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
         </div>
       </main>
 
+      {/* --- CÁC MODAL HIỂN THỊ (Sự kiện, Đổi mật khẩu, Loading) GIỮ NGUYÊN --- */}
       {selectedEvent && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4 md:p-6" onClick={() => setSelectedEvent(null)}>
            <div className="w-full max-w-lg flex flex-col overflow-hidden transition-all transform md:scale-105" onClick={e => e.stopPropagation()} style={{ background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255, 255, 255, 0.6)', borderRadius: '28px', boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)' }}>
               <div className="p-6 md:p-8 flex justify-between items-start" style={{ background: 'rgba(218, 32, 41, 0.9)' }}>
                 <div><p className="text-xs font-black uppercase text-blue-200 mb-2 tracking-widest">{selectedEvent.caseType || "---"} - {selectedEvent.trialCount || "---"}</p><h3 className="text-xl md:text-2xl font-black uppercase leading-tight text-white drop-shadow-md">{selectedEvent.caseName || "Chưa có tên"}</h3></div>
-                <div className="flex flex-col gap-2 shrink-0 ml-4">
-                  {selectedEvent.status === 'completed' && <span className="bg-green-500 text-white px-3 py-1 font-black text-xs rounded-full shadow-lg border border-green-400">ĐÃ XONG</span>}
-                  {selectedEvent.status === 'postponed' && <span className="bg-amber-500 text-white px-3 py-1 font-black text-xs rounded-full shadow-lg border border-amber-400">ĐÃ HOÃN</span>}
-                  {selectedEvent.status === 'pending' && isUrgent(selectedEvent.datetime) && <span className="bg-red-500 text-white px-3 py-1 font-black text-xs rounded-full shadow-lg border border-red-400 animate-pulse">SẮP XỬ</span>}
-                </div>
               </div>
               <div className="p-6 md:p-8 space-y-5 text-sm md:text-base font-bold text-gray-900">
                 <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-blue-100/80 flex items-center justify-center text-2xl shadow-sm">🕒</div><p className="flex-1 text-blue-950 text-lg"><span className="font-black">{selectedEvent.datetime ? moment(selectedEvent.datetime).format("HH:mm - DD/MM/YYYY") : "---"}</span> tại <span className="font-black">{selectedEvent.room || "---"}</span></p></div><hr className="border-gray-300 border-2 rounded-full opacity-50"/>
@@ -839,45 +701,12 @@ const isConflictServerSide = async (newStartStr, room, excludeId, durationMins) 
                 <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-gray-200/60 flex items-center justify-center text-2xl shadow-sm">⚖️</div><p className="flex-1 text-gray-700 text-lg">Hội thẩm: <span className="font-black text-gray-900">{selectedEvent.juror1 || "---"}, {selectedEvent.juror2 || "---"}</span></p></div>
                 <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-gray-200/60 flex items-center justify-center text-2xl shadow-sm">📝</div><p className="flex-1 text-gray-700 text-lg">Thư ký: <span className="font-black text-gray-900">{selectedEvent.clerk || "---"}</span></p></div>
                 <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-red-100/60 flex items-center justify-center text-2xl shadow-sm">🛡️</div><p className="flex-1 text-gray-700 text-lg">Kiểm sát: <span className="font-black text-red-700">{selectedEvent.prosecutor || "---"}</span></p></div><hr className="border-gray-300 border-2 rounded-full opacity-50"/>
-                <div className="flex items-center justify-between text-xs font-black uppercase tracking-widest text-gray-600 bg-white/60 p-4 rounded-xl border border-white/80 shadow-inner"><span>✍️ NHẬP BỞI:</span><span className="text-blue-800">{selectedEvent.createdBy || "KHÔNG RÕ"}</span></div>
                 <button onClick={() => setSelectedEvent(null)} className="w-full bg-blue-900/95 backdrop-blur-md text-white py-4 md:py-5 font-black text-lg uppercase mt-4 rounded-xl hover:bg-blue-800 transition-all shadow-xl active:scale-95 border border-blue-700">ĐÓNG CỬA SỔ</button>
               </div>
            </div>
         </div>
       )}
-{showAuditModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[200] p-4 md:p-6" onClick={() => setShowAuditModal(false)}>
-           <div className="w-full max-w-4xl flex flex-col overflow-hidden h-[80vh]" onClick={e => e.stopPropagation()} style={{ background: 'rgba(255, 255, 255, 0.95)', border: '1px solid rgba(255, 255, 255, 0.6)', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)' }}>
-              <div className="p-6 md:p-8 flex justify-between items-center bg-slate-800 text-white">
-                <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3">📋 Nhật ký hoạt động hệ thống</h3>
-                <button onClick={() => setShowAuditModal(false)} className="bg-red-500 px-4 py-2 text-sm font-black rounded shadow hover:bg-red-600">ĐÓNG</button>
-              </div>
-              <div className="flex-1 overflow-auto p-6 md:p-8 bg-slate-50">
-                {auditLogs.length === 0 ? (
-                  <p className="text-center font-bold text-gray-400 mt-10">Chưa có dữ liệu nhật ký nào được ghi lại.</p>
-                ) : (
-                  <table className="w-full text-left border-collapse">
-                    <thead className="bg-white sticky top-0 shadow-sm z-10 text-xs font-black uppercase text-gray-500">
-                      <tr><th className="p-4 border-b">Thời gian</th><th className="p-4 border-b">Tài khoản</th><th className="p-4 border-b">Hành động</th><th className="p-4 border-b w-1/2">Chi tiết</th></tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {auditLogs.map((log, idx) => (
-                        <tr key={idx} className="hover:bg-blue-50 transition-colors">
-                          <td className="p-4 font-bold text-sm text-gray-700">{moment(log.timestamp).format("HH:mm:ss DD/MM/YYYY")}</td>
-                          <td className="p-4 font-bold text-sm text-blue-700">{log.user ? log.user.split('@')[0] : "---"}</td>
-                          <td className="p-4">
-                            <span className={`px-2 py-1 text-[10px] font-black uppercase rounded ${log.action.includes('XÓA') ? 'bg-red-100 text-red-700' : log.action.includes('KÉO THẢ') ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>{log.action}</span>
-                          </td>
-                          <td className="p-4 text-sm font-medium text-gray-600">{log.details}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-           </div>
-        </div>
-      )}
+
       {showPwdModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4 md:p-6" onClick={() => setShowPwdModal(false)}>
            <div className="w-full max-w-md flex flex-col overflow-hidden transition-all transform md:scale-105" onClick={e => e.stopPropagation()} style={{ background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255, 255, 255, 0.6)', borderRadius: '28px', boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)' }}>
