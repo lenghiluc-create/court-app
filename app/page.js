@@ -225,9 +225,7 @@ export default function PremiumCourtApp() {
 
   // NÂNG CẤP 4: Gửi Email (Chỉ sử dụng Mailto Protocol, không cần API ngoài)
   const handleSendEmail = (item) => {
-    const subject = encodeURIComponent(`[TAND KV9] Thông báo Lịch xét xử: ${item.caseName || "Chưa có tên"}`);
-    const body = encodeURIComponent(
-      `Kính gửi Hội đồng xét xử,\n\n`+
+    const body = `Kính gửi Hội đồng xét xử,\n\n`+
       `Hệ thống xin thông báo lịch xét xử chi tiết như sau:\n`+
       `- Vụ án: ${item.caseName}\n`+
       `- Loại án: ${item.caseType} (${item.trialCount})\n`+
@@ -238,9 +236,13 @@ export default function PremiumCourtApp() {
       `- Thư ký: ${item.clerk || "..."}\n`+
       `- Kiểm sát viên: ${item.prosecutor || "..."}\n`+
       `- Hội thẩm: ${item.juror1 || "..."} & ${item.juror2 || "..."}\n\n`+
-      `Trân trọng thông báo!`
-    );
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+      `Trân trọng thông báo!`;
+      
+    navigator.clipboard.writeText(body).then(() => {
+      showToast("📋 Đã copy nội dung! Bạn có thể dán (Ctrl+V) vào Zalo/Email.", "success");
+    }).catch(err => {
+      showToast("Lỗi khi copy!", "error");
+    });
   };
 
   const scrollToCalendar = () => {
@@ -658,22 +660,34 @@ export default function PremiumCourtApp() {
                           {canEdit && (
                             <td className="p-6 md:p-8 text-center align-top">
                               <div className="flex flex-col gap-3">
-                                {item.status === 'pending' || !item.status ? (
-                                  <>
-                                    <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-50 text-green-700 px-3 py-2 font-black uppercase text-xs border border-green-200 hover:bg-green-600 hover:text-white transition-all rounded">✔ XONG</button>
-                                    <button onClick={() => toggleStatus(item.id, 'postponed', item.caseName)} className="bg-amber-50 text-amber-700 px-3 py-2 font-black uppercase text-xs border border-amber-200 hover:bg-amber-600 hover:text-white transition-all rounded">⏸ HOÃN</button>
-                                    
-                                    {/* NÂNG CẤP 4: Nút Gửi Email tự động */}
-                                    <button onClick={() => handleSendEmail(item)} className="bg-purple-50 text-purple-700 px-3 py-2 font-black uppercase text-xs border border-purple-200 hover:bg-purple-600 hover:text-white transition-all rounded flex justify-center items-center gap-1">✉️ BÁO LỊCH</button>
-                                  </>
-                                ) : item.status === 'postponed' ? (
-                                  <button onClick={() => handleReschedule(item)} className="bg-blue-600 text-white px-3 py-2 font-black uppercase text-xs shadow-md hover:bg-blue-700 transition-all rounded">📅 LÊN LỊCH LẠI</button>
-                                ) : (
-                                  <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="bg-gray-200 text-gray-700 px-3 py-2 font-black uppercase text-xs hover:bg-gray-300 transition-all rounded">↺ MỞ LẠI</button>
+                                {(item.status === 'pending' || !item.status) && (
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-50 text-green-700 py-2.5 font-black uppercase text-[10px] md:text-xs border border-green-200 hover:bg-green-600 hover:text-white transition-all rounded shadow-sm" title="Xử xong">✔ XONG</button>
+                                    <button onClick={() => toggleStatus(item.id, 'postponed', item.caseName)} className="bg-amber-50 text-amber-700 py-2.5 font-black uppercase text-[10px] md:text-xs border border-amber-200 hover:bg-amber-600 hover:text-white transition-all rounded shadow-sm" title="Hoãn xử">⏸ HOÃN</button>
+                                  </div>
                                 )}
-                                <div className="h-px bg-gray-200 w-full my-1"></div>
-                                <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 px-3 py-2 font-black uppercase text-xs border border-blue-200 hover:bg-blue-600 hover:text-white transition-all rounded">SỬA</button>
-                                {(userRole === 'admin' || userRole === 'chanhan') && <button onClick={() => handleDelete(item.id, item.caseName)} className="bg-red-50 text-red-700 px-3 py-2 font-black uppercase text-xs border border-red-200 hover:bg-red-600 hover:text-white transition-all rounded">XÓA</button>}
+
+                                {/* Trạng thái: Mở lại / Lên lịch lại (Chiếm full chiều ngang) */}
+                                {item.status === 'postponed' && (
+                                  <button onClick={() => handleReschedule(item)} className="w-full bg-blue-600 text-white py-2.5 font-black uppercase text-[10px] md:text-xs shadow-md hover:bg-blue-700 transition-all rounded">📅 LÊN LỊCH LẠI</button>
+                                )}
+                                {item.status === 'completed' && (
+                                  <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="w-full bg-gray-200 text-gray-700 py-2.5 font-black uppercase text-[10px] md:text-xs hover:bg-gray-300 transition-all rounded">↺ MỞ LẠI</button>
+                                )}
+
+                                {/* Hàng 2: COPY LỊCH (Chiếm full chiều ngang) */}
+                                {(item.status === 'pending' || !item.status) && (
+                                  <button onClick={() => handleSendEmail(item)} className="w-full bg-purple-50 text-purple-700 py-2.5 font-black uppercase text-[10px] md:text-xs border border-purple-200 hover:bg-purple-600 hover:text-white transition-all rounded flex justify-center items-center gap-1 shadow-sm">📋 COPY LỊCH</button>
+                                )}
+
+                                {/* Hàng 3: SỬA / XÓA (Chia đôi nếu có quyền Xóa, không thì full Sửa) */}
+                                <div className={`grid ${userRole === 'admin' || userRole === 'chanhan' ? 'grid-cols-2' : 'grid-cols-1'} gap-2 pt-1 mt-1 border-t border-gray-200 border-dashed`}>
+                                   <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 py-2 font-black uppercase text-[10px] md:text-xs border border-blue-200 hover:bg-blue-600 hover:text-white transition-all rounded shadow-sm">✏️ SỬA</button>
+                                   {(userRole === 'admin' || userRole === 'chanhan') && (
+                                     <button onClick={() => handleDelete(item.id, item.caseName)} className="bg-red-50 text-red-700 py-2 font-black uppercase text-[10px] md:text-xs border border-red-200 hover:bg-red-600 hover:text-white transition-all rounded shadow-sm">🗑️ XÓA</button>
+                                   )}
+                                </div>
+
                               </div>
                             </td>
                           )}
