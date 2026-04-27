@@ -533,8 +533,8 @@ export default function PremiumCourtApp() {
 
             <div className={`space-y-12 ${!canEdit ? 'xl:col-span-12' : 'xl:col-span-8'}`}>
               
-              <div className="bg-white p-4 md:p-8 border shadow-xl rounded-xl h-[500px] overflow-hidden group">
-                {canEdit && <p className="text-gray-400 text-xs font-bold text-center mb-2 italic">💡 Bạn có thể dùng chuột kéo thả vụ án để dời sang ngày/giờ khác</p>}
+              <div className="bg-white p-4 md:p-8 border shadow-xl rounded-xl h-[700px] overflow-hidden group">
+                {canEdit && <p className="text-gray-400 text-xs font-bold text-center mb-4 italic">💡 Bạn có thể dùng chuột kéo thả vụ án để dời sang ngày/giờ khác</p>}
                 {isMounted && localizer ? (
                   <DnDCalendar 
                     localizer={localizer} 
