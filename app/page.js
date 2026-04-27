@@ -187,7 +187,17 @@ export default function PremiumCourtApp() {
   const onEventDrop = async ({ event, start, end }) => {
     if (userRole === 'thamphan' || userRole === 'viewer') return showToast("Không có quyền dời lịch!", "error");
     const newDatetime = moment(start).format('YYYY-MM-DDTHH:mm');
-    const isConflict = schedule.some(i => i.datetime === newDatetime && i.room === event.room && i.id !== event.id && i.status === 'pending');
+   const startNew = moment(newDatetime);
+    const durationNew = event.caseType === 'Hình sự' ? 120 : 60;
+    const endNew = moment(startNew).add(durationNew, 'minutes');
+
+    const isConflict = schedule.some(i => {
+      if (!i.datetime || i.room !== event.room || i.id === event.id || i.status !== 'pending') return false;
+      const startEx = moment(i.datetime);
+      const durEx = i.caseType === 'Hình sự' ? 120 : 60;
+      const endEx = moment(startEx).add(durEx, 'minutes');
+      return startNew.isBefore(endEx) && startEx.isBefore(endNew);
+    });
     if (isConflict) return showToast(`⚠️ Trùng phòng ${event.room} ở khung giờ mới!`, "error");
 
     try {
@@ -254,7 +264,21 @@ export default function PremiumCourtApp() {
     link.click(); showToast("Đã xuất file Excel chuẩn!", "success");
   };
 
-  const isRoomConflict = schedule.some(i => i.datetime && i.datetime === form.datetime && i.room && i.room === form.room && i.id !== editingId && i.status === 'pending');
+ const isRoomConflict = useMemo(() => {
+    if (!form.datetime || !form.room) return false;
+    const startNew = moment(form.datetime);
+    const durationNew = form.caseType === 'Hình sự' ? 120 : 60; // Hình sự khóa 2 tiếng
+    const endNew = moment(startNew).add(durationNew, 'minutes');
+
+    return schedule.some(i => {
+      if (!i.datetime || i.room !== form.room || i.id === editingId || i.status !== 'pending') return false;
+      const startEx = moment(i.datetime);
+      const durEx = i.caseType === 'Hình sự' ? 120 : 60;
+      const endEx = moment(startEx).add(durEx, 'minutes');
+      // Giao nhau khi: (StartA < EndB) và (StartB < EndA)
+      return startNew.isBefore(endEx) && startEx.isBefore(endNew);
+    });
+  }, [form.datetime, form.room, form.caseType, schedule, editingId]);
   const hasConflict = isRoomConflict;
 
   const judgesList = [...new Set(schedule.map(i => i.judge).filter(Boolean))];
@@ -283,12 +307,16 @@ export default function PremiumCourtApp() {
   const calendarEvents = useMemo(() => {
     return schedule
       .filter(i => i.datetime && i.status !== 'postponed')
-      .map(i => ({ 
-        ...i, 
-        title: `${i.status === 'completed' ? '✅ ' : ''}[${i.room}] ${i.caseName || 'Chưa có tên'}`, 
-        start: new Date(i.datetime), 
-        end: new Date(new Date(i.datetime).getTime() + 3600000) 
-      }));
+      .map(i => {
+        const start = new Date(i.datetime);
+        const durationHours = i.caseType === 'Hình sự' ? 2 : 1;
+        return { 
+          ...i, 
+          title: `${i.status === 'completed' ? '✅ ' : ''}[${i.room}] ${i.caseName || 'Chưa có tên'}`, 
+          start: start, 
+          end: new Date(start.getTime() + durationHours * 3600000) 
+        };
+      });
   }, [schedule]);
 
   const notifications = useMemo(() => {
