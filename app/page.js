@@ -140,9 +140,21 @@ export default function PremiumCourtApp() {
     } catch (err) { showToast("Lỗi khi lưu dữ liệu", "error"); }
   };
 
-  const toggleStatus = async (id, newStatus) => {
+  const toggleStatus = async (id, newStatus, caseName) => {
     try {
-      await updateDoc(doc(db, "schedule", id), { status: newStatus, updatedBy: user.email, updatedAt: moment().toISOString() });
+      // Đóng gói dữ liệu cập nhật
+      const updateData = { 
+        status: newStatus, 
+        updatedBy: user.email, 
+        updatedAt: moment().toISOString() 
+      };
+
+      // NẾU LÀ BẤM NÚT "XONG", LƯU THÊM MỐC THỜI GIAN ĐỂ ĐẾM NGÀY
+      if (newStatus === 'completed') {
+        updateData.completedAt = moment().toISOString();
+      }
+
+      await updateDoc(doc(db, "schedule", id), updateData);
       showToast(newStatus === 'completed' ? "✅ Đã đánh dấu xử xong!" : "⏳ Đã mở lại vụ án!", "success");
       loadData();
     } catch (err) { showToast("Lỗi cập nhật trạng thái", "error"); }
@@ -241,7 +253,26 @@ export default function PremiumCourtApp() {
   
   const urgentCount = schedule.filter(i => i.status === 'pending' && isUrgent(i.datetime)).length;
   const pendingCases = schedule.filter(i => i.status === 'pending');
-  
+  const notifications = useMemo(() => {
+    const today = moment().startOf('day');
+    const alerts = { phatHanh: [], hieuLuc: [] };
+
+    schedule.filter(i => i.status === 'completed' && i.completedAt).forEach(item => {
+      const compDate = moment(item.completedAt).startOf('day');
+      const diffDays = today.diff(compDate, 'days');
+
+      // Nhắc nhở phát hành án (từ ngày thứ 4 đến ngày thứ 7 để tránh trôi thông báo)
+      if (diffDays >= 4 && diffDays <= 7) {
+        alerts.phatHanh.push({ ...item, diffDays });
+      }
+      // Nhắc nhở án có hiệu lực (từ ngày thứ 30 đến 35)
+      else if (diffDays >= 30 && diffDays <= 35) {
+        alerts.hieuLuc.push({ ...item, diffDays });
+      }
+    });
+
+    return alerts;
+  }, [schedule]);
   const caseTypeStats = {};
   schedule.forEach(i => { if(i.caseType) caseTypeStats[i.caseType] = (caseTypeStats[i.caseType] || 0) + 1 });
   const caseTypeData = Object.keys(caseTypeStats).map(key => ({ name: key, value: caseTypeStats[key] }));
@@ -347,7 +378,30 @@ export default function PremiumCourtApp() {
             <div className="bg-gradient-to-br from-red-500 to-red-700 text-white p-8 shadow-xl transform transition-all hover:scale-105 rounded-xl"><p className="text-red-100 text-sm font-black uppercase mb-2 tracking-widest">Sắp xử (24h)</p><p className="text-4xl font-black">{urgentCount}</p></div>
             <div className="bg-white p-8 border shadow-sm border-l-8 border-l-green-500 rounded-xl"><p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Đã xong</p><p className="text-4xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p></div>
           </div>
-
+{(notifications.phatHanh.length > 0 || notifications.hieuLuc.length > 0) && (
+            <div className="bg-white p-6 border-l-8 border-l-red-600 shadow-xl rounded-xl mb-8 animate-pulse-slow">
+              <h3 className="font-black text-red-600 uppercase mb-4 flex items-center gap-2">
+                🔔 DANH SÁCH NHẮC VIỆC HÔM NAY
+              </h3>
+              <div className="space-y-3">
+                {notifications.phatHanh.map(item => (
+                  <div key={`ph-${item.id}`} className="bg-amber-50 border border-amber-200 p-3 rounded flex justify-between items-center">
+                    <p className="text-sm font-bold text-amber-800">
+                      ⚠️ Đã <span className="text-red-600 text-lg">{item.diffDays}</span> ngày kể từ khi xử xong vụ <b>{item.caseName}</b>. Vui lòng kiểm tra tiến độ phát hành bản án!
+                    </p>
+                  </div>
+                ))}
+                
+                {notifications.hieuLuc.map(item => (
+                  <div key={`hl-${item.id}`} className="bg-blue-50 border border-blue-200 p-3 rounded flex justify-between items-center">
+                    <p className="text-sm font-bold text-blue-800">
+                      📜 Đã <span className="text-red-600 text-lg">{item.diffDays}</span> ngày kể từ khi xử xong vụ <b>{item.caseName}</b>. Bản án bắt đầu có hiệu lực pháp luật!
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )} 
           <div className="bg-white p-6 md:p-8 border shadow-xl rounded-xl mb-12">
              <h3 className="text-lg md:text-xl font-black uppercase text-blue-950 flex items-center gap-4 mb-8">
                <span className="w-2 h-8 bg-blue-950"></span>
