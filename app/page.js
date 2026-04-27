@@ -372,11 +372,31 @@ export default function PremiumCourtApp() {
         </header>
 
         <div className="p-4 md:p-12 flex-1">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white p-8 border shadow-sm border-l-8 border-l-blue-900 rounded-xl"><p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Tổng vụ án</p><p className="text-4xl font-black text-gray-950">{schedule.length}</p></div>
-            <div className="bg-white p-8 border shadow-sm border-l-8 border-l-amber-500 rounded-xl"><p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Chờ xử</p><p className="text-4xl font-black text-amber-600">{pendingCases.length}</p></div>
-            <div className="bg-gradient-to-br from-red-500 to-red-700 text-white p-8 shadow-xl transform transition-all hover:scale-105 rounded-xl"><p className="text-red-100 text-sm font-black uppercase mb-2 tracking-widest">Sắp xử (24h)</p><p className="text-4xl font-black">{urgentCount}</p></div>
-            <div className="bg-white p-8 border shadow-sm border-l-8 border-l-green-500 rounded-xl"><p className="text-gray-400 text-sm font-black uppercase mb-2 tracking-widest">Đã xong</p><p className="text-4xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p></div>
+          <div className="bg-white shadow-xl rounded-xl mb-8 border border-gray-200 overflow-hidden">
+            <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-gray-200">
+              
+              <div className="p-6 md:p-8 flex flex-col items-center justify-center text-center hover:bg-blue-50/50 transition-colors">
+                <p className="text-gray-500 text-[11px] md:text-xs font-black uppercase tracking-widest mb-2">Tổng vụ án</p>
+                <p className="text-4xl font-black text-blue-950">{schedule.length}</p>
+              </div>
+              
+              <div className="p-6 md:p-8 flex flex-col items-center justify-center text-center hover:bg-amber-50/50 transition-colors">
+                <p className="text-gray-500 text-[11px] md:text-xs font-black uppercase tracking-widest mb-2">Chờ xử</p>
+                <p className="text-4xl font-black text-amber-600">{pendingCases.length}</p>
+              </div>
+              
+              {/* Thẻ sắp xử đổi màu nền nhạt để đồng nhất, nhưng nhấn mạnh chữ đỏ */}
+              <div className="p-6 md:p-8 flex flex-col items-center justify-center text-center bg-red-50 hover:bg-red-100 transition-colors relative overflow-hidden group">
+                {urgentCount > 0 && <div className="absolute top-0 left-0 w-full h-1.5 bg-red-600 group-hover:h-2 transition-all"></div>}
+                <p className="text-red-600 text-[11px] md:text-xs font-black uppercase tracking-widest mb-2">Sắp xử (24h)</p>
+                <p className={`text-4xl font-black text-red-600 ${urgentCount > 0 ? 'animate-pulse' : ''}`}>{urgentCount}</p>
+              </div>
+              
+              <div className="p-6 md:p-8 flex flex-col items-center justify-center text-center hover:bg-green-50/50 transition-colors">
+                <p className="text-gray-500 text-[11px] md:text-xs font-black uppercase tracking-widest mb-2">Đã xong</p>
+                <p className="text-4xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p>
+              </div>
+            </div>
           </div>
 {(notifications.phatHanh.length > 0 || notifications.hieuLuc.length > 0) && (
             <div className="bg-white p-6 border-l-8 border-l-red-600 shadow-xl rounded-xl mb-8 animate-pulse-slow">
