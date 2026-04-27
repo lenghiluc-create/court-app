@@ -532,8 +532,8 @@ export default function PremiumCourtApp() {
                 <div><label className={labelStyle}>Trích yếu vụ án / Tội danh <span className="text-red-500">*</span></label><textarea value={form.caseName} onChange={e => setForm({...form, caseName: e.target.value})} className={inputBase} rows="2" placeholder="Ví dụ: Tranh chấp hợp đồng vay tài sản..." /></div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div><label className={labelStyle}>Nguyên đơn đầu vụ</label><input value={form.plaintiff} onChange={e => setForm({...form, plaintiff: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
-                  <div><label className={labelStyle}>Bị đơn đầu vụ</label><input value={form.defendant} onChange={e => setForm({...form, defendant: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
+                  <div><label className={labelStyle}>Nguyên đơn đầu vụ/Bị cáo</label><input value={form.plaintiff} onChange={e => setForm({...form, plaintiff: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
+                  <div><label className={labelStyle}>Bị đơn đầu vụ/Bị hại</label><input value={form.defendant} onChange={e => setForm({...form, defendant: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
                 </div>
                 
                 <div className="pt-6">
@@ -632,8 +632,8 @@ export default function PremiumCourtApp() {
                               {item.caseType || "---"} / {item.trialCount || "Lần 1"}
                             </div>
                             <div className="text-sm text-gray-700 space-y-2 pt-2">
-                              <p><span className="font-semibold text-gray-500">NĐ:</span> {item.plaintiff || "N/A"}</p>
-                              <p><span className="font-semibold text-gray-500">BĐ:</span> {item.defendant || "N/A"}</p>
+                              <p><span className="font-semibold text-gray-500">NĐ/BC:</span> {item.plaintiff || "N/A"}</p>
+                              <p><span className="font-semibold text-gray-500">BĐ/BH:</span> {item.defendant || "N/A"}</p>
                             </div>
                             <div className="pt-3 flex flex-col sm:flex-row sm:items-center justify-start gap-4 text-xs font-medium text-gray-500 italic">
                                <span>✍️ Nhập bởi: <span className="font-bold text-gray-600">{item.createdBy ? item.createdBy.split('@')[0] : "Hệ thống"}</span></span>
