@@ -47,10 +47,10 @@ export default function PremiumCourtApp() {
   };
   const [form, setForm] = useState(initialForm);
 
-  // ĐÃ SỬA: Đưa input về 100% để tự lấp đầy khung 80% phía ngoài
   const textStyle = "text-[15px] font-medium text-gray-800";
   const inputBase = `w-full border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all ${textStyle}`;
-  const labelStyle = "block text-center text-sm font-semibold text-gray-700 mb-3"; 
+  
+  const labelStyle = "block text-center text-[13px] font-black text-teal-900 bg-teal-100 border border-teal-200 py-2.5 px-4 rounded-md mb-2 w-full uppercase tracking-widest shadow-sm"; 
   
   const filterStyle = "border border-gray-300 rounded-md px-4 py-2.5 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[14px] font-medium text-gray-800 w-full md:w-auto cursor-pointer";
 
@@ -142,14 +142,12 @@ export default function PremiumCourtApp() {
 
   const toggleStatus = async (id, newStatus, caseName) => {
     try {
-      // Đóng gói dữ liệu cập nhật
       const updateData = { 
         status: newStatus, 
         updatedBy: user.email, 
         updatedAt: moment().toISOString() 
       };
 
-      // NẾU LÀ BẤM NÚT "XONG", LƯU THÊM MỐC THỜI GIAN ĐỂ ĐẾM NGÀY
       if (newStatus === 'completed') {
         updateData.completedAt = moment().toISOString();
       }
@@ -253,26 +251,7 @@ export default function PremiumCourtApp() {
   
   const urgentCount = schedule.filter(i => i.status === 'pending' && isUrgent(i.datetime)).length;
   const pendingCases = schedule.filter(i => i.status === 'pending');
-  const notifications = useMemo(() => {
-    const today = moment().startOf('day');
-    const alerts = { phatHanh: [], hieuLuc: [] };
-
-    schedule.filter(i => i.status === 'completed' && i.completedAt).forEach(item => {
-      const compDate = moment(item.completedAt).startOf('day');
-      const diffDays = today.diff(compDate, 'days');
-
-      // Nhắc nhở phát hành án (từ ngày thứ 4 đến ngày thứ 7 để tránh trôi thông báo)
-      if (diffDays >= 4 && diffDays <= 7) {
-        alerts.phatHanh.push({ ...item, diffDays });
-      }
-      // Nhắc nhở án có hiệu lực (từ ngày thứ 30 đến 35)
-      else if (diffDays >= 30 && diffDays <= 35) {
-        alerts.hieuLuc.push({ ...item, diffDays });
-      }
-    });
-
-    return alerts;
-  }, [schedule]);
+  
   const caseTypeStats = {};
   schedule.forEach(i => { if(i.caseType) caseTypeStats[i.caseType] = (caseTypeStats[i.caseType] || 0) + 1 });
   const caseTypeData = Object.keys(caseTypeStats).map(key => ({ name: key, value: caseTypeStats[key] }));
@@ -294,20 +273,45 @@ export default function PremiumCourtApp() {
       }));
   }, [schedule]);
 
+  const notifications = useMemo(() => {
+    const today = moment().startOf('day');
+    const alerts = { phatHanh: [], hieuLuc: [] };
+
+    schedule.filter(i => i.status === 'completed' && i.completedAt).forEach(item => {
+      const compDate = moment(item.completedAt).startOf('day');
+      const diffDays = today.diff(compDate, 'days');
+
+      if (diffDays >= 4 && diffDays <= 7) {
+        alerts.phatHanh.push({ ...item, diffDays });
+      }
+      else if (diffDays >= 30 && diffDays <= 35) {
+        alerts.hieuLuc.push({ ...item, diffDays });
+      }
+    });
+
+    return alerts;
+  }, [schedule]);
+
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-blue-900">ĐANG TẢI...</div>;
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center relative bg-cover bg-center font-sans" style={{ backgroundImage: "url('/toaan.jpg')" }}>
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-        <div className="relative z-10 w-full max-w-[480px] p-10 text-center" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '4px', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)' }}>
-          <img src="/lgtoaan1.png" alt="Logo" className="mx-auto mb-6 drop-shadow-2xl" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
-          <p className="text-2xl font-black uppercase mb-10 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.8)' }}>TOÀ ÁN NHÂN DÂN THÀNH PHỐ CẦN THƠ</p>
-          <h1 className="text-3xl font-black uppercase mb-10 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.8)' }}>TAND KHU VỰC 9 - CẦN THƠ</h1>
-          <form onSubmit={handleLogin} className="space-y-6 flex flex-col items-center">
-            <input type="email" placeholder="Email..." value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="w-[80%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.5)', borderRadius: '6px' }} required />
-            <input type="password" placeholder="Mật khẩu..." value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-[80%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.5)', borderRadius: '6px' }} required />
-            <button type="submit" className="py-4 mt-4 font-black uppercase text-lg transition-all hover:opacity-80 active:scale-95" style={{ width: '50%', backgroundColor: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '4px', boxShadow: '0 0 15px rgba(37, 99, 235, 0.6)' }}>ĐĂNG NHẬP</button>
+     <div className="min-h-screen flex items-center justify-center relative bg-cover bg-center font-sans" style={{ backgroundImage: "url('/toaan.jpg')" }}>
+        {/* ĐÃ SỬA: Xóa bỏ backdrop-blur-sm ở lớp phủ toàn màn hình, chỉ giữ lại độ tối nhẹ để nổi bật chữ */}
+        <div className="absolute inset-0 bg-black/30"></div> 
+        
+        {/* Khung ô đăng nhập vẫn giữ nguyên hiệu ứng kính mờ (blur 16px) */}
+        <div className="relative z-10 w-full max-w-[480px] p-8 md:p-10 text-center" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '12px', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)' }}>
+          <img src="/lgtoaan1.png" alt="Logo" className="mx-auto mb-4 drop-shadow-2xl" style={{ width: '100px', height: '100px', objectFit: 'contain' }} />
+          
+          {/* ĐÃ SỬA: Giảm font chữ tiêu đề xuống để không bị tràn dòng */}
+          <p className="text-[16px] md:text-lg font-black uppercase mb-2 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.9)' }}>TOÀ ÁN NHÂN DÂN THÀNH PHỐ CẦN THƠ</p>
+          <h1 className="text-[20px] md:text-2xl font-black uppercase mb-8 tracking-tight" style={{ color: '#dc2626', textShadow: '2px 2px 4px rgba(255, 255, 255, 0.9)' }}>TAND KHU VỰC 9 - CẦN THƠ</h1>
+          
+          <form onSubmit={handleLogin} className="space-y-5 flex flex-col items-center">
+            <input type="email" placeholder="Email..." value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="w-[85%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center transition-all focus:border-white focus:bg-white/20" style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.4)', borderRadius: '6px' }} required />
+            <input type="password" placeholder="Mật khẩu..." value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-[85%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center transition-all focus:border-white focus:bg-white/20" style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.4)', borderRadius: '6px' }} required />
+            <button type="submit" className="py-3 mt-4 font-black uppercase text-lg transition-all hover:bg-blue-700 active:scale-95" style={{ width: '60%', backgroundColor: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '6px', boxShadow: '0 4px 15px rgba(37, 99, 235, 0.5)' }}>ĐĂNG NHẬP</button>
           </form>
         </div>
       </div>
@@ -331,29 +335,29 @@ export default function PremiumCourtApp() {
         input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px rgba(255, 255, 255, 0.1) inset !important; -webkit-text-fill-color: white !important; transition: background-color 5000s ease-in-out 0s; }
       `}} />
 
-      <aside className="w-80 bg-blue-950 text-white hidden xl:flex flex-col fixed h-screen shadow-2xl border-r border-blue-900 z-20 overflow-y-auto">
-        <div className="p-12 text-center border-b border-white/5">
+      <aside className="w-64 bg-blue-950 text-white hidden xl:flex flex-col fixed h-screen shadow-2xl border-r border-blue-900 z-20 overflow-y-auto">
+        <div className="py-10 px-6 text-center border-b border-white/5">
           <div className="text-5xl mb-4">⚖️</div>
           <h2 className="font-black text-2xl uppercase tracking-tighter">TAND KV9</h2>
         </div>
-        <div className="p-8 flex-1">
-          <div className="bg-blue-600 px-6 py-4 font-black text-xl shadow-lg shadow-blue-900/50 flex justify-between items-center rounded-lg">
+        <div className="p-6 flex-1">
+          <div className="bg-blue-600 px-4 py-4 font-black text-sm shadow-lg shadow-blue-900/50 flex justify-between items-center rounded-lg">
             📅 LỊCH XÉT XỬ {urgentCount > 0 && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded-full animate-bounce">{urgentCount}</span>}
           </div>
         </div>
-        <div className="p-8 border-t border-white/5 bg-black/10 mt-auto">
+        <div className="p-6 border-t border-white/5 bg-black/10 mt-auto">
           <div className="mb-6 p-4 bg-white/5 border border-white/10">
              <p className="text-[10px] text-blue-400 font-black uppercase mb-1 tracking-widest">Quyền: {userRole}</p>
              <p className="text-sm font-bold truncate opacity-70">{user?.email}</p>
           </div>
           <div className="space-y-3">
-             <button onClick={() => setShowPwdModal(true)} className="w-full bg-blue-600 hover:bg-blue-700 py-4 font-black uppercase text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20">🔑 ĐỔI MẬT KHẨU</button>
-             <button onClick={handleLogout} className="w-full bg-red-600 hover:bg-red-700 py-4 font-black uppercase text-xs transition-all flex items-center justify-center gap-2">🚪 ĐĂNG XUẤT</button>
+             <button onClick={() => setShowPwdModal(true)} className="w-full bg-blue-600 hover:bg-blue-700 py-3 font-black uppercase text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20">🔑 ĐỔI MẬT KHẨU</button>
+             <button onClick={handleLogout} className="w-full bg-red-600 hover:bg-red-700 py-3 font-black uppercase text-xs transition-all flex items-center justify-center gap-2">🚪 ĐĂNG XUẤT</button>
           </div>
         </div>
       </aside>
 
-      <main className="flex-1 xl:ml-80 flex flex-col min-h-screen relative z-10">
+      <main className="flex-1 xl:ml-64 flex flex-col min-h-screen relative z-10">
         
         <header className="bg-white/95 backdrop-blur-md h-24 shadow-sm flex items-center justify-between px-4 md:px-8 xl:px-12 sticky top-0 z-30 border-b border-gray-200 w-full">
           <div className="flex-1 flex justify-start items-center gap-2 xl:hidden">
@@ -372,6 +376,8 @@ export default function PremiumCourtApp() {
         </header>
 
         <div className="p-4 md:p-12 flex-1">
+          
+          {/* TỔNG QUAN */}
           <div className="bg-white shadow-xl rounded-xl mb-8 border border-gray-200 overflow-hidden">
             <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-gray-200">
               
@@ -385,7 +391,6 @@ export default function PremiumCourtApp() {
                 <p className="text-4xl font-black text-amber-600">{pendingCases.length}</p>
               </div>
               
-              {/* Thẻ sắp xử đổi màu nền nhạt để đồng nhất, nhưng nhấn mạnh chữ đỏ */}
               <div className="p-6 md:p-8 flex flex-col items-center justify-center text-center bg-red-50 hover:bg-red-100 transition-colors relative overflow-hidden group">
                 {urgentCount > 0 && <div className="absolute top-0 left-0 w-full h-1.5 bg-red-600 group-hover:h-2 transition-all"></div>}
                 <p className="text-red-600 text-[11px] md:text-xs font-black uppercase tracking-widest mb-2">Sắp xử (24h)</p>
@@ -398,7 +403,9 @@ export default function PremiumCourtApp() {
               </div>
             </div>
           </div>
-{(notifications.phatHanh.length > 0 || notifications.hieuLuc.length > 0) && (
+
+          {/* NHẮC VIỆC */}
+          {(notifications.phatHanh.length > 0 || notifications.hieuLuc.length > 0) && (
             <div className="bg-white p-6 border-l-8 border-l-red-600 shadow-xl rounded-xl mb-8 animate-pulse-slow">
               <h3 className="font-black text-red-600 uppercase mb-4 flex items-center gap-2">
                 🔔 DANH SÁCH NHẮC VIỆC HÔM NAY
@@ -421,21 +428,23 @@ export default function PremiumCourtApp() {
                 ))}
               </div>
             </div>
-          )} 
+          )}
+
+          {/* THỐNG KÊ */}
           <div className="bg-white p-6 md:p-8 border shadow-xl rounded-xl mb-12">
              <h3 className="text-lg md:text-xl font-black uppercase text-blue-950 flex items-center gap-4 mb-8">
                <span className="w-2 h-8 bg-blue-950"></span>
                Bảng thống kê tổng hợp
              </h3>
              
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             <div className="grid grid-cols-2 gap-4 md:gap-8">
                 <div className="flex flex-col items-center w-full">
-                   <h4 className="text-xs font-black uppercase text-gray-400 tracking-widest mb-4 w-full text-center">📊 TỶ LỆ LOẠI ÁN (TỔNG THỂ)</h4>
+                   <h4 className="text-[10px] md:text-xs font-black uppercase text-gray-400 tracking-widest mb-4 w-full text-center">📊 TỶ LỆ LOẠI ÁN (TỔNG THỂ)</h4>
                    {caseTypeData.length > 0 ? (
-                     <div className="w-full h-[250px] relative">
+                     <div className="w-full h-[200px] md:h-[250px] relative">
                        <ResponsiveContainer width="100%" height="100%">
                          <PieChart>
-                           <Pie data={caseTypeData} cx="50%" cy="50%" outerRadius={90} dataKey="value" label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                           <Pie data={caseTypeData} cx="50%" cy="50%" outerRadius={70} dataKey="value" label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}>
                              {caseTypeData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
                            </Pie>
                            <Tooltip formatter={(value) => [`${value} vụ`, 'Số lượng']} />
@@ -446,12 +455,12 @@ export default function PremiumCourtApp() {
                 </div>
 
                 <div className="flex flex-col items-center w-full">
-                   <h4 className="text-xs font-black uppercase text-gray-400 tracking-widest mb-4 w-full text-center">👨‍⚖️ NĂNG SUẤT THẨM PHÁN (ĐANG CHỜ XỬ)</h4>
+                   <h4 className="text-[10px] md:text-xs font-black uppercase text-gray-400 tracking-widest mb-4 w-full text-center">👨‍⚖️ NĂNG SUẤT THẨM PHÁN (ĐANG CHỜ XỬ)</h4>
                    {judgeData.length > 0 ? (
-                     <div className="w-full h-[250px] relative">
+                     <div className="w-full h-[200px] md:h-[250px] relative">
                        <ResponsiveContainer width="100%" height="100%">
                          <PieChart>
-                           <Pie data={judgeData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value" label={({name}) => name}>
+                           <Pie data={judgeData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="value" label={({name}) => name}>
                              {judgeData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[(index + 4) % CHART_COLORS.length]} />)}
                            </Pie>
                            <Tooltip formatter={(value) => [`${value} vụ`, 'Đang giải quyết']} />
@@ -463,190 +472,185 @@ export default function PremiumCourtApp() {
              </div>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-12">
-            {canEdit && (
-              <div className="xl:col-span-4">
-                <div className="bg-white p-6 md:p-8 border shadow-xl sticky top-36 rounded-xl">
-                  <h2 className="font-black text-xl text-blue-950 uppercase mb-8 flex items-center justify-center gap-4"><span className="w-1.5 h-8 bg-blue-600 rounded-full"></span>{editingId ? "Cập nhật hồ sơ" : "Đăng ký lịch xét xử"}</h2>
-                  
-                  {/* ĐÃ SỬA: Bọc toàn bộ form bằng thẻ div rỗng 80% canh giữa (mx-auto) */}
-                  <div className="w-[90%] xl:w-[80%] mx-auto space-y-10">
-                    <div className="grid grid-cols-1 gap-8">
-                      <div>
-                        <label className={labelStyle}>Thời gian xét xử <span className="text-red-500">*</span></label>
-                        <div className="flex gap-4 w-full">
-                          <input type="date" value={form.datetime ? form.datetime.split('T')[0] : ""} onChange={e => { const time = form.datetime && form.datetime.includes('T') ? form.datetime.split('T')[1] : '07:30'; setForm({...form, datetime: `${e.target.value}T${time}`}); }} className="w-[65%] border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[15px] font-medium text-gray-800" />
-                          <select value={form.datetime && form.datetime.includes('T') ? form.datetime.split('T')[1] : "07:30"} onChange={e => { const date = form.datetime ? form.datetime.split('T')[0] : moment().format('YYYY-MM-DD'); setForm({...form, datetime: `${date}T${e.target.value}`}); }} className="w-[35%] border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[15px] font-medium text-gray-800">
-                            <option value="07:30">07:30</option><option value="08:00">08:00</option><option value="08:30">08:30</option><option value="09:00">09:00</option><option value="09:30">09:30</option><option value="10:00">10:00</option><option value="10:30">10:30</option><option value="11:00">11:00</option><option value="13:30">13:30</option><option value="14:00">14:00</option><option value="14:30">14:30</option><option value="15:00">15:00</option><option value="15:30">15:30</option><option value="16:00">16:00</option><option value="16:30">16:30</option><option value="17:00">17:00</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div>
-                        <label className={labelStyle}>Phòng xử / Địa điểm <span className="text-red-500">*</span></label>
-                        <select value={form.room} onChange={e => setForm({...form, room: e.target.value})} className={inputBase}><option value="Trụ sở">🏢 TRỤ SỞ</option><option value="Chi nhánh">🏢 CHI NHÁNH</option><option value="Dự phòng">⚠️ DỰ PHÒNG</option></select>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                      <div>
-                        <label className={labelStyle}>Loại án <span className="text-red-500">*</span></label>
-                        <select value={form.caseType} onChange={e => setForm({...form, caseType: e.target.value})} className={inputBase}><option value="Hình sự">Hình sự</option><option value="Dân sự">Dân sự</option><option value="Hành chính">Hành chính</option><option value="Hôn nhân & GĐ">Hôn nhân & GĐ</option><option value="Kinh tế">Kinh tế</option></select>
-                      </div>
-                      <div>
-                        <label className={labelStyle}>Lần xử <span className="text-red-500">*</span></label>
-                        <select value={form.trialCount} onChange={e => setForm({...form, trialCount: e.target.value})} className={inputBase}><option value="Lần 1">Lần 1</option><option value="Lần 2">Lần 2</option><option value="Mở lại">Mở lại</option></select>
-                      </div>
-                    </div>
-                    
-                    <div><label className={labelStyle}>Trích yếu vụ án / Tội danh <span className="text-red-500">*</span></label><textarea value={form.caseName} onChange={e => setForm({...form, caseName: e.target.value})} className={inputBase} rows="3" placeholder="Ví dụ: Tranh chấp hợp đồng vay tài sản..." /></div>
-                    
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                      <div><label className={labelStyle}>Nguyên đơn đầu vụ</label><input value={form.plaintiff} onChange={e => setForm({...form, plaintiff: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
-                      <div><label className={labelStyle}>Bị đơn đầu vụ</label><input value={form.defendant} onChange={e => setForm({...form, defendant: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
-                    </div>
-                    
-                    <div className="pt-8 mt-4 border-t border-gray-200">
-                       <h3 className="text-base font-bold text-blue-900 mb-8 text-center">Thành phần Hội đồng xét xử</h3>
-                       <div className="space-y-8">
-                          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                            <div><label className={labelStyle}>Thẩm phán chủ tọa</label><input list="judges-list" value={form.judge} onChange={e => setForm({...form, judge: e.target.value})} className={inputBase} placeholder=" Chọn hoặc nhập..." /></div>
-                            <div><label className={labelStyle}>Thư ký phiên tòa</label><input list="clerks-list" value={form.clerk} onChange={e => setForm({...form, clerk: e.target.value})} className={inputBase} placeholder="Chọn hoặc nhập..." /></div>
-                          </div>
-                          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                            <div><label className={labelStyle}>Hội thẩm nhân dân 1</label><input value={form.juror1} onChange={e => setForm({...form, juror1: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
-                            <div><label className={labelStyle}>Hội thẩm nhân dân 2</label><input value={form.juror2} onChange={e => setForm({...form, juror2: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
-                          </div>
-                          <div><label className={labelStyle}>Kiểm sát viên</label><input list="prosecutors-list" value={form.prosecutor} onChange={e => setForm({...form, prosecutor: e.target.value})} className={inputBase} placeholder="Chọn hoặc nhập..." /></div>
-                       </div>
-                    </div>
-                    
-                    <div className="pt-6">
-                       <button onClick={handleSubmit} disabled={hasConflict} className={`w-full block text-white font-bold py-4 rounded-md uppercase text-lg shadow-lg transition-all active:scale-95 ${hasConflict ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
-                         {editingId ? "Cập nhật thông tin" : "Lưu vào hệ thống"}
-                       </button>
-                       {isRoomConflict && <p className="text-red-500 text-sm font-bold text-center mt-3 animate-pulse">⚠️ Trùng phòng xét xử tại khung giờ này!</p>}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className={`space-y-12 ${!canEdit ? 'xl:col-span-12' : 'xl:col-span-8'}`}>
+          {/* FORM ĐĂNG KÝ (Đã được dời lên trên và mở ngang) */}
+          {canEdit && (
+            <div className="bg-white p-6 md:p-10 border shadow-xl rounded-xl mb-12">
+              <h2 className="font-black text-xl text-blue-950 uppercase mb-10 flex items-center justify-center gap-4">
+                <span className="w-1.5 h-8 bg-blue-600 rounded-full"></span>
+                {editingId ? "Cập nhật hồ sơ" : "Đăng ký lịch xét xử"}
+                <span className="w-1.5 h-8 bg-blue-600 rounded-full"></span>
+              </h2>
               
-              <div className="bg-white p-4 md:p-8 border shadow-xl rounded-xl h-[700px] overflow-hidden group">
-                {canEdit && <p className="text-gray-400 text-xs font-bold text-center mb-4 italic">💡 Bạn có thể dùng chuột kéo thả vụ án để dời sang ngày/giờ khác</p>}
-                {isMounted && localizer ? (
-                  <DnDCalendar 
-                    localizer={localizer} 
-                    events={calendarEvents} 
-                    style={{ height: "100%" }} 
-                    onSelectEvent={e => setSelectedEvent(e)} 
-                    onEventDrop={onEventDrop} 
-                    resizable={false} 
-                  />
-                ) : <div className="w-full h-full flex items-center justify-center font-bold text-gray-400">Đang tải bộ lịch...</div>}
-              </div>
-
-              <div className="bg-white border border-gray-200 shadow-xl rounded-xl overflow-hidden flex flex-col h-[850px]">
-                {/* ĐÃ SỬA: Sổ thụ lý Căn Giữa */}
-                <div className="p-6 md:p-8 border-b border-gray-200 flex flex-col items-center gap-6 sticky top-0 bg-white z-10">
-                  <h3 className="font-black uppercase text-xl md:text-2xl text-blue-950 flex items-center justify-center gap-4 whitespace-nowrap"><span className="w-1.5 h-8 bg-blue-950 rounded-full"></span>Sổ thụ lý</h3>
-                  
-                  <div className="flex flex-col md:flex-row flex-wrap gap-4 w-[90%] xl:w-[80%] mx-auto justify-center items-center">
-                    <div className="flex items-center gap-3 border border-gray-300 rounded-md px-4 py-2.5 bg-white w-full md:w-auto focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
-                      <span className="text-xs font-bold text-gray-500 uppercase">Từ:</span>
-                      <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="outline-none text-sm font-medium bg-transparent text-gray-800 w-full" />
-                      <span className="text-xs font-bold text-gray-500 uppercase ml-1">Đến:</span>
-                      <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="outline-none text-sm font-medium bg-transparent text-gray-800 w-full" />
-                      {(startDate || endDate) && <button onClick={() => {setStartDate(""); setEndDate("")}} className="text-red-500 font-bold px-1.5 hover:bg-red-50 rounded-full" title="Xóa lộc ngày">✕</button>}
+              <div className="max-w-5xl mx-auto space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div>
+                    <label className={labelStyle}>Thời gian xét xử <span className="text-red-500">*</span></label>
+                    <div className="flex gap-4 w-full">
+                      <input type="date" value={form.datetime ? form.datetime.split('T')[0] : ""} onChange={e => { const time = form.datetime && form.datetime.includes('T') ? form.datetime.split('T')[1] : '07:30'; setForm({...form, datetime: `${e.target.value}T${time}`}); }} className="w-[65%] border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[15px] font-medium text-gray-800" />
+                      <select value={form.datetime && form.datetime.includes('T') ? form.datetime.split('T')[1] : "07:30"} onChange={e => { const date = form.datetime ? form.datetime.split('T')[0] : moment().format('YYYY-MM-DD'); setForm({...form, datetime: `${date}T${e.target.value}`}); }} className="w-[35%] border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[15px] font-medium text-gray-800">
+                        <option value="07:30">07:30</option><option value="08:00">08:00</option><option value="08:30">08:30</option><option value="09:00">09:00</option><option value="09:30">09:30</option><option value="10:00">10:00</option><option value="10:30">10:30</option><option value="11:00">11:00</option><option value="13:30">13:30</option><option value="14:00">14:00</option><option value="14:30">14:30</option><option value="15:00">15:00</option><option value="15:30">15:30</option><option value="16:00">16:00</option><option value="16:30">16:30</option><option value="17:00">17:00</option>
+                      </select>
                     </div>
-                    <select value={creatorFilter} onChange={e => setCreatorFilter(e.target.value)} className={filterStyle}><option value="all">👤 Tất cả người nhập</option>{creatorsList.map(email => <option key={email} value={email}>{email.split('@')[0]}</option>)}</select>
-                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={filterStyle}><option value="pending">⏳ Đang chờ xử</option><option value="postponed">⏸ Đã hoãn</option><option value="completed">✅ Đã xử xong</option><option value="all">📁 Tất cả vụ án</option></select>
-                    <input type="text" placeholder="Tìm kiếm tự do..." onChange={e => setSearchQuery(e.target.value)} className={`${filterStyle} w-full md:w-64`} />
-                    <button onClick={exportToExcel} className="bg-green-600 text-white px-6 py-2.5 font-bold uppercase rounded-md shadow-sm hover:bg-green-700 transition-all flex items-center justify-center gap-2 w-full md:w-auto active:scale-95 text-[14px]">📊 Xuất Excel</button>
+                  </div>
+                  <div>
+                    <label className={labelStyle}>Phòng xử / Địa điểm <span className="text-red-500">*</span></label>
+                    <select value={form.room} onChange={e => setForm({...form, room: e.target.value})} className={inputBase}><option value="Trụ sở">🏢 TRỤ SỞ</option><option value="Chi nhánh">🏢 CHI NHÁNH</option><option value="Dự phòng">⚠️ DỰ PHÒNG</option></select>
                   </div>
                 </div>
-
-                <div className="overflow-auto flex-1 bg-gray-50/30">
-                  <table className="w-full text-left border-collapse min-w-[900px] border-b border-gray-200">
-                    <thead className="bg-gray-100 text-[12px] font-black uppercase text-gray-500 border-b border-gray-300 sticky top-0 z-10">
-                      <tr className="divide-x divide-gray-200">
-                        <th className="p-6 md:p-8 w-[15%] text-center">Thời gian / Địa điểm</th>
-                        <th className="p-6 md:p-8 w-[40%]">Nội dung vụ việc</th>
-                        <th className="p-6 md:p-8 w-[30%]">Hội đồng & Thư ký</th>
-                        {canEdit && <th className="p-6 md:p-8 w-[15%] text-center">Tác vụ</th>}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {processedSchedule.map(item => {
-                       const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
-                        return (
-                        <tr key={item.id} className={`transition-all group divide-x divide-gray-200 ${item.status === 'completed' || item.status === 'postponed' ? 'opacity-70 bg-gray-100/50' : isRowUrgent ? 'bg-red-50 hover:bg-red-100' : 'bg-white hover:bg-blue-50/30'}`}>
-                          <td className={`p-6 md:p-8 align-top text-center ${isRowUrgent ? 'border-l-4 border-l-red-500' : ''}`}>
-                            <div className="space-y-4">
-                              {item.status === 'postponed' ? (
-                                <div className="text-amber-600 font-bold text-base animate-pulse">⏸ ĐÃ HOÃN</div>
-                              ) : (
-                                <>
-                                  <div className="font-bold text-gray-900 text-base">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
-                                  <div className="text-blue-600 font-bold text-base">🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</div>
-                                </>
-                              )}
-                              <div className="font-bold text-gray-500 uppercase text-sm mt-4">{item.room || "---"}</div>
-                            </div>
-                          </td>
-                          <td className="p-6 md:p-8 align-top">
-                            <div className="space-y-4">
-                              <div className="font-bold uppercase text-gray-900 text-base leading-snug group-hover:text-blue-800 transition-colors">
-                                {item.status === 'completed' && <span className="text-green-600 mr-2">✅</span>}
-                                {item.status === 'postponed' && <span className="text-amber-500 mr-2">⏸</span>}
-                                {isRowUrgent && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded mr-2 animate-pulse">⚠️ SẮP XỬ</span>}
-                                {item.caseName || "Vụ án chưa có tên"}
-                              </div>
-                              <div className="text-gray-700 font-semibold text-sm">
-                                {item.caseType || "---"} / {item.trialCount || "Lần 1"}
-                              </div>
-                              <div className="text-sm text-gray-700 space-y-2 pt-2">
-                                <p><span className="font-semibold text-gray-500">NĐ:</span> {item.plaintiff || "N/A"}</p>
-                                <p><span className="font-semibold text-gray-500">BĐ:</span> {item.defendant || "N/A"}</p>
-                              </div>
-                              <div className="pt-3 flex flex-col sm:flex-row sm:items-center justify-start gap-4 text-xs font-medium text-gray-500 italic">
-                                 <span>✍️ Nhập bởi: <span className="font-bold text-gray-600">{item.createdBy ? item.createdBy.split('@')[0] : "Hệ thống"}</span></span>
-                                 {item.updatedBy && <span>🔄 Sửa bởi: <span className="font-bold text-gray-600">{item.updatedBy.split('@')[0]}</span></span>}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-6 md:p-8 align-top">
-                            <div className="space-y-4 text-sm md:text-base text-gray-800">
-                              <div className="flex gap-2"><span className="font-semibold text-blue-700 w-8 shrink-0">TP:</span> <span className={`font-bold ${isRowUrgent ? 'text-red-900' : 'text-gray-900'}`}>{item.judge || "---"}</span></div>
-                              <div className="flex gap-2"><span className="font-semibold text-gray-500 w-8 shrink-0">HT:</span> <span className="font-medium text-gray-700">{item.juror1 || "---"}, {item.juror2 || "---"}</span></div>
-                              <div className="flex gap-2"><span className="font-semibold text-gray-500 w-8 shrink-0">TK:</span> <span className="font-medium text-gray-700">{item.clerk || "---"}</span></div>
-                              <div className="flex gap-2"><span className="font-semibold text-red-600 w-8 shrink-0">KS:</span> <span className="font-bold text-red-600">{item.prosecutor || "---"}</span></div>
-                            </div>
-                          </td>
-                          {canEdit && (
-                            <td className="p-6 md:p-8 text-center align-top">
-                              <div className="flex flex-col gap-4">
-                                {item.status === 'pending' || !item.status ? (
-                                  <>
-                                    <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-50 text-green-700 px-3 py-2.5 font-black uppercase text-xs border border-green-200 hover:bg-green-600 hover:text-white transition-all rounded">✔ XONG</button>
-                                    <button onClick={() => toggleStatus(item.id, 'postponed', item.caseName)} className="bg-amber-50 text-amber-700 px-3 py-2.5 font-black uppercase text-xs border border-amber-200 hover:bg-amber-600 hover:text-white transition-all rounded">⏸ HOÃN</button>
-                                  </>
-                                ) : item.status === 'postponed' ? (
-                                  <button onClick={() => handleReschedule(item)} className="bg-blue-600 text-white px-3 py-2.5 font-black uppercase text-xs shadow-md hover:bg-blue-700 transition-all rounded">📅 LÊN LỊCH LẠI</button>
-                                ) : (
-                                  <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="bg-gray-200 text-gray-700 px-3 py-2.5 font-black uppercase text-xs hover:bg-gray-300 transition-all rounded">↺ MỞ LẠI</button>
-                                )}
-                                <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 px-3 py-2.5 font-black uppercase text-xs border border-blue-200 hover:bg-blue-600 hover:text-white transition-all mt-2 rounded">SỬA</button>
-                                {userRole === 'admin' && <button onClick={() => handleDelete(item.id, item.caseName)} className="bg-red-50 text-red-700 px-3 py-2.5 font-black uppercase text-xs border border-red-200 hover:bg-red-600 hover:text-white transition-all rounded">XÓA</button>}
-                              </div>
-                            </td>
-                          )}
-                        </tr>
-                      )})}
-                    </tbody>
-                  </table>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div>
+                    <label className={labelStyle}>Loại án <span className="text-red-500">*</span></label>
+                    <select value={form.caseType} onChange={e => setForm({...form, caseType: e.target.value})} className={inputBase}><option value="Hình sự">Hình sự</option><option value="Dân sự">Dân sự</option><option value="Hành chính">Hành chính</option><option value="Hôn nhân & GĐ">Hôn nhân & GĐ</option><option value="Kinh tế">Kinh tế</option></select>
+                  </div>
+                  <div>
+                    <label className={labelStyle}>Lần xử <span className="text-red-500">*</span></label>
+                    <select value={form.trialCount} onChange={e => setForm({...form, trialCount: e.target.value})} className={inputBase}><option value="Lần 1">Lần 1</option><option value="Lần 2">Lần 2</option><option value="Mở lại">Mở lại</option></select>
+                  </div>
                 </div>
+                
+                <div><label className={labelStyle}>Trích yếu vụ án / Tội danh <span className="text-red-500">*</span></label><textarea value={form.caseName} onChange={e => setForm({...form, caseName: e.target.value})} className={inputBase} rows="2" placeholder="Ví dụ: Tranh chấp hợp đồng vay tài sản..." /></div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div><label className={labelStyle}>Nguyên đơn đầu vụ</label><input value={form.plaintiff} onChange={e => setForm({...form, plaintiff: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
+                  <div><label className={labelStyle}>Bị đơn đầu vụ</label><input value={form.defendant} onChange={e => setForm({...form, defendant: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
+                </div>
+                
+                <div className="pt-6">
+                   <h3 className="text-[14px] font-black text-teal-800 bg-teal-50 border border-teal-200 py-3 rounded-md mb-6 text-center uppercase tracking-widest shadow-sm">Thành phần Hội đồng xét xử</h3>
+                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                      <div><label className={labelStyle}>Thẩm phán</label><input list="judges-list" value={form.judge} onChange={e => setForm({...form, judge: e.target.value})} className={inputBase} placeholder="Chọn / nhập..." /></div>
+                      <div><label className={labelStyle}>Thư ký</label><input list="clerks-list" value={form.clerk} onChange={e => setForm({...form, clerk: e.target.value})} className={inputBase} placeholder="Chọn / nhập..." /></div>
+                      <div><label className={labelStyle}>Kiểm sát viên</label><input list="prosecutors-list" value={form.prosecutor} onChange={e => setForm({...form, prosecutor: e.target.value})} className={inputBase} placeholder="Chọn / nhập..." /></div>
+                      <div><label className={labelStyle}>Hội thẩm nhân dân 1</label><input value={form.juror1} onChange={e => setForm({...form, juror1: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
+                      <div><label className={labelStyle}>Hội thẩm nhân dân 2</label><input value={form.juror2} onChange={e => setForm({...form, juror2: e.target.value})} className={inputBase} placeholder="Họ & tên..." /></div>
+                   </div>
+                </div>
+                
+                <div className="pt-10 pb-4 mt-6 border-t-2 border-dashed border-gray-300">
+                   <button onClick={handleSubmit} disabled={hasConflict} className={`w-full block text-white font-bold py-4 rounded-md uppercase text-lg shadow-lg transition-all active:scale-95 ${hasConflict ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                     {editingId ? "Cập nhật thông tin" : "Lưu vào hệ thống"}
+                   </button>
+                   {isRoomConflict && <p className="text-red-500 text-sm font-bold text-center mt-3 animate-pulse">⚠️ Trùng phòng xét xử tại khung giờ này!</p>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* LỊCH VÀ BẢNG DANH SÁCH (Đã được mở rộng 100% chiều ngang) */}
+          <div className="space-y-12">
+            <div className="bg-white p-4 md:p-8 border shadow-xl rounded-xl h-[700px] group w-full">
+              {canEdit && <p className="text-gray-400 text-xs font-bold text-center mb-4 italic">💡 Bạn có thể dùng chuột kéo thả vụ án để dời sang ngày/giờ khác</p>}
+              {isMounted && localizer ? (
+                <DnDCalendar 
+                  localizer={localizer} 
+                  events={calendarEvents} 
+                  style={{ height: "100%" }} 
+                  onSelectEvent={e => setSelectedEvent(e)} 
+                  onEventDrop={onEventDrop} 
+                  resizable={false} 
+                />
+              ) : <div className="w-full h-full flex items-center justify-center font-bold text-gray-400">Đang tải bộ lịch...</div>}
+            </div>
+
+            <div className="bg-white border border-gray-200 shadow-xl rounded-xl overflow-hidden flex flex-col h-[850px] w-full">
+              <div className="p-6 md:p-8 border-b border-gray-200 flex flex-col items-center gap-6 sticky top-0 bg-white z-10">
+                <h3 className="font-black uppercase text-xl md:text-2xl text-blue-950 flex items-center justify-center gap-4 whitespace-nowrap"><span className="w-1.5 h-8 bg-blue-950 rounded-full"></span>Sổ thụ lý</h3>
+                
+                <div className="flex flex-col xl:flex-row flex-wrap gap-4 w-full justify-center items-center">
+                  <div className="flex items-center gap-3 border border-gray-300 rounded-md px-4 py-2.5 bg-white w-full md:w-auto focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
+                    <span className="text-xs font-bold text-gray-500 uppercase">Từ:</span>
+                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="outline-none text-sm font-medium bg-transparent text-gray-800 w-full" />
+                    <span className="text-xs font-bold text-gray-500 uppercase ml-1">Đến:</span>
+                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="outline-none text-sm font-medium bg-transparent text-gray-800 w-full" />
+                    {(startDate || endDate) && <button onClick={() => {setStartDate(""); setEndDate("")}} className="text-red-500 font-bold px-1.5 hover:bg-red-50 rounded-full" title="Xóa lộc ngày">✕</button>}
+                  </div>
+                  <select value={creatorFilter} onChange={e => setCreatorFilter(e.target.value)} className={filterStyle}><option value="all">👤 Tất cả người nhập</option>{creatorsList.map(email => <option key={email} value={email}>{email.split('@')[0]}</option>)}</select>
+                  <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={filterStyle}><option value="pending">⏳ Đang chờ xử</option><option value="postponed">⏸ Đã hoãn</option><option value="completed">✅ Đã xử xong</option><option value="all">📁 Tất cả vụ án</option></select>
+                  <input type="text" placeholder="Tìm kiếm tự do..." onChange={e => setSearchQuery(e.target.value)} className={`${filterStyle} w-full md:w-64`} />
+                  <button onClick={exportToExcel} className="bg-green-600 text-white px-6 py-2.5 font-bold uppercase rounded-md shadow-sm hover:bg-green-700 transition-all flex items-center justify-center gap-2 w-full md:w-auto active:scale-95 text-[14px]">📊 Xuất Excel</button>
+                </div>
+              </div>
+
+              <div className="overflow-auto flex-1 bg-gray-50/30">
+                <table className="w-full text-left border-collapse min-w-[900px] border-b border-gray-200">
+                  <thead className="bg-gray-100 text-[12px] font-black uppercase text-gray-500 border-b border-gray-300 sticky top-0 z-10">
+                    <tr className="divide-x divide-gray-200">
+                      <th className="p-6 md:p-8 w-[15%] text-center">Thời gian / Địa điểm</th>
+                      <th className="p-6 md:p-8 w-[40%]">Nội dung vụ việc</th>
+                      <th className="p-6 md:p-8 w-[30%]">Hội đồng & Thư ký</th>
+                      {canEdit && <th className="p-6 md:p-8 w-[15%] text-center">Tác vụ</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {processedSchedule.map(item => {
+                     const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
+                      return (
+                      <tr key={item.id} className={`transition-all group divide-x divide-gray-200 ${item.status === 'completed' || item.status === 'postponed' ? 'opacity-70 bg-gray-100/50' : isRowUrgent ? 'bg-red-50 hover:bg-red-100' : 'bg-white hover:bg-blue-50/30'}`}>
+                        <td className={`p-6 md:p-8 align-top text-center ${isRowUrgent ? 'border-l-4 border-l-red-500' : ''}`}>
+                          <div className="space-y-4">
+                            {item.status === 'postponed' ? (
+                              <div className="text-amber-600 font-bold text-base animate-pulse">⏸ ĐÃ HOÃN</div>
+                            ) : (
+                              <>
+                                <div className="font-bold text-gray-900 text-base">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
+                                <div className="text-blue-600 font-bold text-base">🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</div>
+                              </>
+                            )}
+                            <div className="font-bold text-gray-500 uppercase text-sm mt-4">{item.room || "---"}</div>
+                          </div>
+                        </td>
+                        <td className="p-6 md:p-8 align-top">
+                          <div className="space-y-4">
+                            <div className="font-bold uppercase text-gray-900 text-base leading-snug group-hover:text-blue-800 transition-colors">
+                              {item.status === 'completed' && <span className="text-green-600 mr-2">✅</span>}
+                              {item.status === 'postponed' && <span className="text-amber-500 mr-2">⏸</span>}
+                              {isRowUrgent && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded mr-2 animate-pulse">⚠️ SẮP XỬ</span>}
+                              {item.caseName || "Vụ án chưa có tên"}
+                            </div>
+                            <div className="text-gray-700 font-semibold text-sm">
+                              {item.caseType || "---"} / {item.trialCount || "Lần 1"}
+                            </div>
+                            <div className="text-sm text-gray-700 space-y-2 pt-2">
+                              <p><span className="font-semibold text-gray-500">NĐ:</span> {item.plaintiff || "N/A"}</p>
+                              <p><span className="font-semibold text-gray-500">BĐ:</span> {item.defendant || "N/A"}</p>
+                            </div>
+                            <div className="pt-3 flex flex-col sm:flex-row sm:items-center justify-start gap-4 text-xs font-medium text-gray-500 italic">
+                               <span>✍️ Nhập bởi: <span className="font-bold text-gray-600">{item.createdBy ? item.createdBy.split('@')[0] : "Hệ thống"}</span></span>
+                               {item.updatedBy && <span>🔄 Sửa bởi: <span className="font-bold text-gray-600">{item.updatedBy.split('@')[0]}</span></span>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-6 md:p-8 align-top">
+                          <div className="space-y-4 text-sm md:text-base text-gray-800">
+                            <div className="flex gap-2"><span className="font-semibold text-blue-700 w-8 shrink-0">TP:</span> <span className={`font-bold ${isRowUrgent ? 'text-red-900' : 'text-gray-900'}`}>{item.judge || "---"}</span></div>
+                            <div className="flex gap-2"><span className="font-semibold text-gray-500 w-8 shrink-0">HT:</span> <span className="font-medium text-gray-700">{item.juror1 || "---"}, {item.juror2 || "---"}</span></div>
+                            <div className="flex gap-2"><span className="font-semibold text-gray-500 w-8 shrink-0">TK:</span> <span className="font-medium text-gray-700">{item.clerk || "---"}</span></div>
+                            <div className="flex gap-2"><span className="font-semibold text-red-600 w-8 shrink-0">KS:</span> <span className="font-bold text-red-600">{item.prosecutor || "---"}</span></div>
+                          </div>
+                        </td>
+                        {canEdit && (
+                          <td className="p-6 md:p-8 text-center align-top">
+                            <div className="flex flex-col gap-4">
+                              {item.status === 'pending' || !item.status ? (
+                                <>
+                                  <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-50 text-green-700 px-3 py-2.5 font-black uppercase text-xs border border-green-200 hover:bg-green-600 hover:text-white transition-all rounded">✔ XONG</button>
+                                  <button onClick={() => toggleStatus(item.id, 'postponed', item.caseName)} className="bg-amber-50 text-amber-700 px-3 py-2.5 font-black uppercase text-xs border border-amber-200 hover:bg-amber-600 hover:text-white transition-all rounded">⏸ HOÃN</button>
+                                </>
+                              ) : item.status === 'postponed' ? (
+                                <button onClick={() => handleReschedule(item)} className="bg-blue-600 text-white px-3 py-2.5 font-black uppercase text-xs shadow-md hover:bg-blue-700 transition-all rounded">📅 LÊN LỊCH LẠI</button>
+                              ) : (
+                                <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="bg-gray-200 text-gray-700 px-3 py-2.5 font-black uppercase text-xs hover:bg-gray-300 transition-all rounded">↺ MỞ LẠI</button>
+                              )}
+                              <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 px-3 py-2.5 font-black uppercase text-xs border border-blue-200 hover:bg-blue-600 hover:text-white transition-all mt-2 rounded">SỬA</button>
+                              {userRole === 'admin' && <button onClick={() => handleDelete(item.id, item.caseName)} className="bg-red-50 text-red-700 px-3 py-2.5 font-black uppercase text-xs border border-red-200 hover:bg-red-600 hover:text-white transition-all rounded">XÓA</button>}
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    )})}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
