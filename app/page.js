@@ -357,7 +357,7 @@ export default function PremiumCourtApp() {
         <div className="py-10 px-6 text-center border-b border-white/20">
           <img src="/lgtoaan1.png" alt="Logo Tòa án" className="w-20 h-20 mx-auto mb-4 drop-shadow-xl" />
           {/* Đổi từ font-black sang font-extrabold và tăng khoảng cách chữ */}
-          <h2 className="font-extrabold text-2xl uppercase tracking-widest drop-shadow-md">TAND KV9</h2>
+          <h2 className="font-extrabold text-2xl uppercase tracking-widest drop-shadow-md">KV9 - Cần Thơ</h2>
         </div>
         
         <div className="p-6 flex-1">
