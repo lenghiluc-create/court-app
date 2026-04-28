@@ -528,16 +528,21 @@ export default function PremiumCourtApp() {
                   </div>
                 </div>
 
-                {/* NÂNG CẤP 1: Chọn Tùy biến thời lượng (Dynamic Duration) */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <div>
                     <label className={labelStyle}>Loại án <span className="text-red-500">*</span></label>
-                    <select value={form.caseType} onChange={e => setForm({...form, caseType: e.target.value, duration: e.target.value === 'Hình sự' ? 120 : 60})} className={inputBase}><option value="Hình sự">Hình sự</option><option value="Dân sự">Dân sự</option><option value="Hành chính">Hành chính</option><option value="Hôn nhân & GĐ">Hôn nhân & GĐ</option><option value="Kinh tế">Kinh tế</option></select>
+                    <select value={form.caseType} onChange={e => setForm({...form, caseType: e.target.value, duration: e.target.value === 'Hình sự' ? 120 : 30})} className={inputBase}>
+                      <option value="Hình sự">Hình sự</option>
+                      <option value="Dân sự">Dân sự</option>
+                      <option value="Hành chính">Hành chính</option>
+                      <option value="Hôn nhân & GĐ">Hôn nhân & GĐ</option>
+                      <option value="Kinh tế">Kinh tế</option>
+                    </select>
                   </div>
                   <div>
                     <label className={labelStyle}>Thời lượng <span className="text-red-500">*</span></label>
                     <select value={form.duration} onChange={e => setForm({...form, duration: parseInt(e.target.value)})} className={inputBase}>
-                      <option value={60}>⏱ 1 giờ (Án thường)</option>
+                      <option value={30}>⏱ 30 phút (Xử nhanh)</option>
                       <option value={120}>⏱ 2 giờ (Án hình sự)</option>
                       <option value={240}>⏱ 1 buổi (4 giờ)</option>
                       <option value={480}>⏱ 1 ngày (8 giờ)</option>
@@ -545,7 +550,11 @@ export default function PremiumCourtApp() {
                   </div>
                   <div>
                     <label className={labelStyle}>Lần xử <span className="text-red-500">*</span></label>
-                    <select value={form.trialCount} onChange={e => setForm({...form, trialCount: e.target.value})} className={inputBase}><option value="Lần 1">Lần 1</option><option value="Lần 2">Lần 2</option><option value="Mở lại">Mở lại</option></select>
+                    <select value={form.trialCount} onChange={e => setForm({...form, trialCount: e.target.value})} className={inputBase}>
+                      <option value="Lần 1">Lần 1</option>
+                      <option value="Lần 2">Lần 2</option>
+                      <option value="Mở lại">Mở lại</option>
+                    </select>
                   </div>
                 </div>
 
