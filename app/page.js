@@ -444,7 +444,7 @@ export default function PremiumCourtApp() {
         </div>
       </aside>
 
-      <main className="flex-1 xl:ml-64 flex flex-col min-h-screen relative z-10">
+      <main className="xl:ml-64 flex flex-col min-h-screen relative z-10 w-full xl:w-[calc(100%-16rem)] min-w-0">
         <header className="bg-white/95 backdrop-blur-md h-24 shadow-sm flex items-center justify-between px-4 md:px-8 xl:px-12 sticky top-0 z-30 border-b border-gray-200 w-full">
           <div className="flex-1 flex justify-start items-center gap-2 xl:hidden">
              <button onClick={() => setShowPwdModal(true)} className="bg-blue-50 text-blue-700 px-3 py-2 text-[10px] sm:text-xs font-black uppercase border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm">🔑 Đổi MK</button>
@@ -583,7 +583,7 @@ export default function PremiumCourtApp() {
           )}
 
           <div className="space-y-12" ref={calendarSectionRef}>
-            <div className="bg-white p-4 md:p-8 border shadow-xl rounded-xl h-[700px] group w-full">
+            <div className="bg-white p-4 md:p-8 border shadow-xl rounded-xl h-[700px] group w-full overflow-x-auto">
               {canEdit && <p className="text-gray-400 text-xs font-bold text-center mb-4 italic">💡 Kéo thả để dời lịch. Độ dài ô trên lịch thể hiện thời lượng vụ án.</p>}
               {isMounted && localizer ? (
                 <DnDCalendar localizer={localizer} events={calendarEvents} style={{ height: "100%" }} onSelectEvent={e => setSelectedEvent(e)} onEventDrop={onEventDrop} resizable={false} />
