@@ -343,7 +343,7 @@ export default function PremiumCourtApp() {
       <aside className="w-64 text-white hidden xl:flex flex-col fixed h-screen z-20 overflow-y-auto" style={{ background: 'rgba(220, 38, 38, 0.75)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRight: '1px solid rgba(255, 255, 255, 0.2)', boxShadow: '4px 0 32px 0 rgba(0, 0, 0, 0.2)' }}>
         <div className="py-10 px-6 text-center border-b border-white/20">
           <img src="/lgtoaan1.png" alt="Logo Tòa án" className="w-20 h-20 mx-auto mb-4 drop-shadow-xl" />
-          <h2 className="font-black text-2xl uppercase tracking-tighter drop-shadow-md">TAND KV9</h2>
+          <h2 className="font-black text-2xl uppercase tracking-tighter drop-shadow-md"> KV9 - Cần Thơ</h2>
         </div>
         <div className="p-6 flex-1">
           <div onClick={scrollToCalendar} className="cursor-pointer bg-blue-600/90 backdrop-blur-md px-4 py-4 font-black text-sm shadow-xl border border-white/20 flex justify-between items-center rounded-lg hover:bg-blue-500 transition-colors">
@@ -401,14 +401,15 @@ export default function PremiumCourtApp() {
             </div>
           </div>
 
-          {schedule.length > 0 && (
+         {schedule.length > 0 && (
              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
                <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-200">
                   <h3 className="text-center font-black text-[13px] text-gray-500 uppercase tracking-widest mb-4">Tỷ lệ theo Loại án</h3>
-                  <div className="h-[250px] w-full">
+                  <div className="h-[320px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie data={caseTypeData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value">
+                        {/* THÊM THUỘC TÍNH label ĐỂ GẠCH TÊN RA NGOÀI */}
+                        <Pie data={caseTypeData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" label={({name, value}) => `${name} (${value})`}>
                           {caseTypeData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
                         </Pie>
                         <Tooltip />
@@ -419,10 +420,11 @@ export default function PremiumCourtApp() {
                </div>
                <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-200">
                   <h3 className="text-center font-black text-[13px] text-gray-500 uppercase tracking-widest mb-4">Tỷ lệ án Đang chờ xử theo Thẩm phán</h3>
-                  <div className="h-[250px] w-full">
+                  <div className="h-[320px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie data={judgeData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value">
+                        {/* THÊM THUỘC TÍNH label ĐỂ GẠCH TÊN RA NGOÀI */}
+                        <Pie data={judgeData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" label={({name, value}) => `${name} (${value})`}>
                           {judgeData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[(index + 3) % CHART_COLORS.length]} />)}
                         </Pie>
                         <Tooltip />
