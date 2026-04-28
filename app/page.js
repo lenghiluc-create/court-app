@@ -5,7 +5,7 @@ import moment from 'moment';
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 // Firebase Imports
 import { db, auth } from './firebase'; 
@@ -203,15 +203,25 @@ export default function PremiumCourtApp() {
     const caseName = e.dataTransfer.getData("caseName");
     if(id) {
       const currentItem = schedule.find(i => i.id === id);
-      if (currentItem && currentItem.status !== newStatus) await toggleStatus(id, newStatus, caseName);
+      if (currentItem && currentItem.status !== newStatus) {
+         // Nếu kéo vụ Tạm Ngừng sang Chờ Xử -> Ép buộc phải chọn lịch mới (Hoãn/Lên lịch lại)
+         if (newStatus === 'pending' && currentItem.status === 'suspended') {
+            handleReschedule(currentItem);
+         } else {
+            await toggleStatus(id, newStatus, caseName);
+         }
+      }
     }
   };
 
+  // NÂNG CẤP: Nút HOÃN sẽ gọi hàm này. Bắt buộc người dùng nhập ngày mới.
   const handleReschedule = (item) => {
     let nextTrialCount = item.trialCount === "Lần 1" ? "Lần 2" : "Mở lại";
+    // Xóa trắng datetime cũ để bắt buộc chọn lại
     setForm({ ...item, datetime: "", trialCount: nextTrialCount, status: "pending" });
-    setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'});
-    showToast("Đã lấy dữ liệu, vui lòng chọn ngày giờ mới!", "success");
+    setEditingId(item.id); 
+    window.scrollTo({top:0, behavior:'smooth'});
+    showToast("⚠️ Đã kích hoạt Hoãn/Mở lại. Vui lòng CHỌN NGÀY GIỜ MỚI và bấm Cập nhật!", "success");
   };
 
   const handleSendEmail = (item) => {
@@ -299,8 +309,7 @@ export default function PremiumCourtApp() {
   };
 
   const calendarEvents = useMemo(() => {
-    // Ẩn các vụ Tạm ngừng khỏi bộ lịch để tránh rác lịch
-    return schedule.filter(i => i.datetime && i.status !== 'postponed' && i.status !== 'suspended').map(i => ({ 
+    return schedule.filter(i => i.datetime && i.status !== 'suspended').map(i => ({ 
       ...i, title: `${i.status === 'completed' ? '✅ ' : ''}[${i.room}] ${i.caseName || 'Chưa có tên'}`, start: new Date(i.datetime), end: new Date(new Date(i.datetime).getTime() + (i.duration || 60) * 60000) 
     }));
   }, [schedule]);
@@ -316,8 +325,8 @@ export default function PremiumCourtApp() {
           <p className="text-[16px] md:text-lg font-black uppercase mb-2 tracking-tight text-red-600 drop-shadow-md">TOÀ ÁN NHÂN DÂN THÀNH PHỐ CẦN THƠ</p>
           <h1 className="text-[20px] md:text-2xl font-black uppercase mb-8 tracking-tight text-red-600 drop-shadow-md">TAND KHU VỰC 9 - CẦN THƠ</h1>
           <form onSubmit={handleLogin} className="space-y-5 flex flex-col items-center">
-            <input type="email" placeholder="Email..." value={loginEmail} onChange={setLoginEmail} className="w-[85%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center transition-all focus:border-white focus:bg-white/20" style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.4)', borderRadius: '6px' }} required />
-            <input type="password" placeholder="Mật khẩu..." value={loginPass} onChange={setLoginPass} className="w-[85%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center transition-all focus:border-white focus:bg-white/20" style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.4)', borderRadius: '6px' }} required />
+            <input type="email" placeholder="Email..." value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="w-[85%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center transition-all focus:border-white focus:bg-white/20" style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.4)', borderRadius: '6px' }} required />
+            <input type="password" placeholder="Mật khẩu..." value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-[85%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center transition-all focus:border-white focus:bg-white/20" style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.4)', borderRadius: '6px' }} required />
             <button type="submit" className="py-3 mt-4 font-black uppercase text-lg transition-all hover:bg-blue-700 active:scale-95" style={{ width: '60%', backgroundColor: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '6px', boxShadow: '0 4px 15px rgba(37, 99, 235, 0.5)' }}>ĐĂNG NHẬP</button>
           </form>
         </div>
@@ -340,10 +349,11 @@ export default function PremiumCourtApp() {
         .rbc-event.rbc-selected { background-color: #1e3a8a !important; color: #ffffff !important; box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #1e3a8a !important; z-index: 10 !important; }
       `}} />
 
+      {/* TÍCH HỢP FONT BE VIETNAM PRO CHO SIDEBAR GỌN GÀNG HƠN */}
       <aside 
         className="w-64 text-white hidden xl:flex flex-col fixed h-screen z-20 overflow-y-auto"
         style={{ 
-          fontFamily: "'Be Vietnam Pro', sans-serif", /* ÁP DỤNG PHÔNG CHỮ MỚI */
+          fontFamily: "'Be Vietnam Pro', sans-serif",
           background: 'rgba(220, 38, 38, 0.75)',
           backdropFilter: 'blur(16px)', 
           WebkitBackdropFilter: 'blur(16px)', 
@@ -351,23 +361,18 @@ export default function PremiumCourtApp() {
           boxShadow: '4px 0 32px 0 rgba(0, 0, 0, 0.2)'
         }}
       >
-        {/* Nhúng link Font từ Google Fonts */}
         <style dangerouslySetInnerHTML={{__html: `@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');`}} />
 
         <div className="py-10 px-6 text-center border-b border-white/20">
           <img src="/lgtoaan1.png" alt="Logo Tòa án" className="w-20 h-20 mx-auto mb-4 drop-shadow-xl" />
-          {/* Đổi từ font-black sang font-extrabold và tăng khoảng cách chữ */}
-          <h2 className="font-extrabold text-2xl uppercase tracking-widest drop-shadow-md">KV9 - Cần Thơ</h2>
+          <h2 className="font-extrabold text-2xl uppercase tracking-widest drop-shadow-md">TAND KV9</h2>
         </div>
-        
         <div className="p-6 flex-1">
           <div onClick={scrollToCalendar} className="cursor-pointer bg-blue-600/90 backdrop-blur-md px-4 py-4 shadow-xl border border-white/20 flex justify-between items-center rounded-lg hover:bg-blue-500 transition-colors">
-            {/* Đổi sang font-bold cho gọn */}
             <span className="font-bold text-sm tracking-wide drop-shadow-md">📅 LỊCH XÉT XỬ</span> 
             {urgentCount > 0 && <span className="bg-red-500 text-white px-2 py-1 text-xs font-bold rounded-full animate-bounce shadow-md border border-white/30">{urgentCount}</span>}
           </div>
         </div>
-
         <div className="p-6 border-t border-white/20 mt-auto bg-black/10">
           <div className="mb-6 p-4 bg-white/10 border border-white/20 rounded-lg shadow-inner">
              <p className="text-[10px] text-amber-300 font-bold uppercase mb-1 tracking-widest drop-shadow-md">Quyền: {roleDisplayNames[userRole]}</p>
@@ -397,7 +402,6 @@ export default function PremiumCourtApp() {
         </header>
 
         <div className="p-4 md:p-12 flex-1">
-          {/* BẢNG ĐIỀU KHIỂN 5 Ô - THÊM Ô TẠM NGỪNG */}
           <div className="bg-white shadow-xl rounded-xl mb-8 border border-gray-200 overflow-hidden">
             <div className="grid grid-cols-2 md:grid-cols-5 divide-x divide-y md:divide-y-0 divide-gray-200">
               <div onClick={() => handleStatCardClick('all')} className="cursor-pointer p-6 md:p-8 flex flex-col items-center justify-center text-center hover:bg-blue-50 transition-colors">
@@ -418,18 +422,18 @@ export default function PremiumCourtApp() {
             </div>
           </div>
 
-        {schedule.length > 0 && (
+          {schedule.length > 0 && (
              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
                <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-200">
                   <h3 className="text-center font-black text-[13px] text-gray-500 uppercase tracking-widest mb-4">Tỷ lệ theo Loại án</h3>
                   <div className="h-[320px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
+                        {/* Biểu đồ CÓ NHÃN GẠCH TÊN RA NGOÀI, BỎ LEGEND BÊN DƯỚI */}
                         <Pie data={caseTypeData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" label={({name, value}) => `${name} (${value})`}>
                           {caseTypeData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
                         </Pie>
                         <Tooltip />
-                        {/* Đã xóa thẻ <Legend /> ở đây để không bị vướng */}
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -439,11 +443,11 @@ export default function PremiumCourtApp() {
                   <div className="h-[320px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
+                        {/* Biểu đồ CÓ NHÃN GẠCH TÊN RA NGOÀI, BỎ LEGEND BÊN DƯỚI */}
                         <Pie data={judgeData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" label={({name, value}) => `${name} (${value})`}>
                           {judgeData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[(index + 3) % CHART_COLORS.length]} />)}
                         </Pie>
                         <Tooltip />
-                        {/* Đã xóa thẻ <Legend /> ở đây để không bị vướng */}
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -543,7 +547,6 @@ export default function PremiumCourtApp() {
                      <option value="all">📁 Tất cả Trạng thái</option>
                      <option value="pending">⏳ Đang chờ xử</option>
                      <option value="suspended">⏸ Tạm ngừng</option>
-                     <option value="postponed">⚠️ Đã hoãn</option>
                      <option value="completed">✅ Đã xử xong</option>
                   </select>
                   <label className="flex items-center gap-2 text-sm font-bold text-red-600 bg-red-50 px-4 py-2.5 rounded-md border border-red-200 cursor-pointer">
@@ -563,12 +566,11 @@ export default function PremiumCourtApp() {
                     <tbody className="divide-y divide-gray-200">
                       {processedSchedule.map((item, index) => {
                         const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
-                        let rowBgClass = item.status === 'completed' || item.status === 'postponed' || item.status === 'suspended' ? "opacity-70 bg-gray-100/50" : isRowUrgent ? "bg-red-50 hover:bg-red-100" : index % 2 === 0 ? "bg-white hover:bg-blue-50/30" : "bg-slate-50 hover:bg-blue-50/30";
+                        let rowBgClass = item.status === 'completed' || item.status === 'suspended' ? "opacity-70 bg-gray-100/50" : isRowUrgent ? "bg-red-50 hover:bg-red-100" : index % 2 === 0 ? "bg-white hover:bg-blue-50/30" : "bg-slate-50 hover:bg-blue-50/30";
                         return (
                           <tr key={item.id} className={`transition-all ${rowBgClass}`}>
                             <td className={`p-6 align-top text-center ${isRowUrgent ? 'border-l-4 border-l-red-500' : ''}`}>
-                              {item.status === 'postponed' ? <div className="text-amber-600 font-bold animate-pulse">⚠️ ĐÃ HOÃN</div> : 
-                               item.status === 'suspended' ? <div className="text-purple-600 font-bold uppercase">⏸ Tạm ngừng<br/><span className="text-[10px] text-gray-500 italic">(Chờ báo sau)</span></div> :
+                              {item.status === 'suspended' ? <div className="text-purple-600 font-bold uppercase">⏸ Tạm ngừng<br/><span className="text-[10px] text-gray-500 italic">(Chờ báo sau)</span></div> :
                                <>
                                 <div className="font-bold text-gray-900">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
                                 <div className="text-blue-600 font-bold">🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</div>
@@ -598,18 +600,21 @@ export default function PremiumCourtApp() {
                             {canEdit && (
                               <td className="p-4 align-top">
                                 <div className="flex flex-col gap-2 w-full max-w-[150px] mx-auto">
+                                  {/* CỤM NÚT THAO TÁC CẬP NHẬT: XONG, NGỪNG, HOÃN */}
                                   {(item.status === 'pending' || !item.status) && (
-                                    <div className="grid grid-cols-2 gap-2">
-                                      <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-50 text-green-700 py-2 font-black uppercase text-[9px] border border-green-200 rounded">✔ XONG</button>
-                                      <button onClick={() => toggleStatus(item.id, 'suspended', item.caseName)} className="bg-purple-50 text-purple-700 py-2 font-black uppercase text-[9px] border border-purple-200 rounded">⏸ NGỪNG</button>
+                                    <div className="grid grid-cols-3 gap-1">
+                                      <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-50 text-green-700 py-2 font-black uppercase text-[9px] border border-green-200 rounded" title="Đã xử xong">✔ XONG</button>
+                                      <button onClick={() => toggleStatus(item.id, 'suspended', item.caseName)} className="bg-purple-50 text-purple-700 py-2 font-black uppercase text-[9px] border border-purple-200 rounded" title="Tạm ngừng (Chờ báo sau)">⏸ NGỪNG</button>
+                                      <button onClick={() => handleReschedule(item)} className="bg-amber-50 text-amber-700 py-2 font-black uppercase text-[9px] border border-amber-200 rounded" title="Hoãn (Chọn lịch mới ngay)">⚠️ HOÃN</button>
                                     </div>
                                   )}
-                                  {(item.status === 'postponed' || item.status === 'suspended') && <button onClick={() => handleReschedule(item)} className="bg-blue-600 text-white py-2 font-black uppercase text-[10px] rounded">📅 LÊN LỊCH LẠI</button>}
+                                  
+                                  {item.status === 'suspended' && <button onClick={() => handleReschedule(item)} className="bg-blue-600 text-white py-2 font-black uppercase text-[10px] rounded">📅 LÊN LỊCH LẠI</button>}
                                   {item.status === 'completed' && <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="bg-gray-200 text-gray-700 py-2 font-black uppercase text-[10px] rounded">↺ MỞ LẠI</button>}
-                                  <button onClick={() => handleSendEmail(item)} className="bg-purple-50 text-purple-700 py-2 font-black uppercase text-[10px] border border-purple-200 rounded">📋 COPY LỊCH</button>
-                                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-200 border-dashed">
+                                  <button onClick={() => handleSendEmail(item)} className="bg-indigo-50 text-indigo-700 py-2 font-black uppercase text-[10px] border border-indigo-200 rounded">📋 COPY LỊCH</button>
+                                  <div className={`grid ${userRole === 'admin' || userRole === 'chanhan' ? 'grid-cols-2' : 'grid-cols-1'} gap-2 pt-1 border-t border-gray-200 border-dashed`}>
                                      <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 py-2 font-black uppercase text-[10px] border border-blue-200 rounded">✏️ SỬA</button>
-                                     <button onClick={() => handleDelete(item.id, item.caseName)} className="bg-red-50 text-red-700 py-2 font-black uppercase text-[10px] border border-red-200 rounded">🗑️ XÓA</button>
+                                     {(userRole === 'admin' || userRole === 'chanhan') && <button onClick={() => handleDelete(item.id, item.caseName)} className="bg-red-50 text-red-700 py-2 font-black uppercase text-[10px] border border-red-200 rounded">🗑️ XÓA</button>}
                                   </div>
                                 </div>
                               </td>
@@ -655,7 +660,7 @@ export default function PremiumCourtApp() {
         </div>
       </main>
 
-      {/* MODAL XEM CHI TIẾT */}
+      {/* CÁC MODAL XEM CHI TIẾT & ĐỔI MẬT KHẨU GIỮ NGUYÊN */}
       {selectedEvent && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onClick={() => setSelectedEvent(null)}>
            <div className="w-full max-w-lg flex flex-col overflow-hidden bg-white rounded-[28px] shadow-2xl" onClick={e => e.stopPropagation()}>
