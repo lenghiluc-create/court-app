@@ -204,7 +204,6 @@ export default function PremiumCourtApp() {
     if(id) {
       const currentItem = schedule.find(i => i.id === id);
       if (currentItem && currentItem.status !== newStatus) {
-         // Nếu kéo vụ Tạm Ngừng sang Chờ Xử -> Ép buộc phải chọn lịch mới (Hoãn/Lên lịch lại)
          if (newStatus === 'pending' && currentItem.status === 'suspended') {
             handleReschedule(currentItem);
          } else {
@@ -214,19 +213,11 @@ export default function PremiumCourtApp() {
     }
   };
 
-  // NÂNG CẤP: Nút HOÃN sẽ gọi hàm này. Bắt buộc người dùng nhập ngày mới.
   const handleReschedule = (item) => {
     let nextTrialCount = item.trialCount === "Lần 1" ? "Lần 2" : "Mở lại";
-    // Xóa trắng datetime cũ để bắt buộc chọn lại
     setForm({ ...item, datetime: "", trialCount: nextTrialCount, status: "pending" });
-    setEditingId(item.id); 
-    window.scrollTo({top:0, behavior:'smooth'});
+    setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'});
     showToast("⚠️ Đã kích hoạt Hoãn/Mở lại. Vui lòng CHỌN NGÀY GIỜ MỚI và bấm Cập nhật!", "success");
-  };
-
-  const handleSendEmail = (item) => {
-    const body = `Kính gửi Hội đồng xét xử,\n\nHệ thống xin thông báo lịch xét xử:\n- Vụ án: ${item.caseName}\n- Loại án: ${item.caseType} (${item.trialCount})\n- Thời gian: ${item.status === 'suspended' ? "TẠM NGỪNG (Chờ báo sau)" : moment(item.datetime).format("HH:mm - DD/MM/YYYY")}\n- Địa điểm: ${item.room}\n\nThành phần HĐXX:\n- Thẩm phán: ${item.judge || "..."}\n- Thư ký: ${item.clerk || "..."}\n- KSV: ${item.prosecutor || "..."}\n- Hội thẩm: ${item.juror1 || "..."} & ${item.juror2 || "..."}\n\nTrân trọng!`;
-    navigator.clipboard.writeText(body).then(() => showToast("📋 Đã copy nội dung! Dán (Ctrl+V) vào Zalo/Email để gửi.", "success")).catch(() => showToast("Lỗi copy!", "error"));
   };
 
   const scrollToCalendar = () => { if(calendarSectionRef.current) calendarSectionRef.current.scrollIntoView({ behavior: 'smooth' }); };
@@ -349,7 +340,6 @@ export default function PremiumCourtApp() {
         .rbc-event.rbc-selected { background-color: #1e3a8a !important; color: #ffffff !important; box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #1e3a8a !important; z-index: 10 !important; }
       `}} />
 
-      {/* TÍCH HỢP FONT BE VIETNAM PRO CHO SIDEBAR GỌN GÀNG HƠN */}
       <aside 
         className="w-64 text-white hidden xl:flex flex-col fixed h-screen z-20 overflow-y-auto"
         style={{ 
@@ -365,7 +355,7 @@ export default function PremiumCourtApp() {
 
         <div className="py-10 px-6 text-center border-b border-white/20">
           <img src="/lgtoaan1.png" alt="Logo Tòa án" className="w-20 h-20 mx-auto mb-4 drop-shadow-xl" />
-          <h2 className="font-extrabold text-2xl uppercase tracking-widest drop-shadow-md">TAND KV9</h2>
+          <h2 className="font-extrabold text-2xl uppercase tracking-widest drop-shadow-md">KV9-Cần Thơ</h2>
         </div>
         <div className="p-6 flex-1">
           <div onClick={scrollToCalendar} className="cursor-pointer bg-blue-600/90 backdrop-blur-md px-4 py-4 shadow-xl border border-white/20 flex justify-between items-center rounded-lg hover:bg-blue-500 transition-colors">
@@ -429,7 +419,6 @@ export default function PremiumCourtApp() {
                   <div className="h-[320px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        {/* Biểu đồ CÓ NHÃN GẠCH TÊN RA NGOÀI, BỎ LEGEND BÊN DƯỚI */}
                         <Pie data={caseTypeData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" label={({name, value}) => `${name} (${value})`}>
                           {caseTypeData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
                         </Pie>
@@ -438,18 +427,23 @@ export default function PremiumCourtApp() {
                     </ResponsiveContainer>
                   </div>
                </div>
-               <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-200">
-                  <h3 className="text-center font-black text-[13px] text-gray-500 uppercase tracking-widest mb-4">Tỷ lệ án Đang chờ xử theo Thẩm phán</h3>
-                  <div className="h-[320px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        {/* Biểu đồ CÓ NHÃN GẠCH TÊN RA NGOÀI, BỎ LEGEND BÊN DƯỚI */}
-                        <Pie data={judgeData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" label={({name, value}) => `${name} (${value})`}>
-                          {judgeData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[(index + 3) % CHART_COLORS.length]} />)}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
+              <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-200 flex flex-col">
+                  <h3 className="text-center font-black text-[13px] text-gray-500 uppercase tracking-widest mb-4">Án đang chờ xử theo Thẩm phán</h3>
+                  <div className="h-[320px] w-full overflow-y-auto pr-2 custom-scrollbar">
+                    {judgeData.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 pt-2">
+                        {judgeData.map((item, index) => (
+                          <div key={index} className="flex justify-between items-center border-b border-gray-100 pb-2">
+                            <span className="text-[14px] font-bold text-gray-700 truncate pr-2" title={item.name}>
+                              <span className="text-gray-400 mr-1.5">{index + 1}.</span>{item.name}
+                            </span>
+                            <span className="text-[14px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded shadow-sm">{item.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-sm font-bold text-gray-400 italic">Không có án chờ xử</div>
+                    )}
                   </div>
                </div>
              </div>
@@ -561,7 +555,12 @@ export default function PremiumCourtApp() {
                 {viewMode === 'table' ? (
                   <table className="w-full text-left border-collapse min-w-[1000px]">
                     <thead className="bg-gray-100 text-[12px] font-black uppercase text-gray-500 sticky top-0 z-10 border-b border-gray-200">
-                      <tr><th className="p-6 w-[15%] text-center">Lịch</th><th className="p-6 w-[40%]">Nội dung</th><th className="p-6 w-[30%]">Thành phần & Người nhập</th>{canEdit && <th className="p-6 w-[15%] text-center">Tác vụ</th>}</tr>
+                      <tr>
+                        <th className="p-6 w-[15%] text-center">Lịch & Cập nhật</th>
+                        <th className="p-6 w-[40%]">Nội dung</th>
+                        <th className="p-6 w-[30%]">Thành phần HĐXX</th>
+                        {canEdit && <th className="p-6 w-[15%] text-center">Tác vụ</th>}
+                      </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {processedSchedule.map((item, index) => {
@@ -575,7 +574,13 @@ export default function PremiumCourtApp() {
                                 <div className="font-bold text-gray-900">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
                                 <div className="text-blue-600 font-bold">🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</div>
                               </>}
-                              <div className="font-bold text-gray-500 uppercase text-sm mt-4">{item.room || "---"}</div>
+                              <div className="font-bold text-gray-500 uppercase text-sm mt-4 mb-3">{item.room || "---"}</div>
+                              
+                              {/* THÔNG TIN NGƯỜI NHẬP/SỬA DỜI VỀ ĐÂY */}
+                              <div className="border-t border-gray-200 border-dashed pt-3 mt-4 text-[11px] text-gray-500 italic text-left inline-block">
+                                Nhập: <span className="font-bold text-gray-700">{item.createdBy ? item.createdBy.split('@')[0] : "---"}</span>
+                                {item.updatedBy && item.updatedBy !== item.createdBy && <><br/>Sửa: <span className="font-bold text-gray-700">{item.updatedBy.split('@')[0]}</span></>}
+                              </div>
                             </td>
                             <td className="p-6 align-top">
                               <div className="font-bold uppercase text-gray-900 text-base mb-2">
@@ -588,31 +593,30 @@ export default function PremiumCourtApp() {
                               <div className="text-sm text-gray-600"><p>NĐ: {item.plaintiff || "N/A"}</p><p>BĐ: {item.defendant || "N/A"}</p></div>
                             </td>
                             <td className="p-6 align-top text-sm text-gray-800 space-y-2">
+                              {/* CỘT NÀY CHỈ CÒN THÔNG TIN THÀNH PHẦN */}
                               <div><span className="font-semibold text-blue-700 inline-block w-8">TP:</span> <span className="font-bold">{item.judge || "---"}</span></div>
                               <div><span className="font-semibold text-gray-500 inline-block w-8">HT:</span> {item.juror1 || "---"}, {item.juror2 || "---"}</div>
                               <div><span className="font-semibold text-gray-500 inline-block w-8">TK:</span> {item.clerk || "---"}</div>
                               <div><span className="font-semibold text-red-600 inline-block w-8">KSV:</span> <span className="font-bold text-red-600">{item.prosecutor || "---"}</span></div>
-                              
-                              <div className="border-t border-gray-200 border-dashed pt-2 mt-3 text-xs text-gray-500 italic">
-                                Nhập bởi: <span className="font-bold text-gray-700">{item.createdBy ? item.createdBy.split('@')[0] : "---"}</span>
-                              </div>
                             </td>
                             {canEdit && (
                               <td className="p-4 align-top">
                                 <div className="flex flex-col gap-2 w-full max-w-[150px] mx-auto">
-                                  {/* CỤM NÚT THAO TÁC CẬP NHẬT: XONG, NGỪNG, HOÃN */}
                                   {(item.status === 'pending' || !item.status) && (
-                                    <div className="grid grid-cols-3 gap-1">
-                                      <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-50 text-green-700 py-2 font-black uppercase text-[9px] border border-green-200 rounded" title="Đã xử xong">✔ XONG</button>
-                                      <button onClick={() => toggleStatus(item.id, 'suspended', item.caseName)} className="bg-purple-50 text-purple-700 py-2 font-black uppercase text-[9px] border border-purple-200 rounded" title="Tạm ngừng (Chờ báo sau)">⏸ NGỪNG</button>
-                                      <button onClick={() => handleReschedule(item)} className="bg-amber-50 text-amber-700 py-2 font-black uppercase text-[9px] border border-amber-200 rounded" title="Hoãn (Chọn lịch mới ngay)">⚠️ HOÃN</button>
-                                    </div>
+                                    <>
+                                      <div className="grid grid-cols-2 gap-2 mb-1">
+                                        <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-50 text-green-700 py-2 font-black uppercase text-[10px] border border-green-200 rounded" title="Đã xử xong">✔ XONG</button>
+                                        <button onClick={() => handleReschedule(item)} className="bg-amber-50 text-amber-700 py-2 font-black uppercase text-[10px] border border-amber-200 rounded" title="Hoãn (Chọn lịch mới ngay)">⚠️ HOÃN</button>
+                                      </div>
+                                      {/* Nút tạm ngừng chiếm trọn hàng ngang */}
+                                      <button onClick={() => toggleStatus(item.id, 'suspended', item.caseName)} className="w-full bg-purple-50 text-purple-700 py-2 mb-1 font-black uppercase text-[10px] border border-purple-200 rounded" title="Tạm ngừng (Chờ báo sau)">⏸ TẠM NGỪNG</button>
+                                    </>
                                   )}
                                   
-                                  {item.status === 'suspended' && <button onClick={() => handleReschedule(item)} className="bg-blue-600 text-white py-2 font-black uppercase text-[10px] rounded">📅 LÊN LỊCH LẠI</button>}
-                                  {item.status === 'completed' && <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="bg-gray-200 text-gray-700 py-2 font-black uppercase text-[10px] rounded">↺ MỞ LẠI</button>}
-                                  <button onClick={() => handleSendEmail(item)} className="bg-indigo-50 text-indigo-700 py-2 font-black uppercase text-[10px] border border-indigo-200 rounded">📋 COPY LỊCH</button>
-                                  <div className={`grid ${userRole === 'admin' || userRole === 'chanhan' ? 'grid-cols-2' : 'grid-cols-1'} gap-2 pt-1 border-t border-gray-200 border-dashed`}>
+                                  {item.status === 'suspended' && <button onClick={() => handleReschedule(item)} className="w-full bg-blue-600 text-white py-2 mb-1 font-black uppercase text-[10px] rounded">📅 LÊN LỊCH LẠI</button>}
+                                  {item.status === 'completed' && <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="w-full bg-gray-200 text-gray-700 py-2 mb-1 font-black uppercase text-[10px] rounded">↺ MỞ LẠI</button>}
+                                  
+                                  <div className={`grid ${userRole === 'admin' || userRole === 'chanhan' ? 'grid-cols-2' : 'grid-cols-1'} gap-2 pt-2 border-t border-gray-200 border-dashed`}>
                                      <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 py-2 font-black uppercase text-[10px] border border-blue-200 rounded">✏️ SỬA</button>
                                      {(userRole === 'admin' || userRole === 'chanhan') && <button onClick={() => handleDelete(item.id, item.caseName)} className="bg-red-50 text-red-700 py-2 font-black uppercase text-[10px] border border-red-200 rounded">🗑️ XÓA</button>}
                                   </div>
@@ -646,6 +650,13 @@ export default function PremiumCourtApp() {
                                    <div className="flex items-center gap-2"><span className="text-lg">👨‍⚖️</span> TP: {item.judge || "---"}</div>
                                    <div className="flex items-center gap-2"><span className="text-lg">🛡️</span> KSV: <span className="text-red-600">{item.prosecutor || "---"}</span></div>
                                  </div>
+                                 
+                                 {/* CHỈNH LẠI NÚT TRONG KANBAN (BỎ NÚT COPY) */}
+                                 {canEdit && (
+                                   <div className="mt-4 pt-3 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                                     <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="w-full bg-blue-50 text-blue-600 py-2.5 rounded-md text-[10px] font-black uppercase hover:bg-blue-600 hover:text-white transition-colors">✏️ Cập nhật & Sửa</button>
+                                   </div>
+                                 )}
                                </div>
                              )
                            })}
