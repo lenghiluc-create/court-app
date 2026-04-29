@@ -427,7 +427,7 @@ export default function PremiumCourtApp() {
         </div>
       </aside>
 
-      <main className="xl:ml-64 flex flex-col min-h-screen relative z-10 w-full xl:w-[calc(100%-16rem)] min-w-0">
+      <main className="xl:ml-64 flex flex-col min-h-screen relative z-10 flex-1 w-full">
         <header className="bg-white/95 backdrop-blur-md h-24 shadow-sm flex items-center justify-between px-4 md:px-8 xl:px-12 sticky top-0 z-30 border-b border-gray-200 w-full">
           <div className="flex-1 flex justify-start items-center gap-2 xl:hidden">
              <button onClick={() => setShowPwdModal(true)} className="bg-blue-50 text-blue-700 px-3 py-2 text-[10px] font-black uppercase shadow-sm border border-blue-100">🔑 MK</button>
@@ -742,7 +742,7 @@ export default function PremiumCourtApp() {
                             </td>
                             {canEdit && (
                               <td className="p-4 align-top">
-                                <div className="flex flex-col gap-2 w-full max-w-[150px] mx-auto">
+                                <div className="flex flex-col gap-2 w-full max-w-[140px] mx-auto">
                                   {(item.status === 'pending' || !item.status) && (
                                     <>
                                       <div className="grid grid-cols-2 gap-2 mb-1">
@@ -893,14 +893,14 @@ export default function PremiumCourtApp() {
 
     <div className="flex-1 overflow-hidden">
       <table className="w-full text-left">
-        <thead>
-          <tr className="text-3xl text-gray-400 border-b border-gray-700 uppercase">
-            <th className="p-6 w-[15%]">Giờ xử</th>
-            <th className="p-6 w-[45%]">Vụ án / Đương sự</th>
-            <th className="p-6 w-[20%] text-center">Phòng</th>
-            <th className="p-6 w-[20%] text-center">Trạng thái</th>
-          </tr>
-        </thead>
+       <thead className="bg-gray-100 text-[12px] font-black uppercase text-gray-500 sticky top-0 z-10 border-b border-gray-200">
+  <tr>
+    <th className="p-6 w-[15%] text-center">Lịch & Cập nhật</th>
+    <th className="p-6 w-[55%] text-left">Nội dung vụ án</th> {/* Tăng width cột này để đẩy nội dung ra giữa */}
+    <th className="p-6 w-[20%] text-left">Thành phần HĐXX</th>
+    <th className="p-6 w-[10%] text-center">Tác vụ</th>
+  </tr>
+</thead>
         <tbody className="divide-y divide-gray-800">
           {schedule
             .filter(i => moment(i.datetime).isSame(moment(), 'day')) // Chỉ hiện lịch hôm nay
