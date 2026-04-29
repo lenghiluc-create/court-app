@@ -162,11 +162,12 @@ export default function PremiumCourtApp() {
   const toggleStatus = async (id, newStatus, caseName) => {
     try {
       const updateData = { status: newStatus, updatedBy: user.email, updatedAt: moment().toISOString() };
+      // Quan trọng: Lưu thời điểm bấm "Xong" để tính toán hạn 5 ngày/30 ngày
       if (newStatus === 'completed') updateData.completedAt = moment().toISOString();
       await updateDoc(doc(db, "schedule", id), updateData);
       
       let msg = "⏳ Đã cập nhật trạng thái!";
-      if (newStatus === 'completed') msg = "✅ Đã đánh dấu xử xong!";
+      if (newStatus === 'completed') msg = "✅ Đã đánh dấu xử xong (Bắt đầu tính hạn phát hành)!";
       if (newStatus === 'suspended') msg = "⏸ Phiên tòa đã tạm ngừng (Chờ báo sau)!";
       
       showToast(msg, "success");
@@ -229,6 +230,8 @@ export default function PremiumCourtApp() {
     if (type === 'completed') { setStatusFilter('completed'); setShowOnlyUrgent(false); }
     if (type === 'suspended') { setStatusFilter('suspended'); setShowOnlyUrgent(false); }
     if (type === 'urgent') { setStatusFilter('pending'); setShowOnlyUrgent(true); }
+    if (type === 'overdue_publish') { setStatusFilter('completed'); setShowOnlyUrgent(false); }
+    if (type === 'effective') { setStatusFilter('completed'); setShowOnlyUrgent(false); }
     scrollToTable();
   };
 
@@ -236,6 +239,20 @@ export default function PremiumCourtApp() {
     if(!datetime) return false;
     const diffDays = moment(datetime).startOf('day').diff(moment().startOf('day'), 'days');
     return diffDays === 0 || diffDays === 1; 
+  };
+
+  // Logic kiểm tra chậm phát hành (quá 5 ngày kể từ khi bấm Xong)
+  const isOverduePublish = (item) => {
+    if (item.status !== 'completed' || !item.completedAt) return false;
+    const days = moment().diff(moment(item.completedAt), 'days');
+    return days >= 5 && days < 30;
+  };
+
+  // Logic kiểm tra án có hiệu lực (quá 30 ngày kể từ khi bấm Xong)
+  const isEffective = (item) => {
+    if (item.status !== 'completed' || !item.completedAt) return false;
+    const days = moment().diff(moment(item.completedAt), 'days');
+    return days >= 30;
   };
 
   const creatorsList = [...new Set(schedule.map(i => i.createdBy).filter(Boolean))];
@@ -274,6 +291,8 @@ export default function PremiumCourtApp() {
   }, [schedule, searchQuery, statusFilter, showOnlyUrgent, creatorFilter, judgeFilter, clerkFilter, startDate, endDate]);
 
   const urgentCount = schedule.filter(i => i.status === 'pending' && isUrgent(i.datetime)).length;
+  const overduePublishCount = schedule.filter(i => isOverduePublish(i)).length;
+  const effectiveCount = schedule.filter(i => isEffective(i)).length;
   const pendingCases = schedule.filter(i => i.status === 'pending');
 
   const caseTypeStats = {}; schedule.forEach(i => { if(i.caseType) caseTypeStats[i.caseType] = (caseTypeStats[i.caseType] || 0) + 1 });
@@ -338,6 +357,10 @@ export default function PremiumCourtApp() {
         .rbc-event { background-color: rgba(59, 130, 246, 0.15) !important; backdrop-filter: blur(4px) !important; -webkit-backdrop-filter: blur(4px) !important; border: 1px solid rgba(59, 130, 246, 0.4) !important; border-radius: 6px !important; padding: 3px 6px !important; font-size: 11px !important; font-weight: 700 !important; color: #1e3a8a !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important; transition: all 0.2s ease-in-out; }
         .rbc-event:hover { background-color: rgba(59, 130, 246, 0.25) !important; }
         .rbc-event.rbc-selected { background-color: #1e3a8a !important; color: #ffffff !important; box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #1e3a8a !important; z-index: 10 !important; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
       `}} />
 
       <aside 
@@ -355,7 +378,7 @@ export default function PremiumCourtApp() {
 
         <div className="py-10 px-6 text-center border-b border-white/20">
           <img src="/lgtoaan1.png" alt="Logo Tòa án" className="w-20 h-20 mx-auto mb-4 drop-shadow-xl" />
-          <h2 className="font-extrabold text-2xl uppercase tracking-widest drop-shadow-md">KV9-Cần Thơ</h2>
+          <h2 className="font-extrabold text-2xl uppercase tracking-widest drop-shadow-md">TAND KV9</h2>
         </div>
         <div className="p-6 flex-1">
           <div onClick={scrollToCalendar} className="cursor-pointer bg-blue-600/90 backdrop-blur-md px-4 py-4 shadow-xl border border-white/20 flex justify-between items-center rounded-lg hover:bg-blue-500 transition-colors">
@@ -392,22 +415,31 @@ export default function PremiumCourtApp() {
         </header>
 
         <div className="p-4 md:p-12 flex-1">
+          {/* CẬP NHẬT GRID THỐNG KÊ LÊN 7 Ô */}
           <div className="bg-white shadow-xl rounded-xl mb-8 border border-gray-200 overflow-hidden">
-            <div className="grid grid-cols-2 md:grid-cols-5 divide-x divide-y md:divide-y-0 divide-gray-200">
-              <div onClick={() => handleStatCardClick('all')} className="cursor-pointer p-6 md:p-8 flex flex-col items-center justify-center text-center hover:bg-blue-50 transition-colors">
-                <p className="text-gray-500 text-[10px] font-black uppercase mb-2">Tổng vụ</p><p className="text-3xl font-black text-blue-950">{schedule.length}</p>
+            <div className="grid grid-cols-2 md:grid-cols-7 divide-x divide-y md:divide-y-0 divide-gray-200">
+              <div onClick={() => handleStatCardClick('pending')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-blue-50 transition-colors">
+                <p className="text-gray-500 text-[9px] font-black uppercase mb-1">Chờ xử</p><p className="text-2xl font-black text-blue-950">{pendingCases.length}</p>
               </div>
-              <div onClick={() => handleStatCardClick('pending')} className="cursor-pointer p-6 md:p-8 flex flex-col items-center justify-center text-center hover:bg-amber-50 transition-colors">
-                <p className="text-gray-500 text-[10px] font-black uppercase mb-2">Chờ xử</p><p className="text-3xl font-black text-amber-600">{pendingCases.length}</p>
+              <div onClick={() => handleStatCardClick('urgent')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-red-100 bg-red-50 transition-colors relative">
+                <p className="text-red-600 text-[9px] font-black uppercase mb-1">Sắp xử</p><p className={`text-2xl font-black text-red-600 ${urgentCount > 0 ? 'animate-pulse' : ''}`}>{urgentCount}</p>
               </div>
-              <div onClick={() => handleStatCardClick('urgent')} className="cursor-pointer p-6 md:p-8 flex flex-col items-center justify-center text-center hover:bg-red-100 bg-red-50 transition-colors relative">
-                <p className="text-red-600 text-[10px] font-black uppercase mb-2">Sắp xử</p><p className={`text-3xl font-black text-red-600 ${urgentCount > 0 ? 'animate-pulse' : ''}`}>{urgentCount}</p>
+              <div onClick={() => handleStatCardClick('suspended')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-purple-50 transition-colors">
+                <p className="text-gray-500 text-[9px] font-black uppercase mb-1">Tạm ngừng</p><p className="text-2xl font-black text-purple-600">{schedule.filter(i => i.status === 'suspended').length}</p>
               </div>
-              <div onClick={() => handleStatCardClick('suspended')} className="cursor-pointer p-6 md:p-8 flex flex-col items-center justify-center text-center hover:bg-purple-50 transition-colors">
-                <p className="text-gray-500 text-[10px] font-black uppercase mb-2">Tạm ngừng</p><p className="text-3xl font-black text-purple-600">{schedule.filter(i => i.status === 'suspended').length}</p>
+              <div onClick={() => handleStatCardClick('completed')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-green-50 transition-colors">
+                <p className="text-gray-500 text-[9px] font-black uppercase mb-1">Đã xong</p><p className="text-2xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p>
               </div>
-              <div onClick={() => handleStatCardClick('completed')} className="cursor-pointer p-6 md:p-8 flex flex-col items-center justify-center text-center hover:bg-green-50 transition-colors">
-                <p className="text-gray-500 text-[10px] font-black uppercase mb-2">Đã xong</p><p className="text-3xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p>
+              {/* Ô THỐNG KÊ CHẬM PHÁT HÀNH BẢN ÁN */}
+              <div onClick={() => handleStatCardClick('overdue_publish')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-red-50 transition-colors">
+                <p className="text-red-700 text-[9px] font-black uppercase mb-1">Chưa PH ({'>'}5n)</p><p className="text-2xl font-black text-red-700">{overduePublishCount}</p>
+              </div>
+              {/* Ô THỐNG KÊ ÁN CÓ HIỆU LỰC */}
+              <div onClick={() => handleStatCardClick('effective')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-teal-50 transition-colors">
+                <p className="text-teal-700 text-[9px] font-black uppercase mb-1">Hiệu lực ({'>'}30n)</p><p className="text-2xl font-black text-teal-700">{effectiveCount}</p>
+              </div>
+              <div onClick={() => handleStatCardClick('all')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-colors">
+                <p className="text-gray-500 text-[9px] font-black uppercase mb-1">Tổng vụ</p><p className="text-2xl font-black text-gray-500">{schedule.length}</p>
               </div>
             </div>
           </div>
@@ -427,7 +459,8 @@ export default function PremiumCourtApp() {
                     </ResponsiveContainer>
                   </div>
                </div>
-              <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-200 flex flex-col">
+
+               <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-200 flex flex-col">
                   <h3 className="text-center font-black text-[13px] text-gray-500 uppercase tracking-widest mb-4">Án đang chờ xử theo Thẩm phán</h3>
                   <div className="h-[320px] w-full overflow-y-auto pr-2 custom-scrollbar">
                     {judgeData.length > 0 ? (
@@ -565,7 +598,10 @@ export default function PremiumCourtApp() {
                     <tbody className="divide-y divide-gray-200">
                       {processedSchedule.map((item, index) => {
                         const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
+                        const overduePublish = isOverduePublish(item);
+                        const effective = isEffective(item);
                         let rowBgClass = item.status === 'completed' || item.status === 'suspended' ? "opacity-70 bg-gray-100/50" : isRowUrgent ? "bg-red-50 hover:bg-red-100" : index % 2 === 0 ? "bg-white hover:bg-blue-50/30" : "bg-slate-50 hover:bg-blue-50/30";
+                        
                         return (
                           <tr key={item.id} className={`transition-all ${rowBgClass}`}>
                             <td className={`p-6 align-top text-center ${isRowUrgent ? 'border-l-4 border-l-red-500' : ''}`}>
@@ -576,7 +612,6 @@ export default function PremiumCourtApp() {
                               </>}
                               <div className="font-bold text-gray-500 uppercase text-sm mt-4 mb-3">{item.room || "---"}</div>
                               
-                              {/* THÔNG TIN NGƯỜI NHẬP/SỬA DỜI VỀ ĐÂY */}
                               <div className="border-t border-gray-200 border-dashed pt-3 mt-4 text-[11px] text-gray-500 italic text-left inline-block">
                                 Nhập: <span className="font-bold text-gray-700">{item.createdBy ? item.createdBy.split('@')[0] : "---"}</span>
                                 {item.updatedBy && item.updatedBy !== item.createdBy && <><br/>Sửa: <span className="font-bold text-gray-700">{item.updatedBy.split('@')[0]}</span></>}
@@ -589,11 +624,18 @@ export default function PremiumCourtApp() {
                                 {isRowUrgent && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded mr-2 animate-pulse">⚠️ SẮP XỬ</span>}
                                 {item.caseName || "Vụ án chưa có tên"}
                               </div>
+                              
+                              {/* HIỂN THỊ CẢNH BÁO THỜI HẠN DƯỚI TÊN VỤ ÁN */}
+                              <div className="flex flex-wrap gap-2 mb-2">
+                                 {overduePublish && <span className="bg-red-100 text-red-700 text-[10px] font-black px-2 py-1 rounded border border-red-200 animate-pulse uppercase">CẢNH BÁO: CHẬM PHÁT HÀNH BẢN ÁN ({'>'}5 NGÀY)</span>}
+                                 {effective && <span className="bg-teal-100 text-teal-800 text-[10px] font-black px-2 py-1 rounded border border-teal-200 uppercase">NHẮC NHỞ: ÁN ĐÃ CÓ HIỆU LỰC ({'>'}30 NGÀY)</span>}
+                              </div>
+
                               <div className="text-gray-700 font-semibold text-sm mb-2">{item.caseType || "---"} / {item.trialCount || "Lần 1"}</div>
                               <div className="text-sm text-gray-600"><p>NĐ: {item.plaintiff || "N/A"}</p><p>BĐ: {item.defendant || "N/A"}</p></div>
+                              {item.completedAt && <div className="text-[10px] text-gray-400 mt-2 italic">Đã tuyên: {moment(item.completedAt).format("HH:mm - DD/MM/YYYY")}</div>}
                             </td>
                             <td className="p-6 align-top text-sm text-gray-800 space-y-2">
-                              {/* CỘT NÀY CHỈ CÒN THÔNG TIN THÀNH PHẦN */}
                               <div><span className="font-semibold text-blue-700 inline-block w-8">TP:</span> <span className="font-bold">{item.judge || "---"}</span></div>
                               <div><span className="font-semibold text-gray-500 inline-block w-8">HT:</span> {item.juror1 || "---"}, {item.juror2 || "---"}</div>
                               <div><span className="font-semibold text-gray-500 inline-block w-8">TK:</span> {item.clerk || "---"}</div>
@@ -605,20 +647,19 @@ export default function PremiumCourtApp() {
                                   {(item.status === 'pending' || !item.status) && (
                                     <>
                                       <div className="grid grid-cols-2 gap-2 mb-1">
-                                        <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-50 text-green-700 py-2 font-black uppercase text-[10px] border border-green-200 rounded" title="Đã xử xong">✔ XONG</button>
-                                        <button onClick={() => handleReschedule(item)} className="bg-amber-50 text-amber-700 py-2 font-black uppercase text-[10px] border border-amber-200 rounded" title="Hoãn (Chọn lịch mới ngay)">⚠️ HOÃN</button>
+                                        <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-500/20 hover:bg-green-500/30 backdrop-blur-md text-gray-900 py-2 font-medium uppercase text-[10px] rounded transition-all shadow-sm" title="Đã xử xong">XONG</button>
+                                        <button onClick={() => handleReschedule(item)} className="bg-gray-400/20 hover:bg-gray-400/30 backdrop-blur-md text-gray-900 py-2 font-medium uppercase text-[10px] rounded transition-all shadow-sm" title="Hoãn (Chọn lịch mới ngay)">HOÃN</button>
                                       </div>
-                                      {/* Nút tạm ngừng chiếm trọn hàng ngang */}
-                                      <button onClick={() => toggleStatus(item.id, 'suspended', item.caseName)} className="w-full bg-purple-50 text-purple-700 py-2 mb-1 font-black uppercase text-[10px] border border-purple-200 rounded" title="Tạm ngừng (Chờ báo sau)">⏸ TẠM NGỪNG</button>
+                                      <button onClick={() => toggleStatus(item.id, 'suspended', item.caseName)} className="w-full bg-gray-400/20 hover:bg-gray-400/30 backdrop-blur-md text-gray-900 py-2 mb-1 font-medium uppercase text-[10px] rounded transition-all shadow-sm" title="Tạm ngừng (Chờ báo sau)">TẠM NGỪNG</button>
                                     </>
                                   )}
                                   
-                                  {item.status === 'suspended' && <button onClick={() => handleReschedule(item)} className="w-full bg-blue-600 text-white py-2 mb-1 font-black uppercase text-[10px] rounded">📅 LÊN LỊCH LẠI</button>}
-                                  {item.status === 'completed' && <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="w-full bg-gray-200 text-gray-700 py-2 mb-1 font-black uppercase text-[10px] rounded">↺ MỞ LẠI</button>}
+                                  {item.status === 'suspended' && <button onClick={() => handleReschedule(item)} className="w-full bg-gray-400/20 hover:bg-gray-400/30 backdrop-blur-md text-gray-900 py-2 mb-1 font-medium uppercase text-[10px] rounded transition-all shadow-sm">LÊN LỊCH LẠI</button>}
+                                  {item.status === 'completed' && <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="w-full bg-gray-400/20 hover:bg-gray-400/30 backdrop-blur-md text-gray-900 py-2 mb-1 font-medium uppercase text-[10px] rounded transition-all shadow-sm">MỞ LẠI</button>}
                                   
                                   <div className={`grid ${userRole === 'admin' || userRole === 'chanhan' ? 'grid-cols-2' : 'grid-cols-1'} gap-2 pt-2 border-t border-gray-200 border-dashed`}>
-                                     <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-700 py-2 font-black uppercase text-[10px] border border-blue-200 rounded">✏️ SỬA</button>
-                                     {(userRole === 'admin' || userRole === 'chanhan') && <button onClick={() => handleDelete(item.id, item.caseName)} className="bg-red-50 text-red-700 py-2 font-black uppercase text-[10px] border border-red-200 rounded">🗑️ XÓA</button>}
+                                     <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-500/20 hover:bg-blue-500/30 backdrop-blur-md text-gray-900 py-2 font-medium uppercase text-[10px] rounded transition-all shadow-sm">SỬA</button>
+                                     {(userRole === 'admin' || userRole === 'chanhan') && <button onClick={() => handleDelete(item.id, item.caseName)} className="bg-red-500/20 hover:bg-red-500/30 backdrop-blur-md text-gray-900 py-2 font-medium uppercase text-[10px] rounded transition-all shadow-sm">XÓA</button>}
                                   </div>
                                 </div>
                               </td>
@@ -642,19 +683,26 @@ export default function PremiumCourtApp() {
                         <div className="p-4 flex-1 overflow-y-auto space-y-4">
                            {processedSchedule.filter(i => i.status === col.id).map(item => {
                              const urgent = item.status === 'pending' && isUrgent(item.datetime);
+                             const overduePublish = isOverduePublish(item);
+                             const effective = isEffective(item);
+
                              return (
-                               <div key={item.id} draggable={canEdit} onDragStart={(e) => handleDragStart(e, item)} className={`bg-white p-5 rounded-xl border-l-4 shadow-sm transition-all relative group ${canEdit ? 'cursor-grab active:cursor-grabbing hover:shadow-lg hover:-translate-y-1' : ''} ${urgent ? 'border-l-red-500' : col.id === 'suspended' ? 'border-l-purple-500' : 'border-l-blue-500'} border-y border-r border-gray-200`}>
+                               <div key={item.id} draggable={canEdit} onDragStart={(e) => handleDragStart(e, item)} className={`bg-white p-5 rounded-xl border-l-4 shadow-sm transition-all relative group ${canEdit ? 'cursor-grab active:cursor-grabbing hover:shadow-lg hover:-translate-y-1' : ''} ${urgent || overduePublish ? 'border-l-red-500' : effective ? 'border-l-teal-500' : col.id === 'suspended' ? 'border-l-purple-500' : 'border-l-blue-500'} border-y border-r border-gray-200`}>
                                  <h4 className="font-black text-blue-950 mb-4 leading-tight">{item.caseName || "Chưa có tên"}</h4>
+                                 
+                                 {/* CẢNH BÁO TRONG KANBAN */}
+                                 {overduePublish && <div className="mb-3 text-[9px] font-black text-red-600 bg-red-50 p-2 rounded border border-red-100 animate-pulse">CHẬM PHÁT HÀNH BẢN ÁN</div>}
+                                 {effective && <div className="mb-3 text-[9px] font-black text-teal-700 bg-teal-50 p-2 rounded border border-teal-100">ÁN ĐÃ CÓ HIỆU LỰC</div>}
+
                                  <div className="space-y-2 text-xs font-bold text-gray-700 bg-gray-50 p-3 rounded-md border border-gray-100">
                                    <div className="flex items-center gap-2"><span className="text-lg">🕒</span> {item.status === 'suspended' ? <span className="text-purple-600 italic">Chờ báo sau</span> : moment(item.datetime).format("HH:mm | DD/MM/YY")}</div>
                                    <div className="flex items-center gap-2"><span className="text-lg">👨‍⚖️</span> TP: {item.judge || "---"}</div>
                                    <div className="flex items-center gap-2"><span className="text-lg">🛡️</span> KSV: <span className="text-red-600">{item.prosecutor || "---"}</span></div>
                                  </div>
                                  
-                                 {/* CHỈNH LẠI NÚT TRONG KANBAN (BỎ NÚT COPY) */}
                                  {canEdit && (
                                    <div className="mt-4 pt-3 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                                     <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="w-full bg-blue-50 text-blue-600 py-2.5 rounded-md text-[10px] font-black uppercase hover:bg-blue-600 hover:text-white transition-colors">✏️ Cập nhật & Sửa</button>
+                                     <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="w-full bg-blue-500/20 hover:bg-blue-500/30 backdrop-blur-md text-gray-900 py-2.5 rounded-md text-[10px] font-medium uppercase transition-all shadow-sm">CẬP NHẬT & SỬA</button>
                                    </div>
                                  )}
                                </div>
