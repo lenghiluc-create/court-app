@@ -734,12 +734,37 @@ export default function PremiumCourtApp() {
                 </div>
               </td>
 
-              {/* CỘT 3: HĐXX (Khóa 25%) */}
-              <td className="p-6 w-[25%] align-top text-xs space-y-2 border-l border-gray-50">
-                <div><span className="font-semibold text-blue-700 inline-block w-8">TP:</span> <span className="font-bold">{item.judge || "---"}</span></div>
-                <div><span className="font-semibold text-gray-400 inline-block w-8">TK:</span> {item.clerk || "---"}</div>
-                <div><span className="font-semibold text-red-400 inline-block w-8 text-[10px]">KSV:</span> <span className="font-bold text-red-600">{item.prosecutor || "---"}</span></div>
-              </td>
+             {/* CỘT 3: THÀNH PHẦN HĐXX (Đã bổ sung Hội thẩm 1 & 2) */}
+<td className="p-6 w-[25%] align-top text-xs space-y-2 border-l border-gray-100">
+  {/* Thẩm phán & Thư ký */}
+  <div className="flex flex-col gap-1.5">
+    <div className="font-bold flex items-center gap-2">
+      <span className="text-red-600 w-8 flex-shrink-0">TP:</span> 
+      <span className="text-gray-900">{item.judge || "---"}</span>
+    </div>
+    <div className="flex items-center gap-2">
+      <span className="text-gray-500 font-bold w-8 flex-shrink-0">TK:</span> 
+      <span className="text-gray-700">{item.clerk || "---"}</span>
+    </div>
+  </div>
+
+  {/* Hội thẩm nhân dân - Hiển thị gọn trên 1 hoặc 2 dòng tùy độ dài */}
+  <div className="pt-1 border-t border-gray-100 mt-1">
+    <div className="flex gap-2">
+      <span className="text-gray-400 font-bold w-8 flex-shrink-0">HT:</span>
+      <div className="flex flex-col text-[11px] text-gray-600 italic">
+        <span>{item.juror1 || "---"}</span>
+        <span>{item.juror2 || "---"}</span>
+      </div>
+    </div>
+  </div>
+
+  {/* Kiểm sát viên */}
+  <div className="pt-1 flex items-center gap-2 text-[10px]">
+    <span className="w-8 font-bold text-red-400 flex-shrink-0">KSV:</span> 
+    <span className="font-bold text-red-600">{item.prosecutor || "---"}</span>
+  </div>
+</td>
 
               {/* CỘT 4: TÁC VỤ (Khôi phục đầy đủ nút Xóa & Tạm ngừng) */}
 {canEdit && (
