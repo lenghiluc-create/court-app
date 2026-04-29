@@ -535,9 +535,8 @@ export default function PremiumCourtApp() {
                   <div>
                     <label className={labelStyle}>Thời lượng <span className="text-red-500">*</span></label>
                     <select value={form.duration} onChange={e => setForm({...form, duration: parseInt(e.target.value)})} className={inputBase}>
-                      <option value={30}>⏱ 30 phút (Xử nhanh)</option>
                       <option value={60}>⏱ 1 giờ (Bổ sung)</option>
-                      <option value={120}>⏱ 2 giờ (Án hình sự)</option>
+                      <option value={120}>⏱ 2 giờ (HS/DS)</option>
                       <option value={240}>⏱ 1 buổi (4 giờ)</option>
                       <option value={480}>⏱ 1 ngày (8 giờ)</option>
                     </select>
@@ -550,8 +549,8 @@ export default function PremiumCourtApp() {
 
                 <div><label className={labelStyle}>Trích yếu vụ án <span className="text-red-500">*</span></label><textarea value={form.caseName} onChange={e => setForm({...form, caseName: e.target.value})} className={inputBase} rows="2" /></div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div><label className={labelStyle}>Nguyên đơn</label><input value={form.plaintiff} onChange={e => setForm({...form, plaintiff: e.target.value})} className={inputBase} /></div>
-                  <div><label className={labelStyle}>Bị đơn</label><input value={form.defendant} onChange={e => setForm({...form, defendant: e.target.value})} className={inputBase} /></div>
+                  <div><label className={labelStyle}>Nguyên đơn/Bị cáo</label><input value={form.plaintiff} onChange={e => setForm({...form, plaintiff: e.target.value})} className={inputBase} /></div>
+                  <div><label className={labelStyle}>Bị đơn/Bị hại</label><input value={form.defendant} onChange={e => setForm({...form, defendant: e.target.value})} className={inputBase} /></div>
                 </div>
 
                 {/* --- PHẦN THÀNH PHẦN HĐXX ĐÃ ĐƯỢC THÊM NỀN ĐỎ --- */}
@@ -619,7 +618,7 @@ export default function PremiumCourtApp() {
                       <tr>
                         <th className="p-6 w-[15%] text-center">Lịch & Cập nhật</th>
                         <th className="p-6 w-[40%]">Nội dung</th>
-                        <th className="p-6 w-[30%]">Thành phần HĐXX</th>
+                        <th className="p-6 w-[30%]">Hội đồng xét xử</th>
                         {canEdit && <th className="p-6 w-[15%] text-center">Tác vụ</th>}
                       </tr>
                     </thead>
@@ -675,7 +674,7 @@ export default function PremiumCourtApp() {
                               )}
 
                               <div className="text-gray-700 font-semibold text-sm mb-2 mt-2">{item.caseType || "---"} / {item.trialCount || "Lần 1"}</div>
-                              <div className="text-sm text-gray-600"><p>NĐ: {item.plaintiff || "N/A"}</p><p>BĐ: {item.defendant || "N/A"}</p></div>
+                              <div className="text-sm text-gray-600"><p>NĐ/BC: {item.plaintiff || "N/A"}</p><p>BĐ/BH: {item.defendant || "N/A"}</p></div>
                               
                               {item.completedAt && (
                                  <div className="text-[11px] text-gray-500 mt-3 bg-white/50 inline-block px-3 py-1.5 rounded-md border border-gray-200">
