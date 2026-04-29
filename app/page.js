@@ -538,14 +538,14 @@ export default function PremiumCourtApp() {
                   <div><label className={labelStyle}>Nguyên đơn</label><input value={form.plaintiff} onChange={e => setForm({...form, plaintiff: e.target.value})} className={inputBase} /></div>
                   <div><label className={labelStyle}>Bị đơn</label><input value={form.defendant} onChange={e => setForm({...form, defendant: e.target.value})} className={inputBase} /></div>
                 </div>
-                <div className="pt-6">
-                   <h3 className="text-[14px] font-black text-teal-800 bg-teal-50 border border-teal-200 py-3 rounded-md mb-6 text-center uppercase shadow-sm">Thành phần Hội đồng xét xử</h3>
+                <div className="pt-6 border-t-2 border-dashed border-gray-200 mt-8 bg-red-50 p-6 rounded-lg border border-red-200 shadow-inner">
+                   <h3 className="text-[14px] font-medium text-white bg-red-600 border border-red-700 py-3 rounded-md mb-6 text-center uppercase shadow-md">Thành phần Hội đồng xét xử</h3>
                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                      <div><label className={labelStyle}>Thẩm phán</label><input list="judges-list" value={form.judge} onChange={e => setForm({...form, judge: e.target.value})} className={inputBase} /></div>
-                      <div><label className={labelStyle}>Thư ký</label><input list="clerks-list" value={form.clerk} onChange={e => setForm({...form, clerk: e.target.value})} className={inputBase} /></div>
-                      <div><label className={labelStyle}>Kiểm sát viên</label><input list="prosecutors-list" value={form.prosecutor} onChange={e => setForm({...form, prosecutor: e.target.value})} className={inputBase} /></div>
-                      <div><label className={labelStyle}>Hội thẩm 1</label><input value={form.juror1} onChange={e => setForm({...form, juror1: e.target.value})} className={inputBase} /></div>
-                      <div><label className={labelStyle}>Hội thẩm 2</label><input value={form.juror2} onChange={e => setForm({...form, juror2: e.target.value})} className={inputBase} /></div>
+                      <div><label className={judgeLabelStyle}>Thẩm phán</label><input list="judges-list" value={form.judge} onChange={e => setForm({...form, judge: e.target.value})} className={inputBase} /></div>
+                      <div><label className={judgeLabelStyle}>Thư ký</label><input list="clerks-list" value={form.clerk} onChange={e => setForm({...form, clerk: e.target.value})} className={inputBase} /></div>
+                      <div><label className={judgeLabelStyle}>Kiểm sát viên</label><input list="prosecutors-list" value={form.prosecutor} onChange={e => setForm({...form, prosecutor: e.target.value})} className={inputBase} /></div>
+                      <div><label className={judgeLabelStyle}>Hội thẩm 1</label><input value={form.juror1} onChange={e => setForm({...form, juror1: e.target.value})} className={inputBase} /></div>
+                      <div><label className={judgeLabelStyle}>Hội thẩm 2</label><input value={form.juror2} onChange={e => setForm({...form, juror2: e.target.value})} className={inputBase} /></div>
                    </div>
                 </div>
                 <div className="pt-10 pb-4 mt-6 border-t-2 border-dashed border-gray-300">
@@ -554,7 +554,7 @@ export default function PremiumCourtApp() {
               </div>
             </div>
           )}
-
+          
           <div className="space-y-12" ref={calendarSectionRef}>
             <div className="bg-white p-4 md:p-8 border shadow-xl rounded-xl h-[700px] w-full overflow-x-auto">
               {isMounted && localizer ? (
