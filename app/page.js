@@ -427,7 +427,7 @@ export default function PremiumCourtApp() {
         </div>
       </aside>
 
-      <main className="xl:ml-64 flex flex-col min-h-screen relative z-10 flex-1 w-full">
+      <main className="xl:ml-64 flex flex-col min-h-screen relative z-10 flex-1 w-full overflow-x-hidden">
         <header className="bg-white/95 backdrop-blur-md h-24 shadow-sm flex items-center justify-between px-4 md:px-8 xl:px-12 sticky top-0 z-30 border-b border-gray-200 w-full">
           <div className="flex-1 flex justify-start items-center gap-2 xl:hidden">
              <button onClick={() => setShowPwdModal(true)} className="bg-blue-50 text-blue-700 px-3 py-2 text-[10px] font-black uppercase shadow-sm border border-blue-100">🔑 MK</button>
@@ -659,15 +659,15 @@ export default function PremiumCourtApp() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-auto bg-gray-50/50 rounded-b-xl">
+              <div className="flex-1 overflow-x-auto bg-gray-50/50 rounded-b-xl custom-scrollbar">
                 {viewMode === 'table' ? (
-                  <table className="w-full text-left border-collapse min-w-[1000px]">
+                  <table className="w-full text-left border-collapse min-w-[1200px]">
                     <thead className="bg-gray-100 text-[12px] font-black uppercase text-gray-500 sticky top-0 z-10 border-b border-gray-200">
                       <tr>
-                        <th className="p-6 w-[15%] text-center">Lịch & Cập nhật</th>
-                        <th className="p-6 w-[40%]">Nội dung</th>
-                        <th className="p-6 w-[30%]">Hội đồng xét xử</th>
-                        {canEdit && <th className="p-6 w-[15%] text-center">Tác vụ</th>}
+                        <th className="p-6 w-[140px] text-center">Lịch & Cập nhật</th>
+                        <th className="p-6 min-w-[400px]">Nội dung</th> {/* Cho phép cột này dãn nhưng tối thiểu 400px */}
+                        <th className="p-6 w-[250px]">Thành phần HĐXX</th>
+                        {canEdit && <th className="p-6 w-[150px] text-center">Tác vụ</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
