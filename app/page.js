@@ -55,7 +55,6 @@ export default function PremiumCourtApp() {
   };
   const [form, setForm] = useState(initialForm);
 
-  // --- ĐỊNH NGHĨA STYLE (ĐỂ Ở ĐÂY ĐỂ TRÁNH LỖI RELOAD) ---
   const inputBase = "w-full border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[15px] font-medium text-gray-800";
   const labelStyle = "block text-center text-[13px] font-black text-teal-900 bg-teal-100 border border-teal-200 py-2.5 px-4 rounded-md mb-2 w-full uppercase tracking-widest shadow-sm"; 
   const judgeLabelStyle = "block text-center text-[13px] font-black text-red-900 bg-red-100 border border-red-200 py-2.5 px-4 rounded-md mb-2 w-full uppercase tracking-widest shadow-sm";
@@ -148,7 +147,11 @@ export default function PremiumCourtApp() {
     const isConflict = await isConflictServerSide(form.datetime, form.room, editingId, form.duration);
     if(isConflict) return showToast("⚠️ Xin lỗi, phòng này vừa được đặt. Vui lòng chọn giờ khác!", "error");
 
-    const logData = { ...form, status: form.status || 'pending', updatedAt: moment().toISOString(), updatedBy: user.email };
+    const logData = { 
+      ...form, 
+      updatedAt: moment().toISOString(), 
+      updatedBy: user.email 
+    };
     try {
       if (editingId) {
         await updateDoc(doc(db, "schedule", editingId), logData);
@@ -203,7 +206,11 @@ export default function PremiumCourtApp() {
     if (isConflict) return showToast(`⚠️ Trùng lịch phòng ${event.room}!`, "error");
 
     try {
-      await updateDoc(doc(db, "schedule", event.id), { datetime: newDatetime, updatedBy: user.email, updatedAt: moment().toISOString() });
+      await updateDoc(doc(db, "schedule", event.id), { 
+        datetime: newDatetime, 
+        updatedAt: moment().toISOString(), 
+        updatedBy: user.email 
+      });
       showToast("🔄 Đã dời lịch thành công!", "success");
       loadData();
     } catch (err) { showToast("Lỗi dời lịch", "error"); }
@@ -265,6 +272,15 @@ export default function PremiumCourtApp() {
     if (item.status !== 'completed' || !item.completedAt) return false;
     const days = moment().startOf('day').diff(moment(item.completedAt).startOf('day'), 'days');
     return days >= 30;
+  };
+
+  // --- LOGIC DEADLINE ---
+  const calculateDeadlines = (item) => {
+    if (!item.completedAt) return { publish: null, effective: null };
+    return {
+      publish: moment(item.completedAt).add(5, 'days').format("DD/MM/YYYY"),
+      effective: moment(item.completedAt).add(30, 'days').format("DD/MM/YYYY")
+    };
   };
 
   const creatorsList = [...new Set(schedule.map(i => i.createdBy).filter(Boolean))];
@@ -390,7 +406,7 @@ export default function PremiumCourtApp() {
 
         <div className="py-10 px-6 text-center border-b border-white/20">
           <img src="/lgtoaan1.png" alt="Logo Tòa án" className="w-20 h-20 mx-auto mb-4 drop-shadow-xl" />
-          <h2 className="font-extrabold text-2xl uppercase tracking-widest drop-shadow-md">TAND KV9</h2>
+          <h2 className="font-extrabold text-2xl uppercase tracking-widest drop-shadow-md">KV9-Cần Thơ</h2>
         </div>
         <div className="p-6 flex-1">
           <div onClick={scrollToCalendar} className="cursor-pointer bg-blue-600/90 backdrop-blur-md px-4 py-4 shadow-xl border border-white/20 flex justify-between items-center rounded-lg hover:bg-blue-500 transition-colors">
@@ -642,7 +658,23 @@ export default function PremiumCourtApp() {
                                  {effective && <span className="bg-teal-100 text-teal-800 text-[10px] font-black px-2 py-1 rounded border border-teal-200 uppercase">NHẮC NHỞ: ÁN ĐÃ CÓ HIỆU LỰC ({'>'}30 NGÀY)</span>}
                               </div>
 
-                              <div className="text-gray-700 font-semibold text-sm mb-2">{item.caseType || "---"} / {item.trialCount || "Lần 1"}</div>
+                              {/* --- HIỂN THỊ DEADLINE TỰ ĐỘNG --- */}
+                              {item.status === 'completed' && (
+                                <div className="mt-2 space-y-1">
+                                  {!item.publishedAt && (
+                                    <div className={`text-[10px] font-black px-2 py-1 rounded border inline-block ${isOverduePublish(item) ? 'bg-red-600 text-white animate-pulse' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                                      HẠN PHÁT HÀNH BẢN ÁN: {calculateDeadlines(item).publish}
+                                    </div>
+                                  )}
+                                  {isEffective(item) && (
+                                    <div className="text-[10px] font-black px-2 py-1 rounded bg-teal-600 text-white block w-max uppercase">
+                                      ĐÃ CÓ HIỆU LỰC: {calculateDeadlines(item).effective}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              <div className="text-gray-700 font-semibold text-sm mb-2 mt-2">{item.caseType || "---"} / {item.trialCount || "Lần 1"}</div>
                               <div className="text-sm text-gray-600"><p>NĐ: {item.plaintiff || "N/A"}</p><p>BĐ: {item.defendant || "N/A"}</p></div>
                               
                               {item.completedAt && (
@@ -763,6 +795,21 @@ export default function PremiumCourtApp() {
                 <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-2xl">🕒</div><p className="text-lg font-black text-blue-950">{moment(selectedEvent.datetime).format("HH:mm - DD/MM/YYYY")}</p></div>
                 <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-2xl">👨‍⚖️</div><p className="text-lg">Thẩm phán: {selectedEvent.judge}</p></div>
                 <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-2xl">🛡️</div><p className="text-lg text-red-700">KSV: {selectedEvent.prosecutor}</p></div>
+                
+                {/* --- NHẬT KÝ HỆ THỐNG (LOG CHUYÊN SÂU) --- */}
+                <div className="p-5 bg-amber-50 rounded-2xl border border-amber-200 space-y-2 mt-4">
+                  <p className="text-amber-700 font-black uppercase text-[10px] mb-2 tracking-widest flex items-center gap-2">
+                    <span className="w-2 h-2 bg-amber-400 rounded-full animate-ping"></span> 📜 Nhật ký hệ thống
+                  </p>
+                  <div className="text-[11px] font-bold text-gray-600 space-y-1">
+                    <p>👤 Khởi tạo: <span className="text-blue-600">{selectedEvent.createdBy || "Hệ thống cũ"}</span></p>
+                    <p>🕒 Lúc: {selectedEvent.createdAt ? moment(selectedEvent.createdAt).format("HH:mm - DD/MM/YYYY") : "---"}</p>
+                    <div className="my-2 border-t border-amber-200 border-dashed"></div>
+                    <p>👤 Sửa cuối: <span className="text-red-600">{selectedEvent.updatedBy || "Chưa có thay đổi"}</span></p>
+                    <p>🕒 Lúc: {selectedEvent.updatedAt ? moment(selectedEvent.updatedAt).format("HH:mm - DD/MM/YYYY") : "---"}</p>
+                  </div>
+                </div>
+
                 <button onClick={() => setSelectedEvent(null)} className="w-full bg-blue-900 text-white py-4 font-black uppercase rounded-xl mt-4">ĐÓNG</button>
               </div>
            </div>
