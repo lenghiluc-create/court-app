@@ -661,7 +661,7 @@ export default function PremiumCourtApp() {
 
               <div className="flex-1 overflow-x-auto bg-gray-50/50 rounded-b-xl custom-scrollbar">
                 {viewMode === 'table' ? (
-                  <table className="w-full text-left border-collapse min-w-[1200px]">
+                  <table className="w-full text-left border-collapse min-w-[1000px]">
                     <thead className="bg-gray-100 text-[12px] font-black uppercase text-gray-500 sticky top-0 z-10 border-b border-gray-200">
                       <tr>
                         <th className="p-6 w-[140px] text-center">Lịch & Cập nhật</th>
@@ -696,7 +696,7 @@ export default function PremiumCourtApp() {
                               </div>
                             </td>
                             <td className="p-6 align-top">
-                              <div className="font-bold uppercase text-gray-900 text-base mb-2">
+                             <div className="font-bold uppercase text-gray-900 text-base mb-2 line-clamp-2 hover:line-clamp-none transition-all cursor-pointer">
                                 {item.status === 'completed' && <span className="text-green-600 mr-2">✅</span>}
                                 {item.status === 'suspended' && <span className="text-purple-600 mr-2">⏸</span>}
                                 {isRowUrgent && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded mr-2 animate-pulse">⚠️ SẮP XỬ</span>}
@@ -895,10 +895,10 @@ export default function PremiumCourtApp() {
       <table className="w-full text-left">
        <thead className="bg-gray-100 text-[12px] font-black uppercase text-gray-500 sticky top-0 z-10 border-b border-gray-200">
   <tr>
-    <th className="p-6 w-[15%] text-center">Lịch & Cập nhật</th>
-    <th className="p-6 w-[55%] text-left">Nội dung vụ án</th> {/* Tăng width cột này để đẩy nội dung ra giữa */}
-    <th className="p-6 w-[20%] text-left">Thành phần HĐXX</th>
-    <th className="p-6 w-[10%] text-center">Tác vụ</th>
+    <th className="p-6 w-[12%] text-center">Lịch & Cập nhật</th>
+    <th className="p-6 w-[48%]">Nội dung</th> {/* Cột này chiếm phần lớn nhưng bị khống chế bởi line-clamp ở trên */}
+    <th className="p-6 w-[25%]">Hội đồng xét xử</th>
+    <th className="p-6 w-[15%] text-center">Tác vụ</th>
   </tr>
 </thead>
         <tbody className="divide-y divide-gray-800">
