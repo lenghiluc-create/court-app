@@ -522,25 +522,71 @@ export default function PremiumCourtApp() {
                     </div>
                   </div>
                   <div>
-                    <label className={labelStyle}>Phòng xử / Địa điểm <span className="text-red-500">*</span></label>
-                    <select value={form.room} onChange={e => setForm({...form, room: e.target.value})} className={inputBase}><option value="Trụ sở">🏢 TRỤ SỞ</option><option value="Chi nhánh">🏢 CHI NHÁNH</option><option value="Trực tuyến">💻 TRỰC TUYẾN</option><option value="Lưu động">🚚 LƯU ĐỘNG</option><option value="Dự phòng">⚠️ DỰ PHÒNG</option></select>
-                  </div>
-                </div>
+                  <label className={labelStyle}>Phòng xử / Địa điểm <span className="text-red-500">*</span></label>
+    <select 
+      value={form.room} 
+      onChange={e => {
+        const newRoom = e.target.value;
+        let newDuration = form.duration;
+        
+        // Logic bổ sung theo yêu cầu của bạn:
+        if (newRoom === "Dự phòng") {
+          newDuration = 30;
+        } else if (newRoom === "Trực tuyến") {
+          newDuration = 240; // 1 buổi
+        }
+        
+        setForm({...form, room: newRoom, duration: newDuration});
+      }} 
+      className={inputBase}
+    >
+      <option value="Trụ sở">🏢 TRỤ SỞ</option>
+      <option value="Chi nhánh">🏢 CHI NHÁNH</option>
+      <option value="Trực tuyến">💻 TRỰC TUYẾN (Mặc định 1 buổi)</option>
+      <option value="Lưu động">🚚 LƯU ĐỘNG</option>
+      <option value="Dự phòng">⚠️ DỰ PHÒNG (Mặc định 30p)</option>
+    </select>
+  </div>
+</div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  <div>
-                    <label className={labelStyle}>Loại án <span className="text-red-500">*</span></label>
-                    <select value={form.caseType} onChange={e => setForm({...form, caseType: e.target.value, duration: e.target.value === 'Hình sự' ? 120 : 30})} className={inputBase}><option value="Hình sự">Hình sự</option><option value="Dân sự">Dân sự</option><option value="Hành chính">Hành chính</option><option value="Hôn nhân & GĐ">Hôn nhân & GĐ</option><option value="Kinh tế">Kinh tế</option></select>
-                  </div>
-                  <div>
-                    <label className={labelStyle}>Thời lượng <span className="text-red-500">*</span></label>
-                    <select value={form.duration} onChange={e => setForm({...form, duration: parseInt(e.target.value)})} className={inputBase}>
-                      <option value={60}>⏱ 1 giờ (Bổ sung)</option>
-                      <option value={120}>⏱ 2 giờ (HS/DS)</option>
-                      <option value={240}>⏱ 1 buổi (4 giờ)</option>
-                      <option value={480}>⏱ 1 ngày (8 giờ)</option>
-                    </select>
-                  </div>
+<div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+  <div>
+    <label className={labelStyle}>Loại án <span className="text-red-500">*</span></label>
+    <select 
+      value={form.caseType} 
+      onChange={e => {
+        const newType = e.target.value;
+        let newDuration = newType === 'Hình sự' ? 120 : 30;
+        
+        // Ưu tiên giữ mặc định theo Phòng nếu là phòng đặc biệt
+        if (form.room === "Dự phòng") newDuration = 30;
+        if (form.room === "Trực tuyến") newDuration = 240;
+        
+        setForm({...form, caseType: newType, duration: newDuration});
+      }} 
+      className={inputBase}
+    >
+      <option value="Hình sự">Hình sự</option>
+      <option value="Dân sự">Dân sự</option>
+      <option value="Hành chính">Hành chính</option>
+      <option value="Hôn nhân & GĐ">Hôn nhân & GĐ</option>
+      <option value="Kinh tế">Kinh tế</option>
+    </select>
+  </div>
+  <div>
+    <label className={labelStyle}>Thời lượng <span className="text-red-500">*</span></label>
+    <select 
+      value={form.duration} 
+      onChange={e => setForm({...form, duration: parseInt(e.target.value)})} 
+      className={inputBase}
+    >
+      <option value={30}>⏱ 30 phút (Xử nhanh / Dự phòng)</option>
+      <option value={60}>⏱ 1 giờ (Bổ sung)</option>
+      <option value={120}>⏱ 2 giờ (Án hình sự)</option>
+      <option value={240}>⏱ 1 buổi (4 giờ / Trực tuyến)</option>
+      <option value={480}>⏱ 1 ngày (8 giờ)</option>
+    </select>
+  </div>
                   <div>
                     <label className={labelStyle}>Lần xử <span className="text-red-500">*</span></label>
                     <select value={form.trialCount} onChange={e => setForm({...form, trialCount: e.target.value})} className={inputBase}><option value="Lần 1">Lần 1</option><option value="Lần 2">Lần 2</option><option value="Mở lại">Mở lại</option></select>
