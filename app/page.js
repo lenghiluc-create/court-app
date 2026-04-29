@@ -734,35 +734,37 @@ export default function PremiumCourtApp() {
                 </div>
               </td>
 
-             {/* CỘT 3: THÀNH PHẦN HĐXX (Đã bổ sung Hội thẩm 1 & 2) */}
-<td className="p-6 w-[25%] align-top text-xs space-y-2 border-l border-gray-100">
+             {/* CỘT 3: THÀNH PHẦN HĐXX (Đã tăng cỡ chữ và làm nổi bật tên) */}
+<td className="p-6 w-[25%] align-top space-y-3 border-l border-gray-100">
   {/* Thẩm phán & Thư ký */}
-  <div className="flex flex-col gap-1.5">
-    <div className="font-bold flex items-center gap-2">
-      <span className="text-red-600 w-8 flex-shrink-0">TP:</span> 
-      <span className="text-gray-900">{item.judge || "---"}</span>
+  <div className="flex flex-col gap-2">
+    <div className="flex items-center gap-2">
+      <span className="text-red-600 w-8 flex-shrink-0 font-bold text-[11px]">TP:</span> 
+      {/* Tên Thẩm phán to lên (text-sm) và đen đậm (font-black) */}
+      <span className="text-[15px] font-black text-gray-900 uppercase">{item.judge || "---"}</span>
     </div>
     <div className="flex items-center gap-2">
-      <span className="text-gray-500 font-bold w-8 flex-shrink-0">TK:</span> 
-      <span className="text-gray-700">{item.clerk || "---"}</span>
+      <span className="text-gray-500 font-bold w-8 flex-shrink-0 text-[11px]">TK:</span> 
+      <span className="text-[14px] font-extrabold text-gray-800">{item.clerk || "---"}</span>
     </div>
   </div>
 
-  {/* Hội thẩm nhân dân - Hiển thị gọn trên 1 hoặc 2 dòng tùy độ dài */}
-  <div className="pt-1 border-t border-gray-100 mt-1">
+  {/* Hội thẩm nhân dân */}
+  <div className="pt-2 border-t border-gray-100 mt-1">
     <div className="flex gap-2">
-      <span className="text-gray-400 font-bold w-8 flex-shrink-0">HT:</span>
-      <div className="flex flex-col text-[11px] text-gray-600 italic">
-        <span>{item.juror1 || "---"}</span>
-        <span>{item.juror2 || "---"}</span>
+      <span className="text-gray-400 font-bold w-8 flex-shrink-0 text-[11px]">HT:</span>
+      <div className="flex flex-col gap-1">
+        {/* Tên Hội thẩm cũng được làm to và đậm hơn */}
+        <span className="text-[14px] font-bold text-gray-700 leading-tight">{item.juror1 || "---"}</span>
+        <span className="text-[14px] font-bold text-gray-700 leading-tight">{item.juror2 || "---"}</span>
       </div>
     </div>
   </div>
 
   {/* Kiểm sát viên */}
-  <div className="pt-1 flex items-center gap-2 text-[10px]">
-    <span className="w-8 font-bold text-red-400 flex-shrink-0">KSV:</span> 
-    <span className="font-bold text-red-600">{item.prosecutor || "---"}</span>
+  <div className="pt-2 flex items-center gap-2">
+    <span className="w-8 font-bold text-red-400 flex-shrink-0 text-[10px]">KSV:</span> 
+    <span className="text-[14px] font-black text-red-700">{item.prosecutor || "---"}</span>
   </div>
 </td>
 
