@@ -32,6 +32,7 @@ export default function PremiumCourtApp() {
   const [editingId, setEditingId] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [viewMode, setViewMode] = useState("table"); 
+  const [showTVMode, setShowTVMode] = useState(false);
 
   // Modal States
   const [showPwdModal, setShowPwdModal] = useState(false);
@@ -654,6 +655,7 @@ export default function PremiumCourtApp() {
                   </label>
                   <input type="text" placeholder="Tìm kiếm tự do..." onChange={e => setSearchQuery(e.target.value)} className={`${filterStyle} flex-1 min-w-[150px]`} />
                   <button onClick={exportToExcel} className="bg-green-600 text-white px-6 py-2.5 font-bold uppercase rounded-md shadow-sm hover:bg-green-700 text-[14px]">📊 Xuất Excel</button>
+                  <button onClick={() => setShowTVMode(true)} className="bg-blue-900 text-white px-6 py-2.5 font-bold uppercase rounded-md shadow-sm hover:bg-black text-[14px]">📺 Chế độ Tivi</button>
                 </div>
               </div>
 
@@ -671,12 +673,15 @@ export default function PremiumCourtApp() {
                     <tbody className="divide-y divide-gray-200">
                       {processedSchedule.map((item, index) => {
                         const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
+                        const isForgotten = item.status === 'pending' && 
+                    moment(item.datetime).isBefore(moment().subtract(4, 'hours'));
                         const overduePublish = isOverduePublish(item);
                         const effective = isEffective(item);
                         let rowBgClass = item.status === 'completed' || item.status === 'suspended' ? "opacity-70 bg-gray-100/50" : isRowUrgent ? "bg-red-50 hover:bg-red-100" : index % 2 === 0 ? "bg-white hover:bg-blue-50/30" : "bg-slate-50 hover:bg-blue-50/30";
                         
                         return (
                           <tr key={item.id} className={`transition-all ${rowBgClass}`}>
+                          <tr key={item.id} className={`... ${isForgotten ? 'animate-pulse border-l-4 border-l-orange-500 bg-orange-50' : ''}`}></tr>  
                             <td className={`p-6 align-top text-center ${isRowUrgent ? 'border-l-4 border-l-red-500' : ''}`}>
                               {item.status === 'suspended' ? <div className="text-purple-600 font-bold uppercase">⏸ Tạm ngừng<br/><span className="text-[10px] text-gray-500 italic">(Chờ báo sau)</span></div> :
                                <>
@@ -873,7 +878,59 @@ export default function PremiumCourtApp() {
            </div>
         </div>
       )}
+      {showTVMode && (
+  <div className="fixed inset-0 bg-slate-900 z-[1000] flex flex-col p-10 text-white overflow-hidden">
+    <div className="flex justify-between items-center border-b-4 border-red-600 pb-6 mb-10">
+      <div className="flex items-center gap-6">
+        <img src="/lgtoaan1.png" className="w-24 h-24" />
+        <div>
+          <h1 className="text-4xl font-black uppercase tracking-tighter">LỊCH XÉT XỬ TRONG NGÀY</h1>
+          <p className="text-2xl text-blue-400 font-bold uppercase">{moment().format("dddd, [Ngày] DD [Tháng] MM [Năm] YYYY")}</p>
+        </div>
+      </div>
+      <button onClick={() => setShowTVMode(false)} className="bg-red-600 px-8 py-4 rounded-xl font-black text-xl hover:bg-red-700">THOÁT X</button>
+    </div>
 
+    <div className="flex-1 overflow-hidden">
+      <table className="w-full text-left">
+        <thead>
+          <tr className="text-3xl text-gray-400 border-b border-gray-700 uppercase">
+            <th className="p-6 w-[15%]">Giờ xử</th>
+            <th className="p-6 w-[45%]">Vụ án / Đương sự</th>
+            <th className="p-6 w-[20%] text-center">Phòng</th>
+            <th className="p-6 w-[20%] text-center">Trạng thái</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-800">
+          {schedule
+            .filter(i => moment(i.datetime).isSame(moment(), 'day')) // Chỉ hiện lịch hôm nay
+            .sort((a,b) => moment(a.datetime).diff(moment(b.datetime)))
+            .map(item => (
+            <tr key={item.id} className="text-4xl font-black border-b border-gray-800">
+              <td className="p-8 text-blue-400">{moment(item.datetime).format("HH:mm")}</td>
+              <td className="p-8 uppercase leading-tight">
+                {item.caseName}
+                <div className="text-xl text-gray-500 mt-2 font-bold italic">TP: {item.judge} - TK: {item.clerk}</div>
+              </td>
+              <td className="p-8 text-center"><span className="bg-white text-slate-900 px-6 py-2 rounded-lg">{item.room}</span></td>
+              <td className="p-8 text-center uppercase">
+                {item.status === 'completed' ? <span className="text-green-500">Đã xong</span> : 
+                 item.status === 'suspended' ? <span className="text-purple-500">Tạm ngừng</span> : 
+                 <span className="text-amber-500 animate-pulse">Đang xử...</span>}
+              </td>
+            </tr>
+          ))}
+          {schedule.filter(i => moment(i.datetime).isSame(moment(), 'day')).length === 0 && (
+            <tr>
+              <td colSpan="4" className="p-20 text-center text-5xl text-gray-600 font-black uppercase opacity-20">Hôm nay không có lịch xét xử</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+    <div className="mt-10 text-center text-xl text-gray-500 animate-pulse">Hệ thống tự động cập nhật dữ liệu sau mỗi 60 giây...</div>
+  </div>
+)}
       {toast.show && (<div className={`fixed bottom-6 right-6 z-[200] px-8 py-4 shadow-2xl font-black text-white rounded-xl ${toast.type === 'error' ? 'bg-red-600' : 'bg-blue-950'}`}>{toast.message}</div>)}
     </div>
   );
