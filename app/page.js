@@ -162,7 +162,6 @@ export default function PremiumCourtApp() {
   const toggleStatus = async (id, newStatus, caseName) => {
     try {
       const updateData = { status: newStatus, updatedBy: user.email, updatedAt: moment().toISOString() };
-      // Quan trọng: Lưu thời điểm bấm "Xong" để tính toán hạn 5 ngày/30 ngày
       if (newStatus === 'completed') updateData.completedAt = moment().toISOString();
       await updateDoc(doc(db, "schedule", id), updateData);
       
@@ -173,6 +172,20 @@ export default function PremiumCourtApp() {
       showToast(msg, "success");
       loadData();
     } catch (err) { showToast("Lỗi cập nhật trạng thái", "error"); }
+  };
+
+  // NÚT PHÁT HÀNH BẢN ÁN MỚI
+  const togglePublish = async (item) => {
+    try {
+      const isPublishing = !item.publishedAt;
+      await updateDoc(doc(db, "schedule", item.id), { 
+        publishedAt: isPublishing ? moment().toISOString() : null,
+        updatedBy: user.email, 
+        updatedAt: moment().toISOString() 
+      });
+      showToast(isPublishing ? "📤 Đã ghi nhận phát hành bản án!" : "Hủy ghi nhận phát hành", "success");
+      loadData();
+    } catch (err) { showToast("Lỗi cập nhật phát hành", "error"); }
   };
 
   const handleDelete = async (id, caseName) => {
@@ -241,17 +254,17 @@ export default function PremiumCourtApp() {
     return diffDays === 0 || diffDays === 1; 
   };
 
-  // Logic kiểm tra chậm phát hành (quá 5 ngày kể từ khi bấm Xong)
+  // Nếu ĐÃ PHÁT HÀNH (có publishedAt) thì sẽ KHÔNG báo đỏ nữa.
   const isOverduePublish = (item) => {
-    if (item.status !== 'completed' || !item.completedAt) return false;
-    const days = moment().diff(moment(item.completedAt), 'days');
-    return days >= 5 && days < 30;
+    if (item.status !== 'completed' || !item.completedAt || item.publishedAt) return false;
+    const days = moment().startOf('day').diff(moment(item.completedAt).startOf('day'), 'days');
+    return days >= 5; 
   };
 
-  // Logic kiểm tra án có hiệu lực (quá 30 ngày kể từ khi bấm Xong)
+  // Án có hiệu lực tính từ ngày tuyên án (completedAt)
   const isEffective = (item) => {
     if (item.status !== 'completed' || !item.completedAt) return false;
-    const days = moment().diff(moment(item.completedAt), 'days');
+    const days = moment().startOf('day').diff(moment(item.completedAt).startOf('day'), 'days');
     return days >= 30;
   };
 
@@ -415,7 +428,6 @@ export default function PremiumCourtApp() {
         </header>
 
         <div className="p-4 md:p-12 flex-1">
-          {/* CẬP NHẬT GRID THỐNG KÊ LÊN 7 Ô */}
           <div className="bg-white shadow-xl rounded-xl mb-8 border border-gray-200 overflow-hidden">
             <div className="grid grid-cols-2 md:grid-cols-7 divide-x divide-y md:divide-y-0 divide-gray-200">
               <div onClick={() => handleStatCardClick('pending')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-blue-50 transition-colors">
@@ -430,11 +442,9 @@ export default function PremiumCourtApp() {
               <div onClick={() => handleStatCardClick('completed')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-green-50 transition-colors">
                 <p className="text-gray-500 text-[9px] font-black uppercase mb-1">Đã xong</p><p className="text-2xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p>
               </div>
-              {/* Ô THỐNG KÊ CHẬM PHÁT HÀNH BẢN ÁN */}
               <div onClick={() => handleStatCardClick('overdue_publish')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-red-50 transition-colors">
                 <p className="text-red-700 text-[9px] font-black uppercase mb-1">Chưa PH ({'>'}5n)</p><p className="text-2xl font-black text-red-700">{overduePublishCount}</p>
               </div>
-              {/* Ô THỐNG KÊ ÁN CÓ HIỆU LỰC */}
               <div onClick={() => handleStatCardClick('effective')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-teal-50 transition-colors">
                 <p className="text-teal-700 text-[9px] font-black uppercase mb-1">Hiệu lực ({'>'}30n)</p><p className="text-2xl font-black text-teal-700">{effectiveCount}</p>
               </div>
@@ -625,7 +635,6 @@ export default function PremiumCourtApp() {
                                 {item.caseName || "Vụ án chưa có tên"}
                               </div>
                               
-                              {/* HIỂN THỊ CẢNH BÁO THỜI HẠN DƯỚI TÊN VỤ ÁN */}
                               <div className="flex flex-wrap gap-2 mb-2">
                                  {overduePublish && <span className="bg-red-100 text-red-700 text-[10px] font-black px-2 py-1 rounded border border-red-200 animate-pulse uppercase">CẢNH BÁO: CHẬM PHÁT HÀNH BẢN ÁN ({'>'}5 NGÀY)</span>}
                                  {effective && <span className="bg-teal-100 text-teal-800 text-[10px] font-black px-2 py-1 rounded border border-teal-200 uppercase">NHẮC NHỞ: ÁN ĐÃ CÓ HIỆU LỰC ({'>'}30 NGÀY)</span>}
@@ -633,7 +642,14 @@ export default function PremiumCourtApp() {
 
                               <div className="text-gray-700 font-semibold text-sm mb-2">{item.caseType || "---"} / {item.trialCount || "Lần 1"}</div>
                               <div className="text-sm text-gray-600"><p>NĐ: {item.plaintiff || "N/A"}</p><p>BĐ: {item.defendant || "N/A"}</p></div>
-                              {item.completedAt && <div className="text-[10px] text-gray-400 mt-2 italic">Đã tuyên: {moment(item.completedAt).format("HH:mm - DD/MM/YYYY")}</div>}
+                              
+                              {/* THÔNG TIN NGÀY TUYÊN ÁN & ĐÃ PHÁT HÀNH */}
+                              {item.completedAt && (
+                                 <div className="text-[11px] text-gray-500 mt-3 bg-white/50 inline-block px-3 py-1.5 rounded-md border border-gray-200">
+                                   <span className="italic">Đã tuyên: {moment(item.completedAt).format("DD/MM/YYYY")}</span>
+                                   {item.publishedAt && <span className="ml-3 font-bold text-green-600 border-l border-gray-300 pl-3">✅ Đã PH: {moment(item.publishedAt).format("DD/MM/YYYY")}</span>}
+                                 </div>
+                              )}
                             </td>
                             <td className="p-6 align-top text-sm text-gray-800 space-y-2">
                               <div><span className="font-semibold text-blue-700 inline-block w-8">TP:</span> <span className="font-bold">{item.judge || "---"}</span></div>
@@ -654,8 +670,17 @@ export default function PremiumCourtApp() {
                                     </>
                                   )}
                                   
+                                  {/* HIỂN THỊ NÚT PHÁT HÀNH NẾU ĐÃ XONG */}
+                                  {item.status === 'completed' && (
+                                    <div className="grid grid-cols-2 gap-2 mb-1">
+                                       <button onClick={() => togglePublish(item)} className={`w-full py-2 font-medium uppercase text-[10px] rounded transition-all shadow-sm ${item.publishedAt ? 'bg-green-500/20 hover:bg-green-500/30 text-green-900' : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-900'}`} title={item.publishedAt ? "Hủy trạng thái đã phát hành" : "Xác nhận đã phát hành bản án"}>
+                                         {item.publishedAt ? "✅ ĐÃ PH" : "📤 PHÁT HÀNH"}
+                                       </button>
+                                       <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="w-full bg-gray-400/20 hover:bg-gray-400/30 backdrop-blur-md text-gray-900 py-2 font-medium uppercase text-[10px] rounded transition-all shadow-sm">MỞ LẠI</button>
+                                    </div>
+                                  )}
+
                                   {item.status === 'suspended' && <button onClick={() => handleReschedule(item)} className="w-full bg-gray-400/20 hover:bg-gray-400/30 backdrop-blur-md text-gray-900 py-2 mb-1 font-medium uppercase text-[10px] rounded transition-all shadow-sm">LÊN LỊCH LẠI</button>}
-                                  {item.status === 'completed' && <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="w-full bg-gray-400/20 hover:bg-gray-400/30 backdrop-blur-md text-gray-900 py-2 mb-1 font-medium uppercase text-[10px] rounded transition-all shadow-sm">MỞ LẠI</button>}
                                   
                                   <div className={`grid ${userRole === 'admin' || userRole === 'chanhan' ? 'grid-cols-2' : 'grid-cols-1'} gap-2 pt-2 border-t border-gray-200 border-dashed`}>
                                      <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-500/20 hover:bg-blue-500/30 backdrop-blur-md text-gray-900 py-2 font-medium uppercase text-[10px] rounded transition-all shadow-sm">SỬA</button>
@@ -690,7 +715,6 @@ export default function PremiumCourtApp() {
                                <div key={item.id} draggable={canEdit} onDragStart={(e) => handleDragStart(e, item)} className={`bg-white p-5 rounded-xl border-l-4 shadow-sm transition-all relative group ${canEdit ? 'cursor-grab active:cursor-grabbing hover:shadow-lg hover:-translate-y-1' : ''} ${urgent || overduePublish ? 'border-l-red-500' : effective ? 'border-l-teal-500' : col.id === 'suspended' ? 'border-l-purple-500' : 'border-l-blue-500'} border-y border-r border-gray-200`}>
                                  <h4 className="font-black text-blue-950 mb-4 leading-tight">{item.caseName || "Chưa có tên"}</h4>
                                  
-                                 {/* CẢNH BÁO TRONG KANBAN */}
                                  {overduePublish && <div className="mb-3 text-[9px] font-black text-red-600 bg-red-50 p-2 rounded border border-red-100 animate-pulse">CHẬM PHÁT HÀNH BẢN ÁN</div>}
                                  {effective && <div className="mb-3 text-[9px] font-black text-teal-700 bg-teal-50 p-2 rounded border border-teal-100">ÁN ĐÃ CÓ HIỆU LỰC</div>}
 
@@ -699,8 +723,18 @@ export default function PremiumCourtApp() {
                                    <div className="flex items-center gap-2"><span className="text-lg">👨‍⚖️</span> TP: {item.judge || "---"}</div>
                                    <div className="flex items-center gap-2"><span className="text-lg">🛡️</span> KSV: <span className="text-red-600">{item.prosecutor || "---"}</span></div>
                                  </div>
+
+                                 {/* NÚT PHÁT HÀNH TRONG BẢNG KANBAN */}
+                                 {canEdit && item.status === 'completed' && (
+                                   <div className="mt-4 pt-3 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                                     <button onClick={() => togglePublish(item)} className={`flex-1 py-2.5 rounded-md text-[9px] font-bold uppercase transition-all shadow-sm ${item.publishedAt ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}>
+                                       {item.publishedAt ? "✅ ĐÃ PH" : "📤 PHÁT HÀNH"}
+                                     </button>
+                                     <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200 py-2.5 rounded-md text-[9px] font-bold uppercase transition-all shadow-sm">✏️ SỬA</button>
+                                   </div>
+                                 )}
                                  
-                                 {canEdit && (
+                                 {canEdit && item.status !== 'completed' && (
                                    <div className="mt-4 pt-3 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
                                      <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="w-full bg-blue-500/20 hover:bg-blue-500/30 backdrop-blur-md text-gray-900 py-2.5 rounded-md text-[10px] font-medium uppercase transition-all shadow-sm">CẬP NHẬT & SỬA</button>
                                    </div>
