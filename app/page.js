@@ -659,123 +659,118 @@ export default function PremiumCourtApp() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-x-auto bg-gray-50/50 rounded-b-xl custom-scrollbar">
-                {viewMode === 'table' ? (
-                  <table className="w-full text-left border-collapse min-w-[1000px]">
-                    <thead className="bg-gray-100 text-[12px] font-black uppercase text-gray-500 sticky top-0 z-10 border-b border-gray-200">
-                      <tr>
-                        <th className="p-6 w-[140px] text-center">Lịch & Cập nhật</th>
-                        <th className="p-6 min-w-[400px]">Nội dung</th> {/* Cho phép cột này dãn nhưng tối thiểu 400px */}
-                        <th className="p-6 w-[250px]">Thành phần HĐXX</th>
-                        {canEdit && <th className="p-6 w-[150px] text-center">Tác vụ</th>}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {processedSchedule.map((item, index) => {
-                        const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
-                        const isForgotten = item.status === 'pending' && 
-                    moment(item.datetime).isBefore(moment().subtract(4, 'hours'));
-                        const overduePublish = isOverduePublish(item);
-                        const effective = isEffective(item);
-                        let rowBgClass = item.status === 'completed' || item.status === 'suspended' ? "opacity-70 bg-gray-100/50" : isRowUrgent ? "bg-red-50 hover:bg-red-100" : index % 2 === 0 ? "bg-white hover:bg-blue-50/30" : "bg-slate-50 hover:bg-blue-50/30";
-                        
-                        return (
-                          <tr key={item.id} className={`transition-all ${rowBgClass}`}>
-                          <tr key={item.id} className={`... ${isForgotten ? 'animate-pulse border-l-4 border-l-orange-500 bg-orange-50' : ''}`}></tr>  
-                            <td className={`p-6 align-top text-center ${isRowUrgent ? 'border-l-4 border-l-red-500' : ''}`}>
-                              {item.status === 'suspended' ? <div className="text-purple-600 font-bold uppercase">⏸ Tạm ngừng<br/><span className="text-[10px] text-gray-500 italic">(Chờ báo sau)</span></div> :
-                               <>
-                                <div className="font-bold text-gray-900">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
-                                <div className="text-blue-600 font-bold">🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</div>
-                              </>}
-                              <div className="font-bold text-gray-500 uppercase text-sm mt-4 mb-3">{item.room || "---"}</div>
-                              
-                              <div className="border-t border-gray-200 border-dashed pt-3 mt-4 text-[11px] text-gray-500 italic text-left inline-block">
-                                Nhập: <span className="font-bold text-gray-700">{item.createdBy ? item.createdBy.split('@')[0] : "---"}</span>
-                                {item.updatedBy && item.updatedBy !== item.createdBy && <><br/>Sửa: <span className="font-bold text-gray-700">{item.updatedBy.split('@')[0]}</span></>}
-                              </div>
-                            </td>
-                            <td className="p-6 align-top">
-                             <div className="font-bold uppercase text-gray-900 text-base mb-2 line-clamp-2 hover:line-clamp-none transition-all cursor-pointer">
-                                {item.status === 'completed' && <span className="text-green-600 mr-2">✅</span>}
-                                {item.status === 'suspended' && <span className="text-purple-600 mr-2">⏸</span>}
-                                {isRowUrgent && <span className="bg-red-500 text-white px-2 py-1 text-xs rounded mr-2 animate-pulse">⚠️ SẮP XỬ</span>}
-                                {item.caseName || "Vụ án chưa có tên"}
-                              </div>
-                              
-                              <div className="flex flex-wrap gap-2 mb-2">
-                                 {overduePublish && <span className="bg-red-100 text-red-700 text-[10px] font-black px-2 py-1 rounded border border-red-200 animate-pulse uppercase">CẢNH BÁO: CHẬM PHÁT HÀNH BẢN ÁN ({'>'}5 NGÀY)</span>}
-                                 {effective && <span className="bg-teal-100 text-teal-800 text-[10px] font-black px-2 py-1 rounded border border-teal-200 uppercase">NHẮC NHỞ: ÁN ĐÃ CÓ HIỆU LỰC ({'>'}30 NGÀY)</span>}
-                              </div>
+             <div className="flex-1 overflow-x-auto bg-gray-50/50 rounded-b-xl custom-scrollbar">
+  {viewMode === 'table' ? (
+    <table className="w-full border-collapse table-fixed min-w-[1100px]"> 
+      {/* KHÓA TIÊU ĐỀ: Gán % cố định để thẳng hàng với nội dung bên dưới */}
+      <thead className="bg-gray-100 text-[12px] font-black uppercase text-gray-500 sticky top-0 z-10 border-b border-gray-200">
+        <tr>
+          <th className="p-6 w-[15%] text-center">Lịch & Cập nhật</th>
+          <th className="p-6 w-[45%] text-left">Nội dung & Cảnh báo</th>
+          <th className="p-6 w-[25%] text-left">Thành phần HĐXX</th>
+          {canEdit && <th className="p-6 w-[15%] text-center">Tác vụ</th>}
+        </tr>
+      </thead>
 
-                              {/* --- HIỂN THỊ DEADLINE TỰ ĐỘNG --- */}
-                              {item.status === 'completed' && (
-                                <div className="mt-2 space-y-1">
-                                  {!item.publishedAt && (
-                                    <div className={`text-[10px] font-black px-2 py-1 rounded border inline-block ${isOverduePublish(item) ? 'bg-red-600 text-white animate-pulse' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                                      HẠN PHÁT HÀNH BẢN ÁN: {calculateDeadlines(item).publish}
-                                    </div>
-                                  )}
-                                  {isEffective(item) && (
-                                    <div className="text-[10px] font-black px-2 py-1 rounded bg-teal-600 text-white block w-max uppercase">
-                                      ĐÃ CÓ HIỆU LỰC: {calculateDeadlines(item).effective}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
+      <tbody className="divide-y divide-gray-200 bg-white">
+        {processedSchedule.map((item, index) => {
+          const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
+          // MỤC 3: Cảnh báo quên cập nhật nếu quá 4 tiếng
+          const isForgotten = item.status === 'pending' && 
+                              moment(item.datetime).isBefore(moment().subtract(4, 'hours'));
+          const overduePublish = isOverduePublish(item);
+          const effective = isEffective(item);
 
-                              <div className="text-gray-700 font-semibold text-sm mb-2 mt-2">{item.caseType || "---"} / {item.trialCount || "Lần 1"}</div>
-                              <div className="text-sm text-gray-600"><p>NĐ/BC: {item.plaintiff || "N/A"}</p><p>BĐ/BH: {item.defendant || "N/A"}</p></div>
-                              
-                              {item.completedAt && (
-                                 <div className="text-[11px] text-gray-500 mt-3 bg-white/50 inline-block px-3 py-1.5 rounded-md border border-gray-200">
-                                   <span className="italic">Đã tuyên: {moment(item.completedAt).format("DD/MM/YYYY")}</span>
-                                   {item.publishedAt && <span className="ml-3 font-bold text-green-600 border-l border-gray-300 pl-3">✅ Đã PH: {moment(item.publishedAt).format("DD/MM/YYYY")}</span>}
-                                 </div>
-                              )}
-                            </td>
-                            <td className="p-6 align-top text-sm text-gray-800 space-y-2">
-                              <div><span className="font-semibold text-blue-700 inline-block w-8">TP:</span> <span className="font-bold">{item.judge || "---"}</span></div>
-                              <div><span className="font-semibold text-gray-500 inline-block w-8">HT:</span> {item.juror1 || "---"}, {item.juror2 || "---"}</div>
-                              <div><span className="font-semibold text-gray-500 inline-block w-8">TK:</span> {item.clerk || "---"}</div>
-                              <div><span className="font-semibold text-red-600 inline-block w-8">KSV:</span> <span className="font-bold text-red-600">{item.prosecutor || "---"}</span></div>
-                            </td>
-                            {canEdit && (
-                              <td className="p-4 align-top">
-                                <div className="flex flex-col gap-2 w-full max-w-[140px] mx-auto">
-                                  {(item.status === 'pending' || !item.status) && (
-                                    <>
-                                      <div className="grid grid-cols-2 gap-2 mb-1">
-                                        <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-500/20 hover:bg-green-500/30 backdrop-blur-md text-gray-900 py-2 font-medium uppercase text-[10px] rounded transition-all shadow-sm" title="Đã xử xong">XONG</button>
-                                        <button onClick={() => handleReschedule(item)} className="bg-gray-400/20 hover:bg-gray-400/30 backdrop-blur-md text-gray-900 py-2 font-medium uppercase text-[10px] rounded transition-all shadow-sm" title="Hoãn (Chọn lịch mới ngay)">HOÃN</button>
-                                      </div>
-                                      <button onClick={() => toggleStatus(item.id, 'suspended', item.caseName)} className="w-full bg-gray-400/20 hover:bg-gray-400/30 backdrop-blur-md text-gray-900 py-2 mb-1 font-medium uppercase text-[10px] rounded transition-all shadow-sm" title="Tạm ngừng (Chờ báo sau)">TẠM NGỪNG</button>
-                                    </>
-                                  )}
-                                  
-                                  {item.status === 'completed' && (
-                                    <div className="grid grid-cols-2 gap-2 mb-1">
-                                       <button onClick={() => togglePublish(item)} className={`w-full py-2 font-medium uppercase text-[10px] rounded transition-all shadow-sm ${item.publishedAt ? 'bg-green-500/20 hover:bg-green-500/30 text-green-900' : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-900'}`} title={item.publishedAt ? "Hủy trạng thái đã phát hành" : "Xác nhận đã phát hành bản án"}>
-                                         {item.publishedAt ? "✅ ĐÃ PH" : "📤 PHÁT HÀNH"}
-                                       </button>
-                                       <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="w-full bg-gray-400/20 hover:bg-gray-400/30 backdrop-blur-md text-gray-900 py-2 font-medium uppercase text-[10px] rounded transition-all shadow-sm">MỞ LẠI</button>
-                                    </div>
-                                  )}
+          // Màu nền hàng: Ưu tiên cam nếu quên, đỏ nếu sắp xử
+          let rowBgClass = isForgotten ? "bg-orange-50 animate-pulse" : 
+                           isRowUrgent ? "bg-red-50 hover:bg-red-100" : 
+                           index % 2 === 0 ? "bg-white hover:bg-blue-50/30" : "bg-slate-50 hover:bg-blue-50/30";
+          
+          return (
+            <tr key={item.id} className={`transition-all ${rowBgClass}`}>
+              {/* CỘT 1: LỊCH (Khóa 15%) */}
+              <td className={`p-6 w-[15%] align-top text-center border-r border-gray-100 ${isRowUrgent ? 'border-l-4 border-l-red-500' : isForgotten ? 'border-l-4 border-l-orange-500' : ''}`}>
+                {item.status === 'suspended' ? (
+                  <div className="text-purple-600 font-bold uppercase text-[10px]">⏸ Tạm ngừng</div>
+                ) : (
+                  <>
+                    <div className="font-black text-sm text-gray-900">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
+                    <div className="text-blue-600 font-black mt-1">🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</div>
+                  </>
+                )}
+                <div className="font-bold text-gray-500 uppercase text-[10px] mt-3">{item.room || "---"}</div>
+                
+                <div className="border-t border-gray-200 border-dashed pt-2 mt-3 text-[9px] text-gray-400 italic">
+                  Nhập: {item.createdBy ? item.createdBy.split('@')[0] : "---"}
+                </div>
+              </td>
 
-                                  {item.status === 'suspended' && <button onClick={() => handleReschedule(item)} className="w-full bg-gray-400/20 hover:bg-gray-400/30 backdrop-blur-md text-gray-900 py-2 mb-1 font-medium uppercase text-[10px] rounded transition-all shadow-sm">LÊN LỊCH LẠI</button>}
-                                  
-                                  <div className={`grid ${userRole === 'admin' || userRole === 'chanhan' ? 'grid-cols-2' : 'grid-cols-1'} gap-2 pt-2 border-t border-gray-200 border-dashed`}>
-                                     <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-500/20 hover:bg-blue-500/30 backdrop-blur-md text-gray-900 py-2 font-medium uppercase text-[10px] rounded transition-all shadow-sm">SỬA</button>
-                                     {(userRole === 'admin' || userRole === 'chanhan') && <button onClick={() => handleDelete(item.id, item.caseName)} className="bg-red-500/20 hover:bg-red-500/30 backdrop-blur-md text-gray-900 py-2 font-medium uppercase text-[10px] rounded transition-all shadow-sm">XÓA</button>}
-                                  </div>
-                                </div>
-                              </td>
-                            )}
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+              {/* CỘT 2: NỘI DUNG (Khóa 45%) */}
+              <td className="p-6 w-[45%] align-top">
+                <div className="font-black uppercase text-blue-950 text-sm mb-2 leading-tight break-words whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-pointer">
+                  {item.caseName || "Vụ án chưa có tên"}
+                </div>
+                
+                <div className="flex flex-wrap gap-2 mb-2">
+                   {isForgotten && <span className="bg-orange-600 text-white text-[9px] px-2 py-1 rounded font-black uppercase">⚠️ QUÊN CẬP NHẬT</span>}
+                   {overduePublish && <span className="bg-red-100 text-red-700 text-[9px] font-black px-2 py-1 rounded border border-red-200 animate-pulse uppercase">CHẬM PHÁT HÀNH ({'>'}5N)</span>}
+                   {effective && <span className="bg-teal-100 text-teal-800 text-[9px] font-black px-2 py-1 rounded border border-teal-200 uppercase">ÁN CÓ HIỆU LỰC ({'>'}30N)</span>}
+                </div>
+
+                {/* DEADLINE TỰ ĐỘNG (MỤC 3) */}
+                {item.status === 'completed' && (
+                  <div className="mt-2 space-y-1">
+                    {!item.publishedAt && (
+                      <div className={`text-[10px] font-black px-2 py-1 rounded border inline-block ${overduePublish ? 'bg-red-600 text-white animate-pulse' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                        HẠN PHÁT HÀNH: {calculateDeadlines(item).publish}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="text-gray-500 font-bold text-[11px] mt-2">
+                  {item.caseType} / {item.trialCount} <br/>
+                  NĐ: {item.plaintiff || "N/A"} - BĐ: {item.defendant || "N/A"}
+                </div>
+              </td>
+
+              {/* CỘT 3: HĐXX (Khóa 25%) */}
+              <td className="p-6 w-[25%] align-top text-xs space-y-2 border-l border-gray-50">
+                <div><span className="font-semibold text-blue-700 inline-block w-8">TP:</span> <span className="font-bold">{item.judge || "---"}</span></div>
+                <div><span className="font-semibold text-gray-400 inline-block w-8">TK:</span> {item.clerk || "---"}</div>
+                <div><span className="font-semibold text-red-400 inline-block w-8 text-[10px]">KSV:</span> <span className="font-bold text-red-600">{item.prosecutor || "---"}</span></div>
+              </td>
+
+              {/* CỘT 4: TÁC VỤ (Khóa 15%) */}
+              {canEdit && (
+                <td className="p-6 w-[15%] align-top text-center border-l border-gray-50">
+                  <div className="flex flex-col gap-2 w-full max-w-[120px] mx-auto">
+                    {item.status === 'pending' && (
+                      <div className="grid grid-cols-2 gap-1 mb-1">
+                        <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-600 text-white py-2 font-black uppercase text-[9px] rounded shadow-sm">XONG</button>
+                        <button onClick={() => handleReschedule(item)} className="bg-gray-200 text-gray-700 py-2 font-black uppercase text-[9px] rounded border">HOÃN</button>
+                      </div>
+                    )}
+                    
+                    {item.status === 'completed' && (
+                      <button onClick={() => togglePublish(item)} className={`py-2 rounded text-[9px] font-black uppercase shadow-sm ${item.publishedAt ? 'bg-green-600 text-white' : 'bg-blue-100 text-blue-700'}`}>
+                        {item.publishedAt ? "ĐÃ PH" : "📤 PHÁT HÀNH"}
+                      </button>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-1 pt-1 border-t border-dashed border-gray-200">
+                      <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-600 py-2 rounded text-[9px] font-black uppercase">SỬA</button>
+                      <button onClick={() => setSelectedEvent(item)} className="bg-gray-100 text-gray-500 py-2 rounded text-[9px] font-black uppercase hover:bg-gray-200">LOG</button>
+                    </div>
+                  </div>
+                </td>
+              )}
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  
                 ) : (
                   <div className="flex gap-6 p-6 h-full overflow-x-auto min-h-[700px] items-start">
                     {[
@@ -891,23 +886,23 @@ export default function PremiumCourtApp() {
       <button onClick={() => setShowTVMode(false)} className="bg-red-600 px-8 py-4 rounded-xl font-black text-xl hover:bg-red-700">THOÁT X</button>
     </div>
 
-    <div className="flex-1 overflow-hidden">
-      <table className="w-full text-left">
-       <thead className="bg-gray-100 text-[12px] font-black uppercase text-gray-500 sticky top-0 z-10 border-b border-gray-200">
-  <tr>
-    <th className="p-6 w-[12%] text-center">Lịch & Cập nhật</th>
-    <th className="p-6 w-[48%]">Nội dung</th> {/* Cột này chiếm phần lớn nhưng bị khống chế bởi line-clamp ở trên */}
-    <th className="p-6 w-[25%]">Hội đồng xét xử</th>
-    <th className="p-6 w-[15%] text-center">Tác vụ</th>
+    <div className="flex-1 overflow-x-auto bg-gray-50/50 rounded-b-xl custom-scrollbar">
+  <table className="w-full table-fixed border-collapse">
+       <thead className="bg-gray-100 text-[11px] font-black uppercase text-gray-400 border-b">
+      <tr>
+    <th className="p-6 w-[15%] text-center">Lịch & Cập nhật</th>
+        <th className="p-6 w-[45%] text-left">Nội dung</th>
+        <th className="p-6 w-[25%] text-left">Hội đồng xét xử</th>
+        <th className="p-6 w-[15%] text-center">Tác vụ</th>
   </tr>
 </thead>
-        <tbody className="divide-y divide-gray-800">
+        <tbody className="divide-y divide-gray-200 block w-full">
           {schedule
             .filter(i => moment(i.datetime).isSame(moment(), 'day')) // Chỉ hiện lịch hôm nay
             .sort((a,b) => moment(a.datetime).diff(moment(b.datetime)))
             .map(item => (
-            <tr key={item.id} className="text-4xl font-black border-b border-gray-800">
-              <td className="p-8 text-blue-400">{moment(item.datetime).format("HH:mm")}</td>
+            <tr key={item.id} className="flex w-full hover:bg-blue-50/30 transition-all">
+              <td className="p-6 w-[15%] text-center align-top flex-shrink-0">{moment(item.datetime).format("HH:mm")}</td>
               <td className="p-8 uppercase leading-tight">
                 {item.caseName}
                 <div className="text-xl text-gray-500 mt-2 font-bold italic">TP: {item.judge} - TK: {item.clerk}</div>
