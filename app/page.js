@@ -55,6 +55,65 @@ export default function PremiumCourtApp() {
     prosecutor: "", status: "pending"
   };
   const [form, setForm] = useState(initialForm);
+  const [activeTab, setActiveTab] = useState("trial"); 
+  const [inspections, setInspections] = useState([]);
+  const [insForm, setInsForm] = useState({ 
+  date: "", 
+  time: "08:00", // Mặc định là 8 giờ sáng
+  judge: "", 
+  clerk: "", 
+  commune: "An Thạnh", 
+  content: "" 
+});
+  const communes = ["An Thạnh", "Cù Lao Dung", "Trường Khánh", "Đại Ngãi", "Tân Thạnh","Long Phú", "Thạnh Thới An", "Liêu Tú", "Lịch Hội Thượng", "Trần Đề", "Tài Văn"];
+
+  const loadInspections = async () => {
+    try {
+      const q = query(collection(db, "inspections"), orderBy("date", "desc"));
+      const snap = await getDocs(q);
+      setInspections(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (e) { console.error(e); }
+  };
+
+  const handleInsSubmit = async () => {
+  // Kiểm tra điều kiện bắt buộc trước khi lưu
+  if (!insForm.date || !insForm.time || !insForm.judge) {
+    return showToast("Vui lòng nhập đầy đủ Ngày đi, Giờ đi và Thẩm phán!", "error");
+  }
+   const handleDeleteIns = async (id) => {
+  // Hiển thị xác nhận trước khi xóa
+  if (window.confirm("Bạn có chắc chắn muốn xóa lịch thẩm định này không?")) {
+    try {
+      // Nhập đúng tên collection là "inspections"
+      await deleteDoc(doc(db, "inspections", id));
+      showToast("✅ Đã xóa lịch thẩm định!", "success");
+      
+      // Sau khi xóa xong, gọi lại hàm load dữ liệu để cập nhật bảng
+      loadInspections(); 
+    } catch (e) {
+      console.error("Lỗi khi xóa:", e);
+      showToast("Không thể xóa dữ liệu. Vui lòng kiểm tra lại!", "error");
+    }
+  }
+};
+  try {
+    // Lưu vào collection "inspections"
+    await addDoc(collection(db, "inspections"), { 
+      ...insForm, 
+      createdAt: moment().toISOString(), 
+      createdBy: user.email 
+    });
+    
+    showToast("✅ Đã lưu lịch thẩm định thành công!", "success");
+    
+    // Reset form sau khi lưu thành công
+    setInsForm({ date: "", time: "08:00", judge: "", clerk: "", commune: "An Thạnh", content: "" });
+    loadInspections();
+  } catch (e) {
+    console.error("Lỗi lưu:", e);
+    showToast("Lỗi khi lưu dữ liệu vào hệ thống!", "error"); // Khắc phục thông báo lỗi đỏ trong ảnh
+  }
+};
 
   const inputBase = "w-full border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[15px] font-medium text-gray-800";
   const labelStyle = "block text-center text-[13px] font-black text-teal-900 bg-teal-100 border border-teal-200 py-2.5 px-4 rounded-md mb-2 w-full uppercase tracking-widest shadow-sm"; 
@@ -80,6 +139,7 @@ export default function PremiumCourtApp() {
         else if (email.includes('thamphan')) setUserRole('thamphan');
         else setUserRole('viewer');
         loadData();
+        loadInspections();
       } else setUser(null);
       setLoading(false);
     });
@@ -409,12 +469,14 @@ export default function PremiumCourtApp() {
           <img src="/lgtoaan1.png" alt="Logo Tòa án" className="w-20 h-20 mx-auto mb-4 drop-shadow-xl" />
           <h2 className="font-extrabold text-2xl uppercase tracking-widest drop-shadow-md">KV9-Cần Thơ</h2>
         </div>
-        <div className="p-6 flex-1">
-          <div onClick={scrollToCalendar} className="cursor-pointer bg-blue-600/90 backdrop-blur-md px-4 py-4 shadow-xl border border-white/20 flex justify-between items-center rounded-lg hover:bg-blue-500 transition-colors">
-            <span className="font-bold text-sm tracking-wide drop-shadow-md">📅 LỊCH XÉT XỬ</span> 
-            {urgentCount > 0 && <span className="bg-red-500 text-white px-2 py-1 text-xs font-bold rounded-full animate-bounce shadow-md border border-white/30">{urgentCount}</span>}
-          </div>
-        </div>
+        <div className="p-6 space-y-4">
+    <div onClick={() => setActiveTab("trial")} className={`cursor-pointer px-4 py-4 rounded-lg flex justify-between items-center transition-all ${activeTab === 'trial' ? 'bg-blue-600 scale-105' : 'bg-white/10 hover:bg-white/20'}`}>
+      <span className="font-bold text-sm">⚖️ LỊCH XÉT XỬ</span>
+    </div>
+    <div onClick={() => setActiveTab("inspection")} className={`cursor-pointer px-4 py-4 rounded-lg flex justify-between items-center transition-all ${activeTab === 'inspection' ? 'bg-teal-600 scale-105' : 'bg-white/10 hover:bg-white/20'}`}>
+      <span className="font-bold text-sm">🌍 LỊCH THẨM ĐỊNH</span>
+    </div>
+  </div>
         <div className="p-6 border-t border-white/20 mt-auto bg-black/10">
           <div className="mb-6 p-4 bg-white/10 border border-white/20 rounded-lg shadow-inner">
              <p className="text-[10px] text-amber-300 font-bold uppercase mb-1 tracking-widest drop-shadow-md">Quyền: {roleDisplayNames[userRole]}</p>
@@ -443,7 +505,9 @@ export default function PremiumCourtApp() {
           </div>
         </header>
 
-        <div className="p-4 md:p-12 flex-1">
+       <div className="p-4 md:p-12 flex-1">
+    {activeTab === "trial" ? (
+      <>
           <div className="bg-white shadow-xl rounded-xl mb-8 border border-gray-200 overflow-hidden">
             <div className="grid grid-cols-2 md:grid-cols-7 divide-x divide-y md:divide-y-0 divide-gray-200">
               <div onClick={() => handleStatCardClick('pending')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-blue-50 transition-colors">
@@ -918,9 +982,114 @@ export default function PremiumCourtApp() {
                 )}
               </div>
             </div>
-          </div>
+          </div> 
+        </>
+    ) : (
+      /* --- BẮT ĐẦU NỘI DUNG TAB THẨM ĐỊNH TẠI ĐÂY --- */
+      <div className="animate-fadeIn space-y-10">
+        <div className="bg-teal-700 p-10 rounded-xl text-white shadow-2xl flex flex-col items-center">
+          <h2 className="text-3xl font-black uppercase italic mb-2 text-center">Quản Lý Lịch Xem Xét, Thẩm Định Tại Chỗ</h2>
+          <p className="opacity-80 font-bold uppercase text-[11px] tracking-widest">Địa bàn Khu vực 9</p>
         </div>
-      </main>
+
+        {/* Form Đăng ký nhanh */}
+       <div className="bg-white p-8 rounded-xl shadow-xl border grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+  {/* Cột 1: Ngày & Giờ */}
+  <div className="flex flex-col gap-2">
+    <label className="block text-[11px] font-black uppercase text-teal-700">Thời gian đi</label>
+    <div className="flex gap-2">
+      <input type="date" value={insForm.date} onChange={e => setInsForm({...insForm, date: e.target.value})} className={inputBase}/>
+      <select value={insForm.time} onChange={e => setInsForm({...insForm, time: e.target.value})} className="border border-gray-300 rounded-md px-2 py-3 bg-white outline-none focus:border-blue-500 text-sm font-bold">
+        <option value="07:30">07:30</option>
+        <option value="08:00">08:00</option>
+        <option value="13:30">13:30</option>
+      </select>
+    </div>
+  </div>
+
+  {/* Cột 2: Địa bàn */}
+  <div>
+    <label className="block text-[11px] font-black uppercase text-teal-700">Địa bàn</label>
+    <select value={insForm.commune} onChange={e => setInsForm({...insForm, commune: e.target.value})} className={inputBase}>
+      {communes.map(c => <option key={c} value={c}>{c}</option>)}
+    </select>
+  </div>
+
+  {/* Cột 3: Thẩm phán */}
+  <div>
+    <label className="block text-[11px] font-black uppercase text-teal-700">Thẩm phán</label>
+    <input list="judges-list" value={insForm.judge} onChange={e => setInsForm({...insForm, judge: e.target.value})} className={inputBase} placeholder="Chọn TP..."/>
+  </div>
+
+  {/* Cột 4: Ghi chú (Nội dung) */}
+  <div>
+    <label className="block text-[11px] font-black uppercase text-teal-700">Ghi chú vụ việc</label>
+    <input type="text" value={insForm.content} onChange={e => setInsForm({...insForm, content: e.target.value})} className={inputBase} placeholder="Nhập nhanh nội dung..."/>
+  </div>
+
+  {/* Cột 5: Nút bấm */}
+  <button onClick={handleInsSubmit} className="bg-teal-600 hover:bg-teal-700 text-white font-black py-4 rounded-lg uppercase shadow-lg transition-all h-[50px]">
+    Lên lịch
+  </button>
+</div>
+
+        {/* Bảng hiển thị danh sách */}
+        <div className="bg-white rounded-xl shadow-2xl overflow-hidden border">
+          <table className="w-full text-left table-fixed border-collapse">
+            <thead className="bg-teal-50 text-teal-900 text-[11px] font-black uppercase">
+              <tr>
+                <th className="p-6 w-[20%]">Ngày đi</th>
+                <th className="p-6 w-[20%] text-center">Địa bàn</th>
+                <th className="p-6 w-[25%] text-center">Thẩm phán</th>
+                <th className="p-6 w-[35%]">Ghi chú vụ việc</th>
+                <th className="p-6 text-center text-xs font-black uppercase text-gray-500 w-20">Xóa</th>
+              </tr>
+            </thead>
+           <tbody className="divide-y divide-gray-100 bg-white">
+  {inspections.map(item => (
+    <tr key={item.id} className="hover:bg-teal-50/50 transition-all font-bold">
+      <td className="p-6 text-teal-900">
+  {/* Hiển thị Giờ đi với màu sắc nổi bật để dễ nhìn */}
+  <div className="flex flex-col">
+    <span className="text-blue-600 font-black flex items-center gap-1">
+      🕒 {item.time || "08:00"} 
+    </span>
+    <span className="text-gray-600 font-bold">
+      {moment(item.date).format("DD/MM/YYYY")}
+    </span>
+  </div>
+</td>
+                  <td className="p-6 text-center"><span className="bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-[11px] font-black border border-teal-200">📍 {item.commune}</span></td>
+                  <td className="p-6 text-center uppercase text-blue-800 italic">{item.judge}</td>
+                  <td className="p-6 text-gray-500 italic text-sm">{item.content || "---"}</td>
+                  <td className="p-6 text-center">
+        <button 
+          onClick={() => handleDeleteIns(item.id)} 
+          className="p-2 hover:bg-red-100 rounded-full transition-colors group"
+          title="Xóa lịch này"
+        >
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            className="h-5 w-5 text-red-400 group-hover:text-red-600" 
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      </td>
+    </tr>
+  ))}
+</tbody>
+          </table>
+          {inspections.length === 0 && <div className="p-20 text-center text-gray-300 font-bold uppercase italic">Chưa có lịch thẩm định nào</div>}
+        </div>
+      </div>
+      /* --- KẾT THÚC TAB THẨM ĐỊNH --- */
+    )}
+    </div>
+  </main>
 
       {selectedEvent && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onClick={() => setSelectedEvent(null)}>
@@ -953,7 +1122,7 @@ export default function PremiumCourtApp() {
            </div>
         </div>
       )}
-
+      
       {showPwdModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onClick={() => setShowPwdModal(false)}>
            <div className="w-full max-md bg-white rounded-[28px] shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
