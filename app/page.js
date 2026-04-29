@@ -741,30 +741,96 @@ export default function PremiumCourtApp() {
                 <div><span className="font-semibold text-red-400 inline-block w-8 text-[10px]">KSV:</span> <span className="font-bold text-red-600">{item.prosecutor || "---"}</span></div>
               </td>
 
-              {/* CỘT 4: TÁC VỤ (Khóa 15%) */}
-              {canEdit && (
-                <td className="p-6 w-[15%] align-top text-center border-l border-gray-50">
-                  <div className="flex flex-col gap-2 w-full max-w-[120px] mx-auto">
-                    {item.status === 'pending' && (
-                      <div className="grid grid-cols-2 gap-1 mb-1">
-                        <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-600 text-white py-2 font-black uppercase text-[9px] rounded shadow-sm">XONG</button>
-                        <button onClick={() => handleReschedule(item)} className="bg-gray-200 text-gray-700 py-2 font-black uppercase text-[9px] rounded border">HOÃN</button>
-                      </div>
-                    )}
-                    
-                    {item.status === 'completed' && (
-                      <button onClick={() => togglePublish(item)} className={`py-2 rounded text-[9px] font-black uppercase shadow-sm ${item.publishedAt ? 'bg-green-600 text-white' : 'bg-blue-100 text-blue-700'}`}>
-                        {item.publishedAt ? "ĐÃ PH" : "📤 PHÁT HÀNH"}
-                      </button>
-                    )}
+              {/* CỘT 4: TÁC VỤ (Khôi phục đầy đủ nút Xóa & Tạm ngừng) */}
+{canEdit && (
+  <td className="p-6 w-[15%] align-top text-center border-l border-gray-100">
+    <div className="flex flex-col gap-2 w-full max-w-[130px] mx-auto">
+      
+      {/* 1. Nhóm nút khi án đang CHỜ XỬ */}
+      {(item.status === 'pending' || !item.status) && (
+        <>
+          <div className="grid grid-cols-2 gap-1">
+            <button 
+              onClick={() => toggleStatus(item.id, 'completed', item.caseName)} 
+              className="bg-green-600 hover:bg-green-700 text-white py-2 font-black uppercase text-[9px] rounded shadow-sm transition-all"
+            >
+              XONG
+            </button>
+            <button 
+              onClick={() => handleReschedule(item)} 
+              className="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 font-black uppercase text-[9px] rounded border transition-all"
+            >
+              HOÃN
+            </button>
+          </div>
+          {/* NÚT TẠM NGỪNG PHỤC HỒI TẠI ĐÂY */}
+          <button 
+            onClick={() => toggleStatus(item.id, 'suspended', item.caseName)} 
+            className="w-full bg-purple-100 hover:bg-purple-200 text-purple-700 py-2 font-black uppercase text-[9px] rounded border border-purple-200 transition-all"
+          >
+            ⏸ TẠM NGỪNG
+          </button>
+        </>
+      )}
 
-                    <div className="grid grid-cols-2 gap-1 pt-1 border-t border-dashed border-gray-200">
-                      <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 text-blue-600 py-2 rounded text-[9px] font-black uppercase">SỬA</button>
-                      <button onClick={() => setSelectedEvent(item)} className="bg-gray-100 text-gray-500 py-2 rounded text-[9px] font-black uppercase hover:bg-gray-200">LOG</button>
-                    </div>
-                  </div>
-                </td>
-              )}
+      {/* 2. Nhóm nút khi án ĐÃ XONG */}
+      {item.status === 'completed' && (
+        <div className="grid grid-cols-1 gap-2">
+           <button 
+             onClick={() => togglePublish(item)} 
+             className={`py-2 rounded text-[9px] font-black uppercase shadow-sm transition-all ${item.publishedAt ? 'bg-green-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+           >
+             {item.publishedAt ? "✅ ĐÃ PH" : "📤 PHÁT HÀNH"}
+           </button>
+           <button 
+             onClick={() => toggleStatus(item.id, 'pending', item.caseName)} 
+             className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 py-2 font-black uppercase text-[9px] rounded border"
+           >
+             MỞ LẠI
+           </button>
+        </div>
+      )}
+
+      {/* 3. Nút khi án đang TẠM NGỪNG */}
+      {item.status === 'suspended' && (
+        <button 
+          onClick={() => handleReschedule(item)} 
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 font-black uppercase text-[9px] rounded shadow-md"
+        >
+          LÊN LỊCH LẠI
+        </button>
+      )}
+
+      {/* 4. Dòng cuối: SỬA, LOG và XÓA */}
+      <div className="pt-2 border-t border-dashed border-gray-200 mt-1 flex flex-col gap-1">
+        <div className="grid grid-cols-2 gap-1">
+          <button 
+            onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} 
+            className="bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 rounded text-[9px] font-black uppercase transition-all"
+          >
+            SỬA
+          </button>
+          <button 
+            onClick={() => setSelectedEvent(item)} 
+            className="bg-gray-50 hover:bg-gray-100 text-gray-500 py-2 rounded text-[9px] font-black uppercase transition-all"
+          >
+            LOG
+          </button>
+        </div>
+        
+        {/* NÚT XÓA PHỤC HỒI TẠI ĐÂY (Chỉ Admin/Chánh án) */}
+        {(userRole === 'admin' || userRole === 'chanhan') && (
+          <button 
+            onClick={() => handleDelete(item.id, item.caseName)} 
+            className="w-full bg-red-50 hover:bg-red-500 hover:text-white text-red-500 py-1.5 rounded text-[9px] font-black uppercase transition-all border border-red-100"
+          >
+            XÓA HỒ SƠ
+          </button>
+        )}
+      </div>
+    </div>
+  </td>
+)}
             </tr>
           );
         })}
