@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
+import 'moment/locale/vi';
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
@@ -1204,56 +1205,64 @@ if (!user && !isPublicView && !isScanningQR) {
         </div>
       )}
       {showTVMode && (
-  <div className="fixed inset-0 bg-slate-900 z-[1000] flex flex-col p-10 text-white overflow-hidden">
-    <div className="flex justify-between items-center border-b-4 border-red-600 pb-6 mb-10">
-      <div className="flex items-center gap-6">
-        <img src="/lgtoaan1.png" className="w-24 h-24" />
+  <div className="fixed inset-0 bg-slate-950 z-[1000] flex flex-col text-white overflow-hidden font-sans">
+    {/* Header: Mảnh mai, sang trọng */}
+    <div className="p-4 md:p-10 border-b border-white/10 flex items-center justify-between">
+      <div className="flex items-center gap-4 md:gap-6">
+        <img src="/lgtoaan1.png" className="w-12 h-12 md:w-24 md:h-24 object-contain" />
         <div>
-          <h1 className="text-4xl font-black uppercase tracking-tighter">LỊCH XÉT XỬ TRONG NGÀY</h1>
-          <p className="text-2xl text-blue-400 font-bold uppercase">{moment().format("dddd, [Ngày] DD [Tháng] MM [Năm] YYYY")}</p>
+          <h1 className="text-lg md:text-4xl font-extralight uppercase tracking-[0.2em] leading-none mb-1 md:mb-3">Lịch Xét Xử</h1>
+          <p className="text-[10px] md:text-2xl text-blue-400 font-light uppercase tracking-widest">
+            {moment().locale('vi').format("dddd, [Ngày] DD [Tháng] MM [Năm] YYYY")}
+          </p>
         </div>
       </div>
-      <button onClick={() => setShowTVMode(false)} className="bg-red-600 px-8 py-4 rounded-xl font-black text-xl hover:bg-red-700">THOÁT X</button>
+      <button onClick={() => setShowTVMode(false)} className="w-10 h-10 md:w-auto md:px-8 md:py-4 bg-red-600/20 md:bg-red-600 rounded-full md:rounded-xl text-red-500 md:text-white font-black hover:bg-red-700 transition-all flex items-center justify-center">
+        <span className="md:hidden text-xl">✕</span>
+        <span className="hidden md:inline">THOÁT X</span>
+      </button>
     </div>
 
-    <div className="flex-1 overflow-x-auto bg-gray-50/50 rounded-b-xl custom-scrollbar">
-  <table className="w-full table-fixed border-collapse">
-       <thead className="bg-gray-100 text-[11px] font-black uppercase text-gray-400 border-b">
-      <tr>
-    <th className="p-6 w-[15%] text-center">Lịch & Cập nhật</th>
-        <th className="p-6 w-[45%] text-left">Nội dung</th>
-        <th className="p-6 w-[25%] text-left">Hội đồng xét xử</th>
-        <th className="p-6 w-[15%] text-center">Tác vụ</th>
-  </tr>
-</thead>
-        <tbody className="divide-y divide-gray-200 block w-full">
-          {schedule
-            .filter(i => moment(i.datetime).isSame(moment(), 'day')) // Chỉ hiện lịch hôm nay
-            .sort((a,b) => moment(a.datetime).diff(moment(b.datetime)))
-            .map(item => (
-            <tr key={item.id} className="flex w-full hover:bg-blue-50/30 transition-all">
-              <td className="p-6 w-[15%] text-center align-top flex-shrink-0">{moment(item.datetime).format("HH:mm")}</td>
-              <td className="p-8 uppercase leading-tight">
-                {item.caseName}
-                <div className="text-xl text-gray-500 mt-2 font-bold italic">TP: {item.judge} - TK: {item.clerk}</div>
-              </td>
-              <td className="p-8 text-center"><span className="bg-white text-slate-900 px-6 py-2 rounded-lg">{item.room}</span></td>
-              <td className="p-8 text-center uppercase">
-                {item.status === 'completed' ? <span className="text-green-500">Đã xong</span> : 
-                 item.status === 'suspended' ? <span className="text-purple-500">Tạm ngừng</span> : 
-                 <span className="text-amber-500 animate-pulse">Đang xử...</span>}
-              </td>
-            </tr>
-          ))}
-          {schedule.filter(i => moment(i.datetime).isSame(moment(), 'day')).length === 0 && (
-            <tr>
-              <td colSpan="4" className="p-20 text-center text-5xl text-gray-600 font-black uppercase opacity-20">Hôm nay không có lịch xét xử</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+    {/* Danh sách: Tự động chuyển từ Card sang Table tùy màn hình */}
+    <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-4 custom-scrollbar">
+      {schedule
+        .filter(i => moment(i.datetime).isSame(moment(), 'day'))
+        .sort((a,b) => moment(a.datetime).diff(moment(b.datetime)))
+        .map(item => (
+          /* Dạng Card cực kỳ Mảnh nhưng Mạnh trên điện thoại */
+          <div key={item.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 md:p-8 space-y-3 md:grid md:grid-cols-4 md:gap-6 md:items-center">
+            <div className="flex justify-between items-center md:block md:text-center">
+              <span className="text-2xl md:text-5xl font-bold text-blue-500">{moment(item.datetime).format("HH:mm")}</span>
+              <span className={`md:mt-4 block px-3 py-1 rounded-full text-[10px] md:text-sm font-bold uppercase ${item.status === 'completed' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400 animate-pulse'}`}>
+                {item.status === 'completed' ? 'Đã xong' : 'Đang xử'}
+              </span>
+            </div>
+            
+            <div className="md:col-span-2">
+              <h3 className="text-sm md:text-3xl font-bold uppercase leading-tight text-gray-100">{item.caseName}</h3>
+              <div className="flex gap-4 mt-2 text-[11px] md:text-xl text-gray-400 font-light italic">
+                <span>👨‍⚖️ TP: {item.judge}</span>
+                <span className="hidden md:inline">|</span>
+                <span>📍 Phòng: {item.room}</span>
+              </div>
+            </div>
+            
+            <div className="hidden md:flex flex-col items-end gap-2">
+               <span className="bg-white/10 px-4 py-2 rounded-lg text-lg uppercase tracking-widest">{item.clerk}</span>
+            </div>
+          </div>
+        ))}
+
+      {schedule.filter(i => moment(i.datetime).isSame(moment(), 'day')).length === 0 && (
+        <div className="h-full flex items-center justify-center opacity-20">
+          <p className="text-2xl md:text-6xl font-black uppercase tracking-[0.5em] text-center">Hôm nay không có lịch xét xử</p>
+        </div>
+      )}
     </div>
-    <div className="mt-10 text-center text-xl text-gray-500 animate-pulse">Hệ thống tự động cập nhật dữ liệu sau mỗi 60 giây...</div>
+
+    <div className="p-4 md:p-8 text-center border-t border-white/5">
+      <p className="text-[9px] md:text-xl text-gray-600 font-light uppercase tracking-widest animate-pulse">Hệ thống cập nhật dữ liệu tự động...</p>
+    </div>
   </div>
 )}
       {toast.show && (<div className={`fixed bottom-6 right-6 z-[200] px-8 py-4 shadow-2xl font-black text-white rounded-xl ${toast.type === 'error' ? 'bg-red-600' : 'bg-blue-950'}`}>{toast.message}</div>)}
