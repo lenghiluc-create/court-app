@@ -83,27 +83,6 @@ export default function PremiumCourtApp() {
   if (!insForm.date || !insForm.time || !insForm.judge) {
     return showToast("Vui lòng nhập đầy đủ Ngày đi, Giờ đi và Thẩm phán!", "error");
   }
-  const handleDeleteIns = async (id) => {
-  if (window.confirm("Ní có chắc muốn loại bỏ lịch thẩm định này không?")) {
-    try {
-      // 1. Tạo tham chiếu đến đúng hồ sơ trong bảng inspections
-      const docRef = doc(db, "inspections", id);
-      
-      // 2. Thực hiện lệnh xóa trên Server Firebase
-      await deleteDoc(docRef);
-      
-      // 3. Thông báo thành công
-      showToast("🗑 Đã xóa hồ sơ thành công!", "success");
-      
-      // 4. Cập nhật lại giao diện ngay lập tức (Xóa dòng đó khỏi mảng hiện tại)
-      setInspections(prev => prev.filter(item => item.id !== id));
-      
-    } catch (e) {
-      console.error("Lỗi xóa:", e);
-      showToast("Lỗi phân quyền hoặc kết nối!", "error");
-    }
-  }
-};
   try {
     // Lưu vào collection "inspections"
     await addDoc(collection(db, "inspections"), { 
@@ -275,6 +254,24 @@ export default function PremiumCourtApp() {
       loadData();
     }
   };
+  const handleDeleteIns = async (id) => {
+  if (window.confirm("Ní có chắc muốn xóa lịch thẩm định này không?")) {
+    try {
+      // 1. Xóa trên database Firebase
+      const { doc, deleteDoc } = await import("firebase/firestore");
+      const { db } = await import("./firebase"); // Kiểm tra đúng đường dẫn file firebase của ní
+      
+      await deleteDoc(doc(db, "inspections", id));
+      
+      // 2. Thông báo thành công
+      setToast({ show: true, message: "Đã xóa lịch thẩm định!", type: "success" });
+      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+    } catch (error) {
+      console.error("Lỗi xóa:", error);
+      setToast({ show: true, message: "Lỗi: " + error.message, type: "error" });
+    }
+  }
+};
 
   const onEventDrop = async ({ event, start, end }) => {
     if (userRole === 'thamphan' || userRole === 'viewer') return showToast("Không có quyền dời lịch!", "error");
