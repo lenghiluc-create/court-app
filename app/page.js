@@ -80,19 +80,24 @@ export default function PremiumCourtApp() {
   if (!insForm.date || !insForm.time || !insForm.judge) {
     return showToast("Vui lòng nhập đầy đủ Ngày đi, Giờ đi và Thẩm phán!", "error");
   }
-   const handleDeleteIns = async (id) => {
-  // Hiển thị xác nhận trước khi xóa
-  if (window.confirm("Bạn có chắc chắn muốn xóa lịch thẩm định này không?")) {
+  const handleDeleteIns = async (id) => {
+  if (window.confirm("Ní có chắc muốn loại bỏ lịch thẩm định này không?")) {
     try {
-      // Nhập đúng tên collection là "inspections"
-      await deleteDoc(doc(db, "inspections", id));
-      showToast("✅ Đã xóa lịch thẩm định!", "success");
+      // 1. Tạo tham chiếu đến đúng hồ sơ trong bảng inspections
+      const docRef = doc(db, "inspections", id);
       
-      // Sau khi xóa xong, gọi lại hàm load dữ liệu để cập nhật bảng
-      loadInspections(); 
+      // 2. Thực hiện lệnh xóa trên Server Firebase
+      await deleteDoc(docRef);
+      
+      // 3. Thông báo thành công
+      showToast("🗑 Đã xóa hồ sơ thành công!", "success");
+      
+      // 4. Cập nhật lại giao diện ngay lập tức (Xóa dòng đó khỏi mảng hiện tại)
+      setInspections(prev => prev.filter(item => item.id !== id));
+      
     } catch (e) {
-      console.error("Lỗi khi xóa:", e);
-      showToast("Không thể xóa dữ liệu. Vui lòng kiểm tra lại!", "error");
+      console.error("Lỗi xóa:", e);
+      showToast("Lỗi phân quyền hoặc kết nối!", "error");
     }
   }
 };
@@ -450,6 +455,30 @@ export default function PremiumCourtApp() {
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@100;300;400;700&display=swap');
+
+  body {
+    font-family: 'Be Vietnam Pro', sans-serif !important;
+  }
+
+  .font-thin-strong {
+    font-weight: 100; /* Rất mảnh */
+    text-transform: uppercase;
+    letter-spacing: 0.2em; /* Giãn cách rộng tạo sự mạnh mẽ */
+    color: #1e293b;
+  }
+
+  .btn-delete-thin {
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+    color: #94a3b8;
+  }
+
+  .btn-delete-thin:hover {
+    color: #ef4444;
+    background: #fef2f2;
+    border-radius: 99px;
+  }
       `}} />
 
       <aside 
