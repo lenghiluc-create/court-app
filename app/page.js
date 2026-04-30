@@ -135,6 +135,13 @@ export default function PremiumCourtApp() {
   };
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'tv') {
+      setIsPublicView(true);
+      setShowTVMode(true);
+      setActiveTab("trial"); // Ép đương sự luôn ở Tab Xét xử
+    }
     setIsMounted(true);
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
@@ -151,14 +158,6 @@ export default function PremiumCourtApp() {
       setLoading(false);
     });
     return () => unsubscribe();
-  
-    if (typeof window !== 'undefined') {
-    const params = new URLSearchParams(window.location.search);
-    // Nếu link có ?mode=tv hoặc truy cập qua đường dẫn /public-view
-    if (params.get('mode') === 'tv') {
-      setIsPublicView(true); // Mở cửa cho đương sự
-      setShowTVMode(true);   // Bật ngay giao diện Tivi
-    }
   }
 }, []);
 
@@ -431,7 +430,9 @@ export default function PremiumCourtApp() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-blue-900">ĐANG TẢI...</div>;
 
-  if (!user && !isPublicView) {
+  const isScanningQR = typeof window !== 'undefined' && window.location.search.includes('mode=tv');
+
+if (!user && !isPublicView && !isScanningQR) {
     return (
       <div className="min-h-screen flex items-center justify-center relative bg-cover bg-center font-sans" style={{ backgroundImage: "url('/toaan.jpg')" }}>
         <div className="absolute inset-0 bg-black/30"></div> 
