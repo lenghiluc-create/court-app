@@ -155,12 +155,12 @@ export default function PremiumCourtApp() {
     if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
     // Nếu link có ?mode=tv hoặc truy cập qua đường dẫn /public-view
-    if (params.get('mode') === 'tv' || window.location.pathname.includes('public-view')) {
-      setIsPublicView(true);
-      setShowTVMode(true); // Kích hoạt giao diện Tivi của ní
+    if (params.get('mode') === 'tv') {
+      setIsPublicView(true); // Mở cửa cho đương sự
+      setShowTVMode(true);   // Bật ngay giao diện Tivi
     }
   }
-  }, []);
+}, []);
 
   const loadData = async () => {
     try {
@@ -431,7 +431,7 @@ export default function PremiumCourtApp() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-blue-900">ĐANG TẢI...</div>;
 
-  if (!user) {
+  if (!user && !isPublicView) {
     return (
       <div className="min-h-screen flex items-center justify-center relative bg-cover bg-center font-sans" style={{ backgroundImage: "url('/toaan.jpg')" }}>
         <div className="absolute inset-0 bg-black/30"></div> 
