@@ -510,13 +510,24 @@ export default function PremiumCourtApp() {
           <h2 className="font-extrabold text-2xl uppercase tracking-widest drop-shadow-md">KV9-Cần Thơ</h2>
         </div>
         <div className="p-6 space-y-4">
-    <div onClick={() => setActiveTab("trial")} className={`cursor-pointer px-4 py-4 rounded-lg flex justify-between items-center transition-all ${activeTab === 'trial' ? 'bg-blue-600 scale-105' : 'bg-white/10 hover:bg-white/20'}`}>
-      <span className="font-bold text-sm">⚖️ LỊCH XÉT XỬ</span>
-    </div>
-    <div onClick={() => setActiveTab("inspection")} className={`cursor-pointer px-4 py-4 rounded-lg flex justify-between items-center transition-all ${activeTab === 'inspection' ? 'bg-teal-600 scale-105' : 'bg-white/10 hover:bg-white/20'}`}>
+  {/* ⚖️ LỊCH XÉT XỬ - Luôn luôn hiện cho cả cán bộ và đương sự */}
+  <div 
+    onClick={() => setActiveTab("trial")} 
+    className={`cursor-pointer px-4 py-4 rounded-lg flex justify-between items-center transition-all ${activeTab === 'trial' ? 'bg-blue-600 scale-105' : 'bg-white/10 hover:bg-white/20'}`}
+  >
+    <span className="font-bold text-sm">⚖️ LỊCH XÉT XỬ</span>
+  </div>
+
+  {/* 🌍 LỊCH THẨM ĐỊNH - Chỉ hiện khi KHÔNG PHẢI là đương sự quét mã (isPublicView = false) */}
+  {!isPublicView && (
+    <div 
+      onClick={() => setActiveTab("inspection")} 
+      className={`cursor-pointer px-4 py-4 rounded-lg flex justify-between items-center transition-all ${activeTab === 'inspection' ? 'bg-teal-600 scale-105' : 'bg-white/10 hover:bg-white/20'}`}
+    >
       <span className="font-bold text-sm">🌍 LỊCH THẨM ĐỊNH</span>
     </div>
-  </div>
+  )}
+</div>
   <div className="mt-auto p-4 bg-white/5 rounded-2xl border border-white/10 flex flex-col items-center gap-3">
   <p className="text-[10px] font-light uppercase tracking-[0.2em] text-gray-400">Niêm yết công khai</p>
   

@@ -1,1 +1,13 @@
 @import "tailwindcss";
+/* Phông chữ mảnh nhưng sắc nét cho đương sự */
+.public-view-table {
+  font-family: 'Inter', sans-serif;
+  font-weight: 300; /* Mảnh mai */
+  letter-spacing: 0.05em;
+}
+
+/* Nổi bật giờ giấc để đương sự không bị lỡ giờ xử */
+.time-highlight {
+  font-weight: 700;
+  color: #2563eb; /* Màu xanh mạnh mẽ */
+}
