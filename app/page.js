@@ -6,6 +6,7 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { QRCodeSVG } from 'qrcode.react';
 
 // Firebase Imports
 import { db, auth } from './firebase'; 
@@ -33,6 +34,7 @@ export default function PremiumCourtApp() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [viewMode, setViewMode] = useState("table"); 
   const [showTVMode, setShowTVMode] = useState(false);
+  const [isPublicView, setIsPublicView] = useState(false);
 
   // Modal States
   const [showPwdModal, setShowPwdModal] = useState(false);
@@ -149,6 +151,15 @@ export default function PremiumCourtApp() {
       setLoading(false);
     });
     return () => unsubscribe();
+  
+    if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    // Nếu link có ?mode=tv hoặc truy cập qua đường dẫn /public-view
+    if (params.get('mode') === 'tv' || window.location.pathname.includes('public-view')) {
+      setIsPublicView(true);
+      setShowTVMode(true); // Kích hoạt giao diện Tivi của ní
+    }
+  }
   }, []);
 
   const loadData = async () => {
@@ -506,6 +517,22 @@ export default function PremiumCourtApp() {
       <span className="font-bold text-sm">🌍 LỊCH THẨM ĐỊNH</span>
     </div>
   </div>
+  <div className="mt-auto p-4 bg-white/5 rounded-2xl border border-white/10 flex flex-col items-center gap-3">
+  <p className="text-[10px] font-light uppercase tracking-[0.2em] text-gray-400">Niêm yết công khai</p>
+  
+  <div className="p-2 bg-white rounded-lg">
+    <QRCodeSVG 
+      // Link này sẽ tự động lấy địa chỉ web của ní và thêm hậu tố để mở chế độ tivi
+      value={`${typeof window !== 'undefined' ? window.location.origin : ''}?mode=tv`}
+      size={120}
+      level={"H"}
+    />
+  </div>
+  
+  <p className="text-[9px] text-center text-blue-400 italic">
+    Đương sự quét mã này <br/> để xem lịch trên điện thoại
+  </p>
+</div>
         <div className="p-6 border-t border-white/20 mt-auto bg-black/10">
           <div className="mb-6 p-4 bg-white/10 border border-white/20 rounded-lg shadow-inner">
              <p className="text-[10px] text-amber-300 font-bold uppercase mb-1 tracking-widest drop-shadow-md">Quyền: {roleDisplayNames[userRole]}</p>
