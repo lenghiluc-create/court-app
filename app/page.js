@@ -708,6 +708,7 @@ if (!user && !isPublicView && !isScanningQR) {
           newDuration = 30;
         } else if (newRoom === "Trực tuyến") {
           newDuration = 240; // 1 buổi
+          newDuration = form.caseType === 'Hình sự' ? 120 : 60;
         }
         
         setForm({...form, room: newRoom, duration: newDuration});
@@ -729,9 +730,12 @@ if (!user && !isPublicView && !isScanningQR) {
     <select 
       value={form.caseType} 
       onChange={e => {
-        const newType = e.target.value;
-        let newDuration = newType === 'Hình sự' ? 120 : 30;
-        
+       const newType = e.target.value;
+    let newDuration = 60; // Mặc định các loại án khác là 1 giờ (60p)
+    
+    if (newType === 'Hình sự') {
+      newDuration = 120; // Riêng Hình sự là 2 giờ
+    }
         // Ưu tiên giữ mặc định theo Phòng nếu là phòng đặc biệt
         if (form.room === "Dự phòng") newDuration = 30;
         if (form.room === "Trực tuyến") newDuration = 240;
@@ -1325,11 +1329,22 @@ if (!user && !isPublicView && !isScanningQR) {
   
   {/* --- DÒNG MỚI THÊM: HIỆN NGUYÊN ĐƠN - BỊ ĐƠN --- */}
   <div className="text-[10px] md:text-lg text-blue-300 font-medium mb-3">
-    <span className="opacity-70">Đương sự:</span> {item.plaintiff || "---"} <span className="mx-1">v/s</span> {item.defendant || "---"}
+    {item.caseType === "Hình sự" ? (
+      <>
+        <span className="opacity-70">Bị cáo:</span> {item.defendant || "---"}
+        {/* Đối với án hình sự, thường chỉ hiện Bị cáo cho gọn trên Tivi */}
+      </>
+    ) : (
+      <>
+        <span className="opacity-70">NĐ:</span> {item.plaintiff || "---"} 
+        <span className="mx-2 opacity-50">|</span> 
+        <span className="opacity-70">BĐ:</span> {item.defendant || "---"}
+      </>
+    )}
   </div>
-  {/* ---------------------------------------------- */}
 
-  <div className="flex gap-4 mt-2 text-[11px] md:text-xl text-gray-400 font-light italic">
+  {/* Cụm thông tin Thẩm phán - Thư ký - Phòng xử (Giữ nguyên như cũ) */}
+  <div className="flex flex-wrap gap-x-6 gap-y-2 mt-2 text-[11px] md:text-xl text-gray-400 font-light italic">
     <span>👨‍⚖️ TP: {item.judge}</span>
     <span>📝 TK: {item.clerk}</span>
     <span className="hidden md:inline">|</span>
