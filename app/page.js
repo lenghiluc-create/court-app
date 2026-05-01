@@ -1323,6 +1323,7 @@ if (!user && !isPublicView && !isScanningQR) {
 
   <div className="flex gap-4 mt-2 text-[11px] md:text-xl text-gray-400 font-light italic">
     <span>👨‍⚖️ TP: {item.judge}</span>
+    <span>📝 TK: {item.clerk}</span>
     <span className="hidden md:inline">|</span>
     <span>📍 Phòng: {item.room}</span>
   </div>
