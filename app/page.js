@@ -565,14 +565,22 @@ if (!user && !isPublicView && !isScanningQR) {
   <div className="mt-auto p-4 bg-white/5 rounded-2xl border border-white/10 flex flex-col items-center gap-3">
   <p className="text-[10px] font-light uppercase tracking-[0.2em] text-gray-400">Niêm yết công khai</p>
   
-  <div className="p-2 bg-white rounded-lg">
-    <QRCodeSVG 
-      // Link này sẽ tự động lấy địa chỉ web của ní và thêm hậu tố để mở chế độ tivi
-      value={`${typeof window !== 'undefined' ? window.location.origin : ''}?mode=tv`}
-      size={120}
-      level={"H"}
-    />
-  </div>
+ <div className="p-2 bg-white rounded-lg shadow-inner">
+  <QRCodeSVG 
+    value={`${typeof window !== 'undefined' ? window.location.origin : ''}?mode=tv`}
+    size={140} 
+    level={"H"} 
+    includeMargin={false}
+    imageSettings={{
+      src: "/lgtoaan1.png", 
+      x: undefined,
+      y: undefined,
+      height: 35, 
+      width: 35, 
+      excavate: true, 
+    }}
+  />
+</div>
   
   <p className="text-[9px] text-center text-blue-400 italic">
     Đương sự quét mã này <br/> để xem lịch trên điện thoại
