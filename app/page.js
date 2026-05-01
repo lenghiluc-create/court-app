@@ -12,7 +12,7 @@ import { QRCodeSVG } from 'qrcode.react';
 // Firebase Imports
 import { db, auth } from './firebase'; 
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence, browserSessionPersistence, updatePassword } from 'firebase/auth';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, where, onSnapshot } from 'firebase/firestore';
 
 const localizer = typeof window !== 'undefined' ? momentLocalizer(moment) : null;
 const DnDCalendar = withDragAndDrop(Calendar);
@@ -70,14 +70,6 @@ export default function PremiumCourtApp() {
 });
   const communes = ["An Thạnh", "Cù Lao Dung", "Trường Khánh", "Đại Ngãi", "Tân Thạnh","Long Phú", "Thạnh Thới An", "Liêu Tú", "Lịch Hội Thượng", "Trần Đề", "Tài Văn"];
 
-  const loadInspections = async () => {
-    try {
-      const q = query(collection(db, "inspections"), orderBy("date", "desc"));
-      const snap = await getDocs(q);
-      setInspections(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (e) { console.error(e); }
-  };
-
   const handleInsSubmit = async () => {
   // Kiểm tra điều kiện bắt buộc trước khi lưu
   if (!insForm.date || !insForm.time || !insForm.judge) {
@@ -95,7 +87,6 @@ export default function PremiumCourtApp() {
     
     // Reset form sau khi lưu thành công
     setInsForm({ date: "", time: "08:00", judge: "", clerk: "", commune: "An Thạnh", content: "" });
-    loadInspections();
   } catch (e) {
     console.error("Lỗi lưu:", e);
     showToast("Lỗi khi lưu dữ liệu vào hệ thống!", "error"); // Khắc phục thông báo lỗi đỏ trong ảnh
@@ -123,33 +114,38 @@ export default function PremiumCourtApp() {
       setActiveTab("trial"); // Ép đương sự luôn ở Tab Xét xử
     }
     setIsMounted(true);
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-        const email = currentUser.email ? currentUser.email.toLowerCase() : "";
-        if (email === 'ltcnhung@thamphan.vn') setUserRole('chanhan');
-        else if (email.includes('admin') || email === 'truongphong@gmail.com') setUserRole('admin');
-        else if (email.includes('thuky')) setUserRole('thuky');
-        else if (email.includes('thamphan')) setUserRole('thamphan');
-        else setUserRole('viewer');
-        loadData();
-        loadInspections();
-      } else setUser(null);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }
-}, []);
-
-  const loadData = async () => {
-    try {
+      // 3. TỰ ĐỘNG CẬP NHẬT LỊCH XÉT XỬ (Thay thế loadData)
       const threeMonthsAgo = moment().subtract(3, 'months').toISOString();
-      const q = query(collection(db, "schedule"), where("datetime", ">=", threeMonthsAgo), orderBy("datetime", "desc"));
-      const querySnapshot = await getDocs(q);
-      setSchedule(querySnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (error) { showToast("Lỗi tải dữ liệu", "error"); }
-  };
+      const qSchedule = query(collection(db, "schedule"), where("datetime", ">=", threeMonthsAgo), orderBy("datetime", "desc"));
+      const unsubscribeSchedule = onSnapshot(qSchedule, (snapshot) => {
+        setSchedule(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
 
+      // 4. KIỂM TRA ĐĂNG NHẬP & PHÂN QUYỀN (Đoạn ní vừa hỏi)
+      const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+        if (currentUser) {
+          setUser(currentUser);
+          const email = currentUser.email ? currentUser.email.toLowerCase() : "";
+          
+          // Logic phân quyền của ní
+          if (email === 'ltcnhung@thamphan.vn') setUserRole('chanhan');
+          else if (email.includes('admin') || email === 'truongphong@gmail.com') setUserRole('admin');
+          else if (email.includes('thuky')) setUserRole('thuky');
+          else if (email.includes('thamphan')) setUserRole('thamphan');
+          else setUserRole('viewer');
+      } else {
+    setUser(null);
+  }
+  setLoading(false);
+});
+    return () => {
+        unsubscribeIns();
+        unsubscribeSchedule();
+        unsubscribeAuth();
+  };
+    }
+  }, []);
+ 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -216,7 +212,7 @@ export default function PremiumCourtApp() {
         await addDoc(collection(db, "schedule"), { ...logData, createdAt: moment().toISOString(), createdBy: user.email });
         showToast("✅ Lưu lịch mới thành công!", "success");
       }
-      setForm(initialForm); setEditingId(null); loadData();
+      setForm(initialForm); setEditingId(null);
     } catch (err) { showToast("Lỗi khi lưu dữ liệu", "error"); }
   };
 
@@ -231,7 +227,6 @@ export default function PremiumCourtApp() {
       if (newStatus === 'suspended') msg = "⏸ Phiên tòa đã tạm ngừng (Chờ báo sau)!";
       
       showToast(msg, "success");
-      loadData();
     } catch (err) { showToast("Lỗi cập nhật trạng thái", "error"); }
   };
 
@@ -244,14 +239,12 @@ export default function PremiumCourtApp() {
         updatedAt: moment().toISOString() 
       });
       showToast(isPublishing ? "📤 Đã ghi nhận phát hành bản án!" : "Hủy ghi nhận phát hành", "success");
-      loadData();
     } catch (err) { showToast("Lỗi cập nhật phát hành", "error"); }
   };
 
   const handleDelete = async (id, caseName) => {
     if(confirm("Xóa hồ sơ này?")) {
       await deleteDoc(doc(db,"schedule", id));
-      loadData();
     }
   };
   const handleDeleteIns = async (id) => {
@@ -286,7 +279,6 @@ export default function PremiumCourtApp() {
         updatedBy: user.email 
       });
       showToast("🔄 Đã dời lịch thành công!", "success");
-      loadData();
     } catch (err) { showToast("Lỗi dời lịch", "error"); }
   };
 
@@ -1262,7 +1254,11 @@ if (!user && !isPublicView && !isScanningQR) {
     </div>
   </div>
 )}
-      {toast.show && (<div className={`fixed bottom-6 right-6 z-[200] px-8 py-4 shadow-2xl font-black text-white rounded-xl ${toast.type === 'error' ? 'bg-red-600' : 'bg-blue-950'}`}>{toast.message}</div>)}
+      {toast.show && (
+        <div className={`fixed bottom-6 right-6 z-[200] px-8 py-4 shadow-2xl font-black text-white rounded-xl ${toast.type === 'error' ? 'bg-red-600' : 'bg-blue-950'}`}>
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 }
