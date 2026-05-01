@@ -27,6 +27,7 @@ export default function PremiumCourtApp() {
   // States
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPass, setLoginPass] = useState("");
+  const [loginError, setLoginError] = useState("");
   const [schedule, setSchedule] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -149,12 +150,15 @@ export default function PremiumCourtApp() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setLoginError("");
     try {
       await setPersistence(auth, browserSessionPersistence);
       await signInWithEmailAndPassword(auth, loginEmail, loginPass);
       showToast("Đăng nhập thành công!", "success");
-    } catch (err) { showToast("Sai tài khoản hoặc mật khẩu", "error"); } 
-    finally { setLoading(false); }
+    } catch (err) { setLoginError("❌ Sai tài khoản hoặc mật khẩu. Vui lòng kiểm tra lại!"); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const handleLogout = async () => {
@@ -418,7 +422,45 @@ export default function PremiumCourtApp() {
     }));
   }, [schedule]);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-blue-900">ĐANG TẢI...</div>;
+  if (loading) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-blue-950 font-sans">
+      {/* Logo tòa án xoay nhẹ nhàng */}
+      <div className="relative mb-8">
+        <div className="absolute inset-0 bg-blue-500 rounded-full blur-2xl opacity-20 animate-pulse"></div>
+        <img 
+          src="/lgtoaan1.png" 
+          alt="Loading..." 
+          className="w-24 h-24 relative z-10 animate-bounce" 
+          style={{ animationDuration: '2s' }}
+        />
+      </div>
+
+      {/* Hiệu ứng thanh chạy hoặc chữ nghệ thuật */}
+      <div className="text-center">
+        <h2 className="text-white font-black text-xl uppercase tracking-[0.3em] mb-2 animate-pulse">
+          Hệ Thống Đang Khởi Chạy
+        </h2>
+        <div className="w-48 h-1 bg-white/10 rounded-full mx-auto overflow-hidden">
+          <div className="h-full bg-blue-500 animate-loading-bar"></div>
+        </div>
+        <p className="text-blue-400 text-[10px] font-bold mt-4 uppercase tracking-widest opacity-60">
+          Vui lòng đợi trong giây lát...
+        </p>
+      </div>
+
+      {/* CSS cho thanh loading (ní có thể dán vào thẻ <style> ở trên) */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes loading-bar {
+          0% { width: 0%; transform: translateX(-100%); }
+          50% { width: 100%; transform: translateX(0); }
+          100% { width: 0%; transform: translateX(100%); }
+        }
+        .animate-loading-bar {
+          animation: loading-bar 2s infinite ease-in-out;
+        }
+      `}} />
+    </div>
+  );
 
   const isScanningQR = typeof window !== 'undefined' && window.location.search.includes('mode=tv');
 
@@ -433,7 +475,8 @@ if (!user && !isPublicView && !isScanningQR) {
           <form onSubmit={handleLogin} className="space-y-5 flex flex-col items-center">
             <input type="email" placeholder="Email..." value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="w-[85%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center transition-all focus:border-white focus:bg-white/20" style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.4)', borderRadius: '6px' }} required />
             <input type="password" placeholder="Mật khẩu..." value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-[85%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center transition-all focus:border-white focus:bg-white/20" style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.4)', borderRadius: '6px' }} required />
-            <button type="submit" className="py-3 mt-4 font-black uppercase text-lg transition-all hover:bg-blue-700 active:scale-95" style={{ width: '60%', backgroundColor: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '6px', boxShadow: '0 4px 15px rgba(37, 99, 235, 0.5)' }}>ĐĂNG NHẬP</button>
+            {loginError && (<p className="text-red-400 text-sm font-bold mt-2 bg-red-900/20 py-2 px-4 rounded border border-red-500/30 animate-shake">{loginError}</p>)}
+            <button type="submit" className="py-3 mt-4 font-black uppercase text-lg transition-all hover:bg-blue-700 active:scale-95" style={{ width: '60%', backgroundColor: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '6px', boxShadow: '0 4px 15px rgba(37, 99, 235, 0.5)' }}>{loading ? "ĐANG KIỂM TRA..." : "ĐĂNG NHẬP"}</button>
           </form>
         </div>
       </div>
@@ -751,7 +794,7 @@ if (!user && !isPublicView && !isScanningQR) {
             <div className="bg-white border border-gray-200 shadow-xl rounded-xl flex flex-col h-auto min-h-[850px] w-full" ref={tableSectionRef}>
               <div className="p-6 md:p-8 border-b border-gray-200 flex flex-col gap-6 bg-white z-10 rounded-t-xl">
                 <div className="flex justify-between items-center w-full">
-                   <h3 className="font-black uppercase text-xl md:text-2xl text-blue-950 flex items-center gap-4"><span className="w-1.5 h-8 bg-blue-950 rounded-full"></span>Sổ thụ lý</h3>
+                   <h3 className="font-black uppercase text-xl md:text-2xl text-blue-950 flex items-center gap-4"><span className="w-1.5 h-8 bg-blue-950 rounded-full"></span>Sổ tổng hợp lịch </h3>
                    <div className="flex bg-gray-100 p-1.5 rounded-lg border border-gray-200 shadow-inner">
                      <button onClick={() => setViewMode('table')} className={`px-4 py-2 text-xs font-black uppercase rounded-md transition-all ${viewMode === 'table' ? 'bg-white text-blue-700 shadow-md' : 'text-gray-500 hover:text-gray-800'}`}>Danh sách</button>
                      <button onClick={() => setViewMode('kanban')} className={`px-4 py-2 text-xs font-black uppercase rounded-md transition-all ${viewMode === 'kanban' ? 'bg-white text-blue-700 shadow-md' : 'text-gray-500 hover:text-gray-800'}`}>Bảng Kéo Thả</button>
@@ -1051,42 +1094,46 @@ if (!user && !isPublicView && !isScanningQR) {
         </div>
 
         {/* Form Đăng ký nhanh */}
-       <div className="bg-white p-8 rounded-xl shadow-xl border grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-  {/* Cột 1: Ngày & Giờ */}
-  <div className="flex flex-col gap-2">
+      <div className="bg-white p-8 rounded-xl shadow-xl border grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
+  
+  {/* Cột Ngày & Giờ (Chiếm 3/12 độ rộng) */}
+  <div className="md:col-span-3 flex flex-col gap-2">
     <label className="block text-[11px] font-black uppercase text-teal-700">Thời gian đi</label>
     <div className="flex gap-2">
-      <input type="date" value={insForm.date} onChange={e => setInsForm({...insForm, date: e.target.value})} className={inputBase}/>
-      <select value={insForm.time} onChange={e => setInsForm({...insForm, time: e.target.value})} className="border border-gray-300 rounded-md px-2 py-3 bg-white outline-none focus:border-blue-500 text-sm font-bold">
+      <input type="date" value={insForm.date} onChange={e => setInsForm({...insForm, date: e.target.value})} className={inputBase} />
+      <select 
+  value={insForm.time} 
+  onChange={e => setInsForm({...insForm, time: e.target.value})} 
+  className="border border-gray-300 rounded-md px-2 py-3 bg-white outline-none focus:border-blue-500 text-sm font-bold w-full">
         <option value="07:30">07:30</option>
-        <option value="08:00">08:00</option>
+        <option value="09:30">09:30</option>
         <option value="13:30">13:30</option>
-      </select>
+        <option value="15:00">15:00</option>
+        </select>
     </div>
   </div>
 
-  {/* Cột 2: Địa bàn */}
-  <div>
+  <div className="md:col-span-2">
     <label className="block text-[11px] font-black uppercase text-teal-700">Địa bàn</label>
     <select value={insForm.commune} onChange={e => setInsForm({...insForm, commune: e.target.value})} className={inputBase}>
       {communes.map(c => <option key={c} value={c}>{c}</option>)}
     </select>
   </div>
 
-  {/* Cột 3: Thẩm phán */}
-  <div>
+  {/* Cột Thẩm phán (Chiếm 2/12 độ rộng) */}
+  <div className="md:col-span-2">
     <label className="block text-[11px] font-black uppercase text-teal-700">Thẩm phán</label>
     <input list="judges-list" value={insForm.judge} onChange={e => setInsForm({...insForm, judge: e.target.value})} className={inputBase} placeholder="Chọn TP..."/>
   </div>
 
-  {/* Cột 4: Ghi chú (Nội dung) */}
-  <div>
+  {/* Cột Ghi chú (Chiếm 3/12 độ rộng) */}
+  <div className="md:col-span-3">
     <label className="block text-[11px] font-black uppercase text-teal-700">Ghi chú vụ việc</label>
     <input type="text" value={insForm.content} onChange={e => setInsForm({...insForm, content: e.target.value})} className={inputBase} placeholder="Nhập nhanh nội dung..."/>
   </div>
 
-  {/* Cột 5: Nút bấm */}
-  <button onClick={handleInsSubmit} className="bg-teal-600 hover:bg-teal-700 text-white font-black py-4 rounded-lg uppercase shadow-lg transition-all h-[50px]">
+  {/* Nút bấm (Chiếm 2/12 độ rộng) */}
+  <button onClick={handleInsSubmit} className="md:col-span-2 bg-teal-600 hover:bg-teal-700 text-white font-black py-4 rounded-lg uppercase shadow-lg transition-all h-[50px]">
     Lên lịch
   </button>
 </div>
@@ -1220,12 +1267,24 @@ if (!user && !isPublicView && !isScanningQR) {
         .map(item => (
           /* Dạng Card cực kỳ Mảnh nhưng Mạnh trên điện thoại */
           <div key={item.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 md:p-8 space-y-3 md:grid md:grid-cols-4 md:gap-6 md:items-center">
-            <div className="flex justify-between items-center md:block md:text-center">
-              <span className="text-2xl md:text-5xl font-bold text-blue-500">{moment(item.datetime).format("HH:mm")}</span>
-              <span className={`md:mt-4 block px-3 py-1 rounded-full text-[10px] md:text-sm font-bold uppercase ${item.status === 'completed' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400 animate-pulse'}`}>
-                {item.status === 'completed' ? 'Đã xong' : 'Đang xử'}
-              </span>
-            </div>
+           <div className="flex justify-between items-center md:block md:text-center">
+  <span className="text-2xl md:text-5xl font-bold text-blue-500">{moment(item.datetime).format("HH:mm")}</span>
+  
+  {/* Logic hiển thị trạng thái thông minh */}
+  <span className={`md:mt-4 block px-3 py-1 rounded-full text-[10px] md:text-sm font-bold uppercase ${
+    item.status === 'completed' 
+      ? 'bg-green-500/20 text-green-400' 
+      : moment().isBefore(moment(item.datetime)) 
+        ? 'bg-blue-500/20 text-blue-400' // Chưa đến giờ
+        : 'bg-amber-500/20 text-amber-400 animate-pulse' // Đã đến giờ hoặc quá giờ mà chưa bấm "Xong"
+  }`}>
+    {item.status === 'completed' 
+      ? 'Đã xong' 
+      : moment().isBefore(moment(item.datetime)) 
+        ? 'Đang chờ' 
+        : 'Đang xử'}
+  </span>
+</div>
             
             <div className="md:col-span-2">
               <h3 className="text-sm md:text-3xl font-bold uppercase leading-tight text-gray-100">{item.caseName}</h3>
