@@ -877,10 +877,33 @@ if (!user && !isPublicView && !isScanningQR) {
                 </div>
                 
                 <div className="flex flex-wrap gap-2 mb-2">
-                   {isForgotten && <span className="bg-orange-600 text-white text-[9px] px-2 py-1 rounded font-black uppercase">⚠️ QUÊN CẬP NHẬT</span>}
-                   {overduePublish && <span className="bg-red-100 text-red-700 text-[9px] font-black px-2 py-1 rounded border border-red-200 animate-pulse uppercase">CHẬM PHÁT HÀNH ({'>'}5N)</span>}
-                   {effective && <span className="bg-teal-100 text-teal-800 text-[9px] font-black px-2 py-1 rounded border border-teal-200 uppercase">ÁN CÓ HIỆU LỰC ({'>'}30N)</span>}
-                </div>
+                   {isForgotten && (
+      <span className="bg-orange-600 text-white text-[9px] px-2 py-1 rounded font-black uppercase animate-pulse shadow-sm">
+        ⚠️ QUÊN CẬP NHẬT
+      </span>
+    )}
+
+    {/* Cảnh báo Sắp xử - Nháy Đỏ (Nếu ní muốn nhãn này cũng nháy) */}
+    {isRowUrgent && (
+      <span className="bg-red-600 text-white text-[9px] px-2 py-1 rounded font-black uppercase animate-pulse shadow-sm">
+        🔥 SẮP XỬ (24H)
+      </span>
+    )}
+
+    {/* Cảnh báo Chậm phát hành - Nháy Đỏ */}
+    {overduePublish && (
+      <span className="bg-red-600 text-white text-[9px] font-black px-2 py-1 rounded border border-red-700 animate-pulse uppercase">
+        🚨 CHẬM PHÁT HÀNH (5N)
+      </span>
+    )}
+
+    {/* Án có hiệu lực - Không cần nháy */}
+    {effective && (
+      <span className="bg-teal-100 text-teal-800 text-[9px] font-black px-2 py-1 rounded border border-teal-200 uppercase">
+        ⚖️ ÁN CÓ HIỆU LỰC
+      </span>
+    )}
+  </div>
 
                 {/* DEADLINE TỰ ĐỘNG (MỤC 3) */}
                 {item.status === 'completed' && (
@@ -1287,13 +1310,23 @@ if (!user && !isPublicView && !isScanningQR) {
 </div>
             
             <div className="md:col-span-2">
-              <h3 className="text-sm md:text-3xl font-bold uppercase leading-tight text-gray-100">{item.caseName}</h3>
-              <div className="flex gap-4 mt-2 text-[11px] md:text-xl text-gray-400 font-light italic">
-                <span>👨‍⚖️ TP: {item.judge}</span>
-                <span className="hidden md:inline">|</span>
-                <span>📍 Phòng: {item.room}</span>
-              </div>
-            </div>
+  {/* Tên vụ án/Trích yếu */}
+  <h3 className="text-sm md:text-3xl font-bold uppercase leading-tight text-gray-100 mb-2">
+    {item.caseName}
+  </h3>
+  
+  {/* --- DÒNG MỚI THÊM: HIỆN NGUYÊN ĐƠN - BỊ ĐƠN --- */}
+  <div className="text-[10px] md:text-lg text-blue-300 font-medium mb-3">
+    <span className="opacity-70">Đương sự:</span> {item.plaintiff || "---"} <span className="mx-1">v/s</span> {item.defendant || "---"}
+  </div>
+  {/* ---------------------------------------------- */}
+
+  <div className="flex gap-4 mt-2 text-[11px] md:text-xl text-gray-400 font-light italic">
+    <span>👨‍⚖️ TP: {item.judge}</span>
+    <span className="hidden md:inline">|</span>
+    <span>📍 Phòng: {item.room}</span>
+  </div>
+</div>
             
             <div className="hidden md:flex flex-col items-end gap-2">
                <span className="bg-white/10 px-4 py-2 rounded-lg text-lg uppercase tracking-widest">{item.clerk}</span>
