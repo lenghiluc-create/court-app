@@ -200,7 +200,6 @@ export default function PremiumCourtApp() {
     if (userRole === 'thamphan' || userRole === 'viewer') return showToast("Không có quyền!", "error");
     if (!form.datetime || !form.caseName || !form.room) return showToast("Vui lòng nhập đủ thông tin!", "error");
     if (!editingId) { 
-    // Tìm vụ án đầu tiên trùng tên Nguyên đơn hoặc Bị đơn
     const duplicateCase = schedule.find(item => 
       (form.plaintiff && item.plaintiff === form.plaintiff) || 
       (form.defendant && item.defendant === form.defendant)
@@ -215,10 +214,10 @@ export default function PremiumCourtApp() {
         `Đương sự: ${trungTen}\n` +
         `Đã có trong vụ: "${duplicateCase.caseName}"\n` +
         `Ngày xử: ${ngayXu}\n\n` +
-        `Ní có chắc chắn đây là vụ án mới và muốn tiếp tục lưu không?`
+        `Bạn có chắc chắn đây là vụ án mới và muốn tiếp tục lưu không?`
       );
       
-      if (!confirmSave) return; // Dừng lại nếu ní thấy nghi ngờ
+      if (!confirmSave) return; 
     }
   }
     const isConflict = await isConflictServerSide(form.datetime, form.room, editingId, form.duration);
@@ -328,9 +327,13 @@ export default function PremiumCourtApp() {
 
   const handleReschedule = (item) => {
     let nextTrialCount = item.trialCount === "Lần 1" ? "Lần 2" : "Mở lại";
-    setForm({ ...item, datetime: "", trialCount: nextTrialCount, status: "pending" });
+    const oldDate = item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "Chưa có";
+    const oldNote = `(Hoãn từ ngày ${oldDate})`;
+    setForm({ ...item, datetime: "", trialCount: nextTrialCount, status: "pending",
+    caseName: item.caseName.includes(oldNote) ? item.caseName : `${item.caseName} ${oldNote}`
+  });
     setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'});
-    showToast("⚠️ Đã kích hoạt Hoãn/Mở lại. Vui lòng CHỌN NGÀY GIỜ MỚI và bấm Cập nhật!", "success");
+    showToast(`⚠️ Đã kích hoạt Hoãn/Mở lại. ${oldNote}. Vui lòng CHỌN NGÀY GIỜ MỚI và bấm Cập nhật!`, "success");
   };
 
   const scrollToCalendar = () => { if(calendarSectionRef.current) calendarSectionRef.current.scrollIntoView({ behavior: 'smooth' }); };
@@ -903,13 +906,13 @@ if (!user && !isPublicView && !isScanningQR) {
               </td>
 
               {/* CỘT 2: NỘI DUNG (Khóa 45%) */}
-             <td className="p-6 w-[45%] align-top">
-  {/* Tên vụ án */}
+<td className="p-6 w-[45%] align-top">
+  {/* 1. Tên vụ án */}
   <div className="font-black uppercase text-blue-950 text-sm mb-2 leading-tight break-words">
     {item.caseName || "Vụ án chưa có tên"}
   </div>
   
-  {/* Các nhãn cảnh báo nhấp nháy */}
+  {/* 2. Các nhãn cảnh báo nhấp nháy */}
   <div className="flex flex-wrap gap-2 mb-3">
     {isForgotten && (
       <span className="bg-orange-600 text-white text-[9px] px-2 py-1 rounded font-black uppercase animate-pulse shadow-sm">
@@ -933,29 +936,41 @@ if (!user && !isPublicView && !isScanningQR) {
     )}
   </div>
 
-  {/* Thông tin Đương sự và Loại án */}
+  {/* 3. Thông tin Đương sự và Loại án */}
   <div className="text-gray-500 font-bold text-[11px]">
     <p className="mb-2 italic opacity-70">{item.caseType} / {item.trialCount}</p>
     
     <div className="space-y-1 bg-gray-50/50 p-2 rounded-lg border border-gray-100">
-      {item.caseType === "Hình sự" ? (
-        <p className="text-[14px] font-black text-gray-800">
-          <span className="text-red-600">Bị cáo:</span> <span className="text-blue-900 uppercase">{item.defendant || "---"}</span>
-        </p>
-      ) : (
-        <>
-          <p className="text-[14px] font-black text-gray-800">
-            <span className="text-gray-500">NĐ:</span> <span className="text-blue-900 uppercase">{item.plaintiff || "---"}</span>
-          </p>
-          <p className="text-[14px] font-black text-gray-800">
-            <span className="text-gray-500">BĐ:</span> <span className="text-blue-900 uppercase">{item.defendant || "---"}</span>
-          </p>
-        </>
-      )}
+  {/* Logic: Nếu là Hình sự, ưu tiên lấy tên từ ô đầu tiên (item.plaintiff) */}
+  {item.caseType?.includes("Hình sự") ? (
+    <div className="flex flex-col">
+       <span className="text-red-600 uppercase text-[10px]">Bị cáo:</span>
+       <span className="text-[14px] font-black text-blue-900 uppercase">
+         {/* Án hình sự: Bị cáo thường nằm ở ô plaintiff */}
+         {item.plaintiff || item.defendant || "---"}
+       </span>
     </div>
+  ) : (
+    /* Án Dân sự/Hôn nhân: Hiện đủ NĐ và BĐ */
+    <div className="space-y-2">
+      <div className="flex flex-col">
+        <span className="text-gray-500 uppercase text-[10px]">NĐ:</span>
+        <span className="text-[14px] font-black text-blue-900 uppercase">
+          {item.plaintiff || "---"}
+        </span>
+      </div>
+      <div className="flex flex-col">
+        <span className="text-gray-500 uppercase text-[10px]">BĐ:</span>
+        <span className="text-[14px] font-black text-blue-900 uppercase">
+          {item.defendant || "---"}
+        </span>
+      </div>
+    </div>
+  )}
+</div>
   </div>
 
-  {/* Deadline tự động */}
+  {/* 4. Hạn phát hành (Chèn vào đây là chuẩn bài) */}
   {item.status === 'completed' && !item.publishedAt && (
     <div className="mt-2 text-[10px] font-black px-2 py-1 rounded border bg-amber-50 text-amber-700 border-amber-200 inline-block">
       HẠN PHÁT HÀNH: {calculateDeadlines(item).publish}
@@ -1270,19 +1285,21 @@ if (!user && !isPublicView && !isScanningQR) {
               <div className="p-8 space-y-5 text-gray-900 font-bold">
                 <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-2xl">🕒</div><p className="text-lg font-black text-blue-950">{moment(selectedEvent.datetime).format("HH:mm - DD/MM/YYYY")}</p></div>
                 <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-    <div className="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center text-2xl flex-shrink-0">👥</div>
-    <div>
-      <p className="text-xs text-gray-500 uppercase mb-1">Thông tin đương sự:</p>
-      {selectedEvent.caseType === "Hình sự" ? (
-        <p className="text-base text-red-700 font-black">Bị cáo: {selectedEvent.defendant || "---"}</p>
-      ) : (
-        <div className="space-y-1">
-          <p className="text-sm font-black text-gray-800">NĐ: {selectedEvent.plaintiff || "---"}</p>
-          <p className="text-sm font-black text-gray-800">BĐ: {selectedEvent.defendant || "---"}</p>
-        </div>
-      )}
-    </div>
+  <div className="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center text-2xl flex-shrink-0">👥</div>
+  <div>
+    <p className="text-xs text-gray-500 uppercase mb-1">Thông tin đương sự:</p>
+    {selectedEvent.caseType?.includes("Hình sự") ? (
+      <p className="text-base text-red-700 font-black">
+        Bị cáo: {selectedEvent.plaintiff || selectedEvent.defendant || "---"}
+      </p>
+    ) : (
+      <div className="space-y-1">
+        <p className="text-sm font-black text-gray-800">NĐ: {selectedEvent.plaintiff || "---"}</p>
+        <p className="text-sm font-black text-gray-800">BĐ: {selectedEvent.defendant || "---"}</p>
+      </div>
+    )}
   </div>
+</div>
   {/* ------------------------------------ */}
 
   {/* Thẩm phán */}
