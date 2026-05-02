@@ -115,6 +115,10 @@ export default function PremiumCourtApp() {
       setActiveTab("trial"); // Ép đương sự luôn ở Tab Xét xử
     }
     setIsMounted(true);
+    const qIns = query(collection(db, "inspections"), orderBy("date", "desc"));
+      const unsubscribeIns = onSnapshot(qIns, (snapshot) => {
+        setInspections(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
       // 3. TỰ ĐỘNG CẬP NHẬT LỊCH XÉT XỬ (Thay thế loadData)
       const threeMonthsAgo = moment().subtract(3, 'months').toISOString();
       const qSchedule = query(collection(db, "schedule"), where("datetime", ">=", threeMonthsAgo), orderBy("datetime", "desc"));
@@ -411,6 +415,20 @@ export default function PremiumCourtApp() {
       return a.status === 'pending' ? -1 : 1;
     });
   }, [schedule, searchQuery, statusFilter, showOnlyUrgent, creatorFilter, judgeFilter, clerkFilter, startDate, endDate]);
+  const completedByMonth = useMemo(() => {
+    const stats = {};
+    schedule
+      .filter(i => i.status === 'completed' && i.datetime)
+      .forEach(item => {
+        const monthStr = moment(item.datetime).format("MM/YYYY");
+        if (!stats[monthStr]) stats[monthStr] = [];
+        stats[monthStr].push(item);
+      });
+    
+    return Object.keys(stats)
+      .map(month => ({ month, cases: stats[month], count: stats[month].length }))
+      .sort((a, b) => moment(b.month, "MM/YYYY").valueOf() - moment(a.month, "MM/YYYY").valueOf());
+  }, [schedule]);
 
   const urgentCount = schedule.filter(i => i.status === 'pending' && isUrgent(i.datetime)).length;
   const overduePublishCount = schedule.filter(i => isOverduePublish(i)).length;
@@ -584,7 +602,16 @@ if (!user && !isPublicView && !isScanningQR) {
     >
       <span className="font-bold text-sm">🌍 LỊCH THẨM ĐỊNH</span>
     </div>
+    
   )}
+  {!isPublicView && (
+  <div 
+    onClick={() => setActiveTab("report")} 
+    className={`cursor-pointer px-4 py-4 rounded-lg flex justify-between items-center transition-all ${activeTab === 'report' ? 'bg-amber-600 scale-105' : 'bg-white/10 hover:bg-white/20'}`}
+  >
+    <span className="font-bold text-sm">📊 BÁO CÁO THỐNG KÊ</span>
+  </div>
+)}
 </div>
   <div className="mt-auto p-4 bg-white/5 rounded-2xl border border-white/10 flex flex-col items-center gap-3">
   <p className="text-[10px] font-light uppercase tracking-[0.2em] text-gray-400">Niêm yết công khai</p>
@@ -622,23 +649,34 @@ if (!user && !isPublicView && !isScanningQR) {
       </aside>
 
       <main className="xl:ml-64 flex flex-col min-h-screen relative z-10 flex-1 w-full overflow-x-hidden">
-        <header className="bg-white/95 backdrop-blur-md h-24 shadow-sm flex items-center justify-between px-4 md:px-8 xl:px-12 sticky top-0 z-30 border-b border-gray-200 w-full">
-          <div className="flex-1 flex justify-start items-center gap-2 xl:hidden">
-             <button onClick={() => setShowPwdModal(true)} className="bg-blue-50 text-blue-700 px-3 py-2 text-[10px] font-black uppercase shadow-sm border border-blue-100">🔑 MK</button>
-             <button onClick={handleLogout} className="bg-red-50 text-red-600 border border-red-100 px-3 py-2 text-[10px] font-black uppercase shadow-sm">🚪 Thoát</button>
-          </div>
-          <div className="flex-[2] text-center px-2">
-            <h1 className="font-black text-[14px] sm:text-[16px] md:text-xl xl:text-2xl uppercase text-blue-950 truncate">HỆ THỐNG QUẢN LÝ LỊCH TRỰC TUYẾN</h1>
-          </div>
-          <div className="flex-1 flex items-center justify-end">
-             <div className="bg-blue-50 text-blue-700 px-3 py-2 md:px-6 md:py-3 font-black text-[10px] md:text-sm border border-blue-100 uppercase tracking-widest text-center w-max">
-               Cần Thơ: {moment().format("DD/MM/YYYY")}
-             </div>
-          </div>
-        </header>
+        <header className="bg-red-700 h-24 shadow-md flex items-center justify-between px-4 md:px-8 xl:px-12 sticky top-0 z-30 border-b border-red-800 w-full">
+  
+  {/* 1. CỘT TRÁI: Các nút điều khiển trên mobile (Chỉnh màu trong suốt cho hợp nền đỏ) */}
+  <div className="flex-1 flex justify-start items-center gap-2">
+    <div className="flex xl:hidden gap-2">
+      <button onClick={() => setShowPwdModal(true)} className="bg-white/20 hover:bg-white/30 text-white px-3 py-2 text-[10px] font-black uppercase shadow-sm border border-white/30 rounded-md backdrop-blur-sm transition-all">🔑 MK</button>
+      <button onClick={handleLogout} className="bg-black/20 hover:bg-black/30 text-white border border-black/30 px-3 py-2 text-[10px] font-black uppercase shadow-sm rounded-md backdrop-blur-sm transition-all">🚪 THOÁT</button>
+    </div>
+  </div>
+
+  {/* 2. CỘT GIỮA: Tiêu đề NỀN ĐỎ CHỮ VÀNG siêu nét */}
+  <div className="flex-[2] text-center px-2 flex justify-center">
+    <h1 className="font-black text-[14px] sm:text-[16px] md:text-xl xl:text-2xl uppercase text-yellow-300 truncate tracking-widest drop-shadow-md">
+      HỆ THỐNG QUẢN LÝ LỊCH TRỰC TUYẾN
+    </h1>
+  </div>
+
+  {/* 3. CỘT PHẢI: Ngày tháng (Chữ đỏ nền vàng cho cân bằng) */}
+  <div className="flex-1 flex items-center justify-end">
+    <div className="bg-yellow-400 text-red-800 px-3 py-2 md:px-6 md:py-3 font-black text-[10px] md:text-sm border border-yellow-500 uppercase tracking-widest text-center w-max rounded-lg shadow-md">
+      Cần Thơ: {moment().format("DD/MM/YYYY")}
+    </div>
+  </div>
+
+</header>
 
        <div className="p-4 md:p-12 flex-1">
-    {activeTab === "trial" ? (
+    {activeTab === "trial" && (
       <>
           <div className="bg-white shadow-xl rounded-xl mb-8 border border-gray-200 overflow-hidden">
             <div className="grid grid-cols-2 md:grid-cols-7 divide-x divide-y md:divide-y-0 divide-gray-200">
@@ -665,44 +703,6 @@ if (!user && !isPublicView && !isScanningQR) {
               </div>
             </div>
           </div>
-
-          {schedule.length > 0 && (
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-               <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-200">
-                  <h3 className="text-center font-black text-[13px] text-gray-500 uppercase tracking-widest mb-4">Tỷ lệ theo Loại án</h3>
-                  <div className="h-[320px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={caseTypeData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" label={({name, value}) => `${name} (${value})`}>
-                          {caseTypeData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-               </div>
-
-               <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-200 flex flex-col">
-                  <h3 className="text-center font-black text-[13px] text-gray-500 uppercase tracking-widest mb-4">Án đang chờ xử theo Thẩm phán</h3>
-                  <div className="h-[320px] w-full overflow-y-auto pr-2 custom-scrollbar">
-                    {judgeDataList.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 pt-2">
-                        {judgeDataList.map((item, index) => (
-                          <div key={index} className="flex justify-between items-center border-b border-gray-100 pb-2">
-                            <span className="text-[14px] font-bold text-gray-700 truncate pr-2" title={item.name}>
-                              <span className="text-gray-400 mr-1.5">{index + 1}.</span>{item.name}
-                            </span>
-                            <span className="text-[14px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded shadow-sm">{item.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center h-full text-sm font-bold text-gray-400 italic">Không có án chờ xử</div>
-                    )}
-                  </div>
-               </div>
-             </div>
-          )}
 
           {canEdit && (
             <div className="bg-white p-6 md:p-10 border shadow-xl rounded-xl mb-12">
@@ -1164,9 +1164,9 @@ if (!user && !isPublicView && !isScanningQR) {
             </div>
           </div> 
         </>
-    ) : (
-      /* --- BẮT ĐẦU NỘI DUNG TAB THẨM ĐỊNH TẠI ĐÂY --- */
-      <div className="animate-fadeIn space-y-10">
+      )}
+      {activeTab === "inspection" && (
+    <div className="animate-fadeIn space-y-10">
         <div className="bg-teal-700 p-10 rounded-xl text-white shadow-2xl flex flex-col items-center">
           <h2 className="text-3xl font-black uppercase italic mb-2 text-center">Quản Lý Lịch Xem Xét, Thẩm Định Tại Chỗ</h2>
           <p className="opacity-80 font-bold uppercase text-[11px] tracking-widest">Địa bàn Khu vực 9</p>
@@ -1271,7 +1271,124 @@ if (!user && !isPublicView && !isScanningQR) {
         </div>
       </div>
       /* --- KẾT THÚC TAB THẨM ĐỊNH --- */
+      
     )}
+    {/* KHỐI 3: TAB BÁO CÁO */}
+  {activeTab === "report" && (
+    <div className="animate-fadeIn space-y-8">
+      {/* Header Tab Báo cáo */}
+      <div className="bg-blue-900 p-8 rounded-2xl text-white shadow-lg flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-black uppercase tracking-tighter">Báo Cáo Kết Quả Xét Xử</h2>
+          <p className="opacity-70 font-bold uppercase text-[11px] mt-1 tracking-[0.2em]">Thống kê theo thời gian thực</p>
+        </div>
+        <div className="text-right"><span className="text-4xl">📈</span></div>
+      </div>
+
+      {/* Hàng 1: Thẻ tóm tắt */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-2xl shadow-xl border-l-8 border-l-green-500">
+          <h3 className="text-gray-500 font-black text-[11px] uppercase mb-4">✅ Tổng án đã xét xử</h3>
+          <p className="text-4xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p>
+          <p className="text-[10px] text-gray-400 mt-2 italic font-bold">Toàn bộ án đã giải quyết xong</p>
+        </div>
+        <div className="bg-white p-6 rounded-2xl shadow-xl border-l-8 border-l-blue-500">
+          <h3 className="text-gray-500 font-black text-[11px] uppercase mb-4">📁 Án đang chờ xử</h3>
+          <p className="text-4xl font-black text-blue-900">{schedule.filter(i => i.status === 'pending').length}</p>
+          <p className="text-[10px] text-gray-400 mt-2 italic font-bold">Tổng số vụ việc đang thụ lý</p>
+        </div>
+        <div className="bg-white p-6 rounded-2xl shadow-xl border-l-8 border-l-teal-500">
+          <h3 className="text-gray-500 font-black text-[11px] uppercase mb-4">🏆 Tỷ lệ giải quyết</h3>
+          <p className="text-4xl font-black text-teal-600">
+            {schedule.length > 0 ? Math.round((schedule.filter(i => i.status === 'completed').length / schedule.length) * 100) : 0}%
+          </p>
+          <p className="text-[10px] text-gray-400 mt-2 italic font-bold">Dựa trên tổng số án đã nhập</p>
+        </div>
+      </div>
+      {schedule.length > 0 && (
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+               <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-200">
+                  <h3 className="text-center font-black text-[13px] text-gray-500 uppercase tracking-widest mb-4">Tỷ lệ theo Loại án</h3>
+                  <div className="h-[320px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={caseTypeData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" label={({name, value}) => `${name} (${value})`}>
+                          {caseTypeData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+               </div>
+
+               <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-200 flex flex-col">
+                  <h3 className="text-center font-black text-[13px] text-gray-500 uppercase tracking-widest mb-4">Án đang chờ xử theo Thẩm phán</h3>
+                  <div className="h-[320px] w-full overflow-y-auto pr-2 custom-scrollbar">
+                    {judgeDataList.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 pt-2">
+                        {judgeDataList.map((item, index) => (
+                          <div key={index} className="flex justify-between items-center border-b border-gray-100 pb-2">
+                            <span className="text-[14px] font-bold text-gray-700 truncate pr-2" title={item.name}>
+                              <span className="text-gray-400 mr-1.5">{index + 1}.</span>{item.name}
+                            </span>
+                            <span className="text-[14px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded shadow-sm">{item.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-sm font-bold text-gray-400 italic">Không có án chờ xử</div>
+                    )}
+                  </div>
+               </div>
+             </div>
+          )}
+      {/* Hàng 2: Bảng chi tiết theo từng tháng */}
+      <div className="bg-white rounded-2xl shadow-2xl border p-6 mt-8">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="font-black text-blue-900 uppercase text-lg flex items-center gap-2">
+            <span className="text-2xl">📅</span> Chi tiết án đã xét xử theo tháng
+          </h3>
+        </div>
+
+        <div className="space-y-6">
+          {completedByMonth.map((monthData, idx) => (
+            <div key={idx} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+               {/* Tiêu đề của từng tháng */}
+               <div className="bg-gray-50 p-4 border-b border-gray-200 flex justify-between items-center">
+                  <h4 className="font-black text-blue-950 text-sm uppercase">Tháng {monthData.month}</h4>
+                  <span className="bg-green-100 text-green-800 px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider border border-green-200">
+                     Hoàn thành: {monthData.count} vụ
+                  </span>
+               </div>
+               
+               {/* Danh sách vụ án trong tháng đó */}
+               <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <tbody className="divide-y divide-gray-100 bg-white">
+                      {monthData.cases.map(item => (
+                        <tr key={item.id} className="hover:bg-blue-50/30 transition-all">
+                           <td className="p-4 text-[13px] font-bold text-blue-900 uppercase w-[40%] leading-tight">{item.caseName}</td>
+                           <td className="p-4 text-[12px] text-gray-600 font-bold w-[20%]">{item.caseType} / {item.trialCount}</td>
+                           <td className="p-4 text-[12px] text-gray-500 italic font-medium w-[25%]">👨‍⚖️ TP: {item.judge}</td>
+                           <td className="p-4 text-[12px] text-right text-gray-500 font-bold w-[15%]">Ngày xử: {moment(item.datetime).format("DD/MM/YYYY")}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+               </div>
+            </div>
+          ))}
+          
+          {completedByMonth.length === 0 && (
+            <div className="text-center py-16">
+              <p className="text-gray-300 font-black text-2xl uppercase tracking-widest mb-2">Chưa có dữ liệu</p>
+              <p className="text-gray-400 text-sm italic">Hệ thống sẽ tự động tổng hợp khi có vụ án được đánh dấu "Đã xử xong"</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )}
     </div>
   </main>
 
