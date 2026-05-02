@@ -568,15 +568,15 @@ if (!user && !isPublicView && !isScanningQR) {
  <div className="p-3 bg-white rounded-xl shadow-inner border border-gray-100 flex items-center justify-center">
   <QRCodeSVG 
     value={`${typeof window !== 'undefined' ? window.location.origin : ''}?mode=tv`}
-    size={160} // Tăng size lên một chút để logo rõ hơn
-    level={"H"} // Bắt buộc là "H" để bảo vệ dữ liệu khi chèn logo
+    size={160} 
+    level={"H"}
     includeMargin={true}
-    marginSize={2} // Thêm lề trắng để camera dễ bắt nét hơn
+    marginSize={2}
     imageSettings={{
       src: "/lgtoaan1.png",
-      height: 40, // Kích thước vừa đủ để không làm mờ
+      height: 40, 
       width: 40,
-      excavate: true, // Đục lỗ để logo nằm trên nền trắng, cực kỳ rõ nét
+      excavate: true, 
     }}
   />
 </div>
@@ -1239,8 +1239,39 @@ if (!user && !isPublicView && !isScanningQR) {
               </div>
               <div className="p-8 space-y-5 text-gray-900 font-bold">
                 <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-2xl">🕒</div><p className="text-lg font-black text-blue-950">{moment(selectedEvent.datetime).format("HH:mm - DD/MM/YYYY")}</p></div>
-                <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-2xl">👨‍⚖️</div><p className="text-lg">Thẩm phán: {selectedEvent.judge}</p></div>
-                <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-2xl">🛡️</div><p className="text-lg text-red-700">KSV: {selectedEvent.prosecutor}</p></div>
+                <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+    <div className="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center text-2xl flex-shrink-0">👥</div>
+    <div>
+      <p className="text-xs text-gray-500 uppercase mb-1">Thông tin đương sự:</p>
+      {selectedEvent.caseType === "Hình sự" ? (
+        <p className="text-base text-red-700 font-black">Bị cáo: {selectedEvent.defendant || "---"}</p>
+      ) : (
+        <div className="space-y-1">
+          <p className="text-sm font-black text-gray-800">NĐ: {selectedEvent.plaintiff || "---"}</p>
+          <p className="text-sm font-black text-gray-800">BĐ: {selectedEvent.defendant || "---"}</p>
+        </div>
+      )}
+    </div>
+  </div>
+  {/* ------------------------------------ */}
+
+  {/* Thẩm phán */}
+  <div className="flex items-center gap-4">
+    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-2xl">👨‍⚖️</div>
+    <p className="text-lg">Thẩm phán: {selectedEvent.judge}</p>
+  </div>
+
+  {/* Thư ký (Thêm luôn cho đủ bộ) */}
+  <div className="flex items-center gap-4">
+    <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-2xl">📝</div>
+    <p className="text-lg">Thư ký: {selectedEvent.clerk}</p>
+  </div>
+
+  {/* Kiểm sát viên */}
+  <div className="flex items-center gap-4">
+    <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-2xl">🛡️</div>
+    <p className="text-lg text-red-700">KSV: {selectedEvent.prosecutor}</p>
+  </div>
                 
                 {/* --- NHẬT KÝ HỆ THỐNG (LOG CHUYÊN SÂU) --- */}
                 <div className="p-5 bg-amber-50 rounded-2xl border border-amber-200 space-y-2 mt-4">
