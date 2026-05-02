@@ -565,19 +565,18 @@ if (!user && !isPublicView && !isScanningQR) {
   <div className="mt-auto p-4 bg-white/5 rounded-2xl border border-white/10 flex flex-col items-center gap-3">
   <p className="text-[10px] font-light uppercase tracking-[0.2em] text-gray-400">Niêm yết công khai</p>
   
- <div className="p-2 bg-white rounded-lg shadow-inner">
+ <div className="p-3 bg-white rounded-xl shadow-inner border border-gray-100 flex items-center justify-center">
   <QRCodeSVG 
     value={`${typeof window !== 'undefined' ? window.location.origin : ''}?mode=tv`}
-    size={140} 
-    level={"H"} 
-    includeMargin={false}
+    size={160} // Tăng size lên một chút để logo rõ hơn
+    level={"H"} // Bắt buộc là "H" để bảo vệ dữ liệu khi chèn logo
+    includeMargin={true}
+    marginSize={2} // Thêm lề trắng để camera dễ bắt nét hơn
     imageSettings={{
-      src: "/lgtoaan1.png", 
-      x: undefined,
-      y: undefined,
-      height: 35, 
-      width: 35, 
-      excavate: true, 
+      src: "/lgtoaan1.png",
+      height: 40, // Kích thước vừa đủ để không làm mờ
+      width: 40,
+      excavate: true, // Đục lỗ để logo nằm trên nền trắng, cực kỳ rõ nét
     }}
   />
 </div>
