@@ -199,7 +199,28 @@ export default function PremiumCourtApp() {
   const handleSubmit = async () => {
     if (userRole === 'thamphan' || userRole === 'viewer') return showToast("Không có quyền!", "error");
     if (!form.datetime || !form.caseName || !form.room) return showToast("Vui lòng nhập đủ thông tin!", "error");
-    
+    if (!editingId) { 
+    // Tìm vụ án đầu tiên trùng tên Nguyên đơn hoặc Bị đơn
+    const duplicateCase = schedule.find(item => 
+      (form.plaintiff && item.plaintiff === form.plaintiff) || 
+      (form.defendant && item.defendant === form.defendant)
+    );
+
+    if (duplicateCase) {
+      const trungTen = duplicateCase.plaintiff === form.plaintiff ? duplicateCase.plaintiff : duplicateCase.defendant;
+      const ngayXu = duplicateCase.datetime ? moment(duplicateCase.datetime).format("DD/MM/YYYY") : "Chưa có ngày";
+      
+      const confirmSave = window.confirm(
+        `⚠️ PHÁT HIỆN TRÙNG ĐƯƠNG SỰ!\n\n` +
+        `Đương sự: ${trungTen}\n` +
+        `Đã có trong vụ: "${duplicateCase.caseName}"\n` +
+        `Ngày xử: ${ngayXu}\n\n` +
+        `Ní có chắc chắn đây là vụ án mới và muốn tiếp tục lưu không?`
+      );
+      
+      if (!confirmSave) return; // Dừng lại nếu ní thấy nghi ngờ
+    }
+  }
     const isConflict = await isConflictServerSide(form.datetime, form.room, editingId, form.duration);
     if(isConflict) return showToast("⚠️ Xin lỗi, phòng này vừa được đặt. Vui lòng chọn giờ khác!", "error");
 
@@ -882,33 +903,29 @@ if (!user && !isPublicView && !isScanningQR) {
               </td>
 
               {/* CỘT 2: NỘI DUNG (Khóa 45%) */}
-              <td className="p-6 w-[45%] align-top">
-                <div className="font-black uppercase text-blue-950 text-sm mb-2 leading-tight break-words whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-pointer">
-                  {item.caseName || "Vụ án chưa có tên"}
-                </div>
-                
-                <div className="flex flex-wrap gap-2 mb-2">
-                   {isForgotten && (
+             <td className="p-6 w-[45%] align-top">
+  {/* Tên vụ án */}
+  <div className="font-black uppercase text-blue-950 text-sm mb-2 leading-tight break-words">
+    {item.caseName || "Vụ án chưa có tên"}
+  </div>
+  
+  {/* Các nhãn cảnh báo nhấp nháy */}
+  <div className="flex flex-wrap gap-2 mb-3">
+    {isForgotten && (
       <span className="bg-orange-600 text-white text-[9px] px-2 py-1 rounded font-black uppercase animate-pulse shadow-sm">
         ⚠️ QUÊN CẬP NHẬT
       </span>
     )}
-
-    {/* Cảnh báo Sắp xử - Nháy Đỏ (Nếu ní muốn nhãn này cũng nháy) */}
     {isRowUrgent && (
       <span className="bg-red-600 text-white text-[9px] px-2 py-1 rounded font-black uppercase animate-pulse shadow-sm">
         🔥 SẮP XỬ (24H)
       </span>
     )}
-
-    {/* Cảnh báo Chậm phát hành - Nháy Đỏ */}
     {overduePublish && (
       <span className="bg-red-600 text-white text-[9px] font-black px-2 py-1 rounded border border-red-700 animate-pulse uppercase">
-        🚨 CHẬM PHÁT HÀNH (5N)
+        🚨 CHẬM PHÁT HÀNH
       </span>
     )}
-
-    {/* Án có hiệu lực - Không cần nháy */}
     {effective && (
       <span className="bg-teal-100 text-teal-800 text-[9px] font-black px-2 py-1 rounded border border-teal-200 uppercase">
         ⚖️ ÁN CÓ HIỆU LỰC
@@ -916,22 +933,35 @@ if (!user && !isPublicView && !isScanningQR) {
     )}
   </div>
 
-                {/* DEADLINE TỰ ĐỘNG (MỤC 3) */}
-                {item.status === 'completed' && (
-                  <div className="mt-2 space-y-1">
-                    {!item.publishedAt && (
-                      <div className={`text-[10px] font-black px-2 py-1 rounded border inline-block ${overduePublish ? 'bg-red-600 text-white animate-pulse' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                        HẠN PHÁT HÀNH: {calculateDeadlines(item).publish}
-                      </div>
-                    )}
-                  </div>
-                )}
+  {/* Thông tin Đương sự và Loại án */}
+  <div className="text-gray-500 font-bold text-[11px]">
+    <p className="mb-2 italic opacity-70">{item.caseType} / {item.trialCount}</p>
+    
+    <div className="space-y-1 bg-gray-50/50 p-2 rounded-lg border border-gray-100">
+      {item.caseType === "Hình sự" ? (
+        <p className="text-[14px] font-black text-gray-800">
+          <span className="text-red-600">Bị cáo:</span> <span className="text-blue-900 uppercase">{item.defendant || "---"}</span>
+        </p>
+      ) : (
+        <>
+          <p className="text-[14px] font-black text-gray-800">
+            <span className="text-gray-500">NĐ:</span> <span className="text-blue-900 uppercase">{item.plaintiff || "---"}</span>
+          </p>
+          <p className="text-[14px] font-black text-gray-800">
+            <span className="text-gray-500">BĐ:</span> <span className="text-blue-900 uppercase">{item.defendant || "---"}</span>
+          </p>
+        </>
+      )}
+    </div>
+  </div>
 
-                <div className="text-gray-500 font-bold text-[11px] mt-2">
-                  {item.caseType} / {item.trialCount} <br/>
-                  NĐ: {item.plaintiff || "N/A"} - BĐ: {item.defendant || "N/A"}
-                </div>
-              </td>
+  {/* Deadline tự động */}
+  {item.status === 'completed' && !item.publishedAt && (
+    <div className="mt-2 text-[10px] font-black px-2 py-1 rounded border bg-amber-50 text-amber-700 border-amber-200 inline-block">
+      HẠN PHÁT HÀNH: {calculateDeadlines(item).publish}
+    </div>
+  )}
+</td>
 
              {/* CỘT 3: THÀNH PHẦN HĐXX (Đã tăng cỡ chữ và làm nổi bật tên) */}
 <td className="p-6 w-[25%] align-top space-y-3 border-l border-gray-100">
