@@ -661,7 +661,7 @@ if (!user && !isPublicView && !isScanningQR) {
 
   {/* 2. CỘT GIỮA: Tiêu đề NỀN ĐỎ CHỮ VÀNG siêu nét */}
   <div className="flex-[2] text-center px-2 flex justify-center">
-    <h1 className="font-black text-[14px] sm:text-[16px] md:text-xl xl:text-2xl uppercase text-yellow-300 truncate tracking-widest drop-shadow-md">
+    <h1 className="font-black text-[14px] sm:text-[16px] md:text-xl xl:text-2xl uppecarse text-yellow-300 truncate tracking-widest drop-shadow-md">
       HỆ THỐNG QUẢN LÝ LỊCH TRỰC TUYẾN
     </h1>
   </div>
@@ -1280,7 +1280,7 @@ if (!user && !isPublicView && !isScanningQR) {
       <div className="bg-blue-900 p-8 rounded-2xl text-white shadow-lg flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-black uppercase tracking-tighter">Báo Cáo Kết Quả Xét Xử</h2>
-          <p className="opacity-70 font-bold uppercase text-[11px] mt-1 tracking-[0.2em]">Thống kê theo thời gian thực</p>
+          <p className="opacity-70 font-bold uppercase text-[11px] mt-1 tracking-[0.2em]">Thống kê tổng hợp</p>
         </div>
         <div className="text-right"><span className="text-4xl">📈</span></div>
       </div>
