@@ -274,23 +274,6 @@ export default function PremiumCourtApp() {
       showToast(isPublishing ? "📤 Đã ghi nhận phát hành bản án!" : "Hủy ghi nhận phát hành", "success");
     } catch (err) { showToast("Lỗi cập nhật phát hành", "error"); }
   };
-  // --- HÀM PHÁT HÀNH VỤ VIỆC (DÀNH CHO THẨM PHÁN) ---
-  const handlePublishCase = async (id) => {
-    // Bật một hộp thoại xác nhận cho chắc ăn, tránh ấn nhầm
-    if (!window.confirm("Thẩm phán có chắc chắn muốn PHÁT HÀNH vụ việc này? Sau khi phát hành, thông tin sẽ được chốt.")) return;
-    
-    try {
-      const caseRef = doc(db, "schedule", id);
-      await updateDoc(caseRef, {
-        isPublished: true, // Đánh dấu là đã phát hành
-        publishedAt: new Date().toISOString() // Lưu lại thời gian phát hành để sau này báo cáo
-      });
-      showToast("📢 Đã phát hành vụ việc thành công!", "success");
-    } catch (error) {
-      console.error("Lỗi phát hành:", error);
-      showToast("Có lỗi xảy ra khi cập nhật dữ liệu!", "error");
-    }
-  };
 
   const handleDelete = async (id, caseName) => {
     if(confirm("Xóa hồ sơ này?")) {
@@ -1450,6 +1433,38 @@ if (!user && !isPublicView && !isScanningQR) {
       </div>
     </div>
   )}
+  {/* 👇👇👇 THANH ĐIỀU HƯỚNG DƯỚI ĐÁY DÀNH RIÊNG CHO ĐIỆN THOẠI 👇👇👇 */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center h-[70px] z-[100] shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)] pb-safe">
+        
+        {/* Nút Xét xử */}
+        <button 
+          onClick={() => setActiveTab("trial")} 
+          className={`flex flex-col items-center justify-center w-full h-full transition-all ${activeTab === 'trial' ? 'text-red-700 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
+        >
+          <span className="text-2xl mb-1">{activeTab === 'trial' ? '⚖️' : '⚖️'}</span>
+          <span className="text-[10px] font-black uppercase tracking-wider">Xét xử</span>
+        </button>
+        
+        {/* Nút Thẩm định */}
+        <button 
+          onClick={() => setActiveTab("inspection")} 
+          className={`flex flex-col items-center justify-center w-full h-full transition-all ${activeTab === 'inspection' ? 'text-red-700 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
+        >
+          <span className="text-2xl mb-1">{activeTab === 'inspection' ? '📍' : '📍'}</span>
+          <span className="text-[10px] font-black uppercase tracking-wider">Thẩm định</span>
+        </button>
+        
+        {/* Nút Báo cáo */}
+        <button 
+          onClick={() => setActiveTab("report")} 
+          className={`flex flex-col items-center justify-center w-full h-full transition-all ${activeTab === 'report' ? 'text-red-700 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
+        >
+          <span className="text-2xl mb-1">{activeTab === 'report' ? '📊' : '📊'}</span>
+          <span className="text-[10px] font-black uppercase tracking-wider">Báo cáo</span>
+        </button>
+
+      </div>
+      {/* 👆👆👆 ======================================================== 👆👆👆 */}
     </div>
   </main>
 
@@ -1478,7 +1493,6 @@ if (!user && !isPublicView && !isScanningQR) {
     )}
   </div>
 </div>
-  {/* ------------------------------------ */}
 
   {/* Thẩm phán */}
   <div className="flex items-center gap-4">
