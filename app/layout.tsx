@@ -3,6 +3,7 @@ import "./globals.css";
 export const metadata = {
   title: "Hệ thống Quản lý Lịch",
   description: "Phần mềm tòa án",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
