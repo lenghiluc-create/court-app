@@ -42,6 +42,11 @@ export default function PremiumCourtApp() {
   const [showPwdModal, setShowPwdModal] = useState(false);
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
+  // State cho Popup Xuất Excel
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportStart, setExportStart] = useState(moment().startOf('month').format('YYYY-MM-DD')); // Mặc định đầu tháng
+  const [exportEnd, setExportEnd] = useState(moment().endOf('month').format('YYYY-MM-DD')); // Mặc định cuối tháng
+  const [exportFilterType, setExportFilterType] = useState('datetime');
 
   // Filter States
   const [startDate, setStartDate] = useState("");
@@ -441,21 +446,60 @@ export default function PremiumCourtApp() {
   const judgeDataList = Object.keys(judgeStats).map(key => ({ name: key, value: judgeStats[key] })).sort((a,b) => b.value - a.value); 
   const CHART_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899'];
 
-  const exportToExcel = () => {
-    if (schedule.length === 0) return showToast("Không có dữ liệu để xuất!", "error");
-    const dataToExport = processedSchedule; 
-    if (dataToExport.length === 0) return showToast("Không có dữ liệu trong bộ lọc!", "error");
-    let tableHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8" /><style>table { border-collapse: collapse; width: 100%; font-family: 'Times New Roman', Times, serif; font-size: 13pt; } td, th { border: 1px solid #000000; padding: 8px; vertical-align: top; } .no-border { border: none !important; } .text-center { text-align: center; vertical-align: middle; } .font-bold { font-weight: bold; }</style></head><body><table><tr><td colspan="2" class="no-border text-center font-bold">TÒA ÁN NHÂN DÂN<br/>KHU VỰC 9 - CẦN THƠ</td><td colspan="5" class="no-border text-center font-bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/>Độc lập - Tự do - Hạnh Phúc</td></tr><tr><td colspan="7" class="no-border text-center"><i>Cần Thơ, ngày ${moment().format("DD")} tháng ${moment().format("MM")} năm ${moment().format("YYYY")}</i></td></tr><tr><td colspan="7" class="no-border"></td></tr><tr><td colspan="7" class="no-border text-center font-bold" style="font-size: 16pt;">LỊCH XÉT XỬ</td></tr><tr><td colspan="7" class="no-border"></td></tr><tr><th class="text-center font-bold" style="background-color: #f2f2f2;">STT</th><th class="text-center font-bold" style="background-color: #f2f2f2;">NỘI DUNG VỤ ÁN</th><th class="text-center font-bold" style="background-color: #f2f2f2;">NGÀY XÉT XỬ</th><th class="text-center font-bold" style="background-color: #f2f2f2;">CHỦ TỌA, THƯ KÝ, KSV</th><th class="text-center font-bold" style="background-color: #f2f2f2;">HỘI THẨM NHÂN DÂN</th><th class="text-center font-bold" style="background-color: #f2f2f2;">PHÒNG XÉT XỬ</th><th class="text-center font-bold" style="background-color: #f2f2f2;">NGƯỜI NHẬP</th></tr>`;
+  const handleExportClick = () => {
+    if (schedule.length === 0) return showToast("Không có dữ liệu hệ thống!", "error");
+    setShowExportModal(true); // Bấm vào thì mở Popup thay vì xuất liền
+  };
+
+  const executeExport = () => {
+    // 1. Lọc data theo khoảng ngày đã chọn
+    let dataToExport = schedule.filter(i => i.datetime && i.status !== 'suspended'); 
+    
+    if (exportStart || exportEnd) {
+      dataToExport = dataToExport.filter(i => {
+        const targetDate = exportFilterType === 'createdAt' ? i.createdAt : i.datetime;
+        
+        // Bỏ qua nếu vụ án cũ không có dữ liệu ngày
+        if (!targetDate) return false;
+        const itemTime = moment(i.datetime.split('T')[0]).startOf('day').valueOf();
+        const start = exportStart ? moment(exportStart).startOf('day').valueOf() : 0;
+        const end = exportEnd ? moment(exportEnd).startOf('day').valueOf() : Infinity;
+        return itemTime >= start && itemTime <= end;
+      });
+    }
+    
+   dataToExport.sort((a, b) => {
+       const dateA = exportFilterType === 'createdAt' ? a.createdAt : a.datetime;
+       const dateB = exportFilterType === 'createdAt' ? b.createdAt : b.datetime;
+       return new Date(dateA || 0).getTime() - new Date(dateB || 0).getTime();
+    });
+
+    if (dataToExport.length === 0) {
+      return showToast("Không có vụ án nào trong khoảng thời gian này!", "error");
+    }
+
+    // 3. Tạo file Excel
+    let tableHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8" /><style>table { border-collapse: collapse; width: 100%; font-family: 'Times New Roman', Times, serif; font-size: 13pt; } td, th { border: 1px solid #000000; padding: 8px; vertical-align: top; } .no-border { border: none !important; } .text-center { text-align: center; vertical-align: middle; } .font-bold { font-weight: bold; }</style></head><body><table><tr><td colspan="2" class="no-border text-center font-bold">TÒA ÁN NHÂN DÂN<br/>KHU VỰC 9 - CẦN THƠ</td><td colspan="5" class="no-border text-center font-bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/>Độc lập - Tự do - Hạnh Phúc</td></tr><tr><td colspan="7" class="no-border text-center"><i>Cần Thơ, ngày ${moment().format("DD")} tháng ${moment().format("MM")} năm ${moment().format("YYYY")}</i></td></tr><tr><td colspan="7" class="no-border"></td></tr><tr><td colspan="7" class="no-border text-center font-bold" style="font-size: 16pt;">LỊCH XÉT XỬ</td></tr><tr><td colspan="7" class="no-border text-center font-bold" style="font-size: 12pt; color: #666;">(Từ ngày: ${exportStart ? moment(exportStart).format("DD/MM/YYYY") : "..."} - Đến ngày: ${exportEnd ? moment(exportEnd).format("DD/MM/YYYY") : "..."})</td></tr><tr><td colspan="7" class="no-border"></td></tr><tr><th class="text-center font-bold" style="background-color: #f2f2f2;">STT</th><th class="text-center font-bold" style="background-color: #f2f2f2;">NỘI DUNG VỤ ÁN</th><th class="text-center font-bold" style="background-color: #f2f2f2;">NGÀY XÉT XỬ</th><th class="text-center font-bold" style="background-color: #f2f2f2;">CHỦ TỌA, THƯ KÝ, KSV</th><th class="text-center font-bold" style="background-color: #f2f2f2;">HỘI THẨM NHÂN DÂN</th><th class="text-center font-bold" style="background-color: #f2f2f2;">PHÒNG XÉT XỬ</th><th class="text-center font-bold" style="background-color: #f2f2f2;">NGƯỜI NHẬP</th></tr>`;
+    
     dataToExport.forEach((item, index) => {
-      const noidung = `<b>${item.caseName || ""}</b><br/>NĐ: ${item.plaintiff || ""}<br/>BĐ: ${item.defendant || ""}`;
-      const thoigian = item.status === 'suspended' ? 'TẠM NGỪNG<br/>(Chờ báo sau)' : `${moment(item.datetime).format("HH")} giờ ${moment(item.datetime).format("mm")} phút<br/>Ngày ${moment(item.datetime).format("DD/MM/YYYY")}`;
+      // Cập nhật logic: Hình sự thì hiện "Bị cáo", Dân sự thì "NĐ - BĐ"
+      const noidung = item.caseType?.includes("Hình sự") 
+        ? `<b>${item.caseName || ""}</b><br/>Bị cáo: ${item.plaintiff || item.defendant || ""}`
+        : `<b>${item.caseName || ""}</b><br/>NĐ: ${item.plaintiff || ""}<br/>BĐ: ${item.defendant || ""}`;
+        
+      const thoigian = `${moment(item.datetime).format("HH")} giờ ${moment(item.datetime).format("mm")} phút<br/>Ngày ${moment(item.datetime).format("DD/MM/YYYY")}`;
+      
       tableHtml += `<tr><td class="text-center">${index + 1}</td><td>${noidung}</td><td class="text-center">${thoigian}</td><td>TP: ${item.judge || ""}<br/>TK: ${item.clerk || ""}<br/>KSV: ${item.prosecutor || ""}</td><td>${item.juror1 || ""}<br/>${item.juror2 || ""}</td><td class="text-center font-bold">${item.room || ""}</td><td class="text-center">${item.createdBy ? item.createdBy.split('@')[0] : ""}</td></tr>`;
     });
+    
     tableHtml += `</table></body></html>`;
     const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
     const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
-    link.download = `Lich_Xet_Xu_${startDate ? moment(startDate).format("DDMMYY") : "All"}.xls`;
-    link.click(); showToast("Đã xuất file Excel chuẩn!", "success");
+    link.download = `Lich_Xet_Xu_${exportStart ? moment(exportStart).format("MM_YYYY") : "ToanBo"}.xls`;
+    link.click();
+    
+    setShowExportModal(false); // Ẩn modal sau khi xuất
+    showToast("Đã trích xuất báo cáo Excel thành công!", "success");
   };
 
   const calendarEvents = useMemo(() => {
@@ -854,7 +898,7 @@ if (!user && !isPublicView && !isScanningQR) {
                     <input type="checkbox" checked={showOnlyUrgent} onChange={e => setShowOnlyUrgent(e.target.checked)} className="w-4 h-4 accent-red-600" /> Sắp xử (24h)
                   </label>
                   <input type="text" placeholder="Tìm kiếm tự do..." onChange={e => setSearchQuery(e.target.value)} className={`${filterStyle} flex-1 min-w-[150px]`} />
-                  <button onClick={exportToExcel} className="bg-green-600 text-white px-6 py-2.5 font-bold uppercase rounded-md shadow-sm hover:bg-green-700 text-[14px]">📊 Xuất Excel</button>
+                  <button onClick={handleExportClick} className="bg-green-600 text-white px-6 py-2.5 font-bold uppercase rounded-md shadow-sm hover:bg-green-700 text-[14px]">📊 Xuất Excel</button>
                   <button onClick={() => setShowTVMode(true)} className="bg-blue-900 text-white px-6 py-2.5 font-bold uppercase rounded-md shadow-sm hover:bg-black text-[14px]">📺 Chế độ Tivi</button>
                 </div>
               </div>
@@ -1467,6 +1511,42 @@ if (!user && !isPublicView && !isScanningQR) {
                 <div className="flex gap-4 pt-4"><button type="button" onClick={() => setShowPwdModal(false)} className="w-1/2 bg-gray-200 text-gray-700 font-black py-4 uppercase rounded-xl">HỦY</button><button type="submit" className="w-1/2 bg-blue-600 text-white font-black py-4 uppercase rounded-xl">LƯU</button></div>
               </form>
            </div>
+        </div>
+      )}
+      {/* ================= MODAL XUẤT EXCEL ================= */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[200] p-4" onClick={() => setShowExportModal(false)}>
+            <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="p-6 bg-green-700 text-white text-center">
+                  <h3 className="font-black uppercase text-xl tracking-widest">📊 Tùy Chọn Xuất Excel</h3>
+                  <p className="text-[11px] font-medium mt-1 opacity-80 uppercase">Chọn khoảng thời gian xét xử cần trích xuất</p>
+              </div>
+              <div className="p-8 space-y-6">
+                  <div>
+                    <label className="block text-xs font-black text-gray-600 uppercase mb-2">Tiêu chí lọc</label>
+                    <select 
+                      value={exportFilterType} 
+                      onChange={e => setExportFilterType(e.target.value)} 
+                      className="w-full border-2 border-green-100 p-3 bg-green-50 outline-none focus:border-green-500 font-bold text-green-900 rounded-xl cursor-pointer"
+                    >
+                      <option value="datetime">📌 Lọc theo Ngày Xét Xử (Án đã đem ra xử)</option>
+                      <option value="createdAt">📥 Lọc theo Ngày Nhập Lịch (Án mới thụ lý)</option>
+                    </select>
+                  </div>
+                    <div>
+                    <label className="block text-xs font-black text-gray-600 uppercase mb-2">Từ ngày</label>
+                    <input type="date" value={exportStart} onChange={e => setExportStart(e.target.value)} className="w-full border-2 border-gray-200 p-3 bg-gray-50 outline-none focus:border-green-500 font-bold text-gray-900 rounded-xl" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-gray-600 uppercase mb-2">Đến ngày</label>
+                    <input type="date" value={exportEnd} onChange={e => setExportEnd(e.target.value)} className="w-full border-2 border-gray-200 p-3 bg-gray-50 outline-none focus:border-green-500 font-bold text-gray-900 rounded-xl" />
+                  </div>
+                  <div className="flex gap-4 pt-2">
+                    <button type="button" onClick={() => setShowExportModal(false)} className="w-1/2 bg-gray-200 text-gray-700 font-black py-4 uppercase rounded-xl hover:bg-gray-300 transition-colors">HỦY BỎ</button>
+                    <button type="button" onClick={executeExport} className="w-1/2 bg-green-600 text-white font-black py-4 uppercase rounded-xl hover:bg-green-700 transition-colors shadow-lg shadow-green-600/30">XUẤT FILE</button>
+                  </div>
+              </div>
+            </div>
         </div>
       )}
       {showTVMode && (
