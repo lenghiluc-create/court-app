@@ -274,6 +274,23 @@ export default function PremiumCourtApp() {
       showToast(isPublishing ? "📤 Đã ghi nhận phát hành bản án!" : "Hủy ghi nhận phát hành", "success");
     } catch (err) { showToast("Lỗi cập nhật phát hành", "error"); }
   };
+  // --- HÀM PHÁT HÀNH VỤ VIỆC (DÀNH CHO THẨM PHÁN) ---
+  const handlePublishCase = async (id) => {
+    // Bật một hộp thoại xác nhận cho chắc ăn, tránh ấn nhầm
+    if (!window.confirm("Thẩm phán có chắc chắn muốn PHÁT HÀNH vụ việc này? Sau khi phát hành, thông tin sẽ được chốt.")) return;
+    
+    try {
+      const caseRef = doc(db, "schedule", id);
+      await updateDoc(caseRef, {
+        isPublished: true, // Đánh dấu là đã phát hành
+        publishedAt: new Date().toISOString() // Lưu lại thời gian phát hành để sau này báo cáo
+      });
+      showToast("📢 Đã phát hành vụ việc thành công!", "success");
+    } catch (error) {
+      console.error("Lỗi phát hành:", error);
+      showToast("Có lỗi xảy ra khi cập nhật dữ liệu!", "error");
+    }
+  };
 
   const handleDelete = async (id, caseName) => {
     if(confirm("Xóa hồ sơ này?")) {
