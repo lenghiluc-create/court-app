@@ -816,6 +816,7 @@ if (!user && !isPublicView && !isScanningQR) {
       <option value="Hành chính">Hành chính</option>
       <option value="Hôn nhân & GĐ">Hôn nhân & GĐ</option>
       <option value="Kinh tế">Kinh tế</option>
+      <option value="cainghien">Cai nghiện bắt buộc</option>
     </select>
   </div>
   <div>
@@ -996,6 +997,14 @@ if (!user && !isPublicView && !isScanningQR) {
          {item.plaintiff || item.defendant || "---"}
        </span>
     </div>
+    ) : item.caseType?.includes("Cai nghiện") ? (
+        <div className="flex flex-col">
+           <span className="text-teal-600 uppercase text-[10px]">Người bị đề nghị:</span>
+           <span className="text-[14px] font-black text-blue-900 uppercase">
+             {/* Thông thường tên người bị đề nghị Ní nhập vào ô plaintiff luôn cho tiện */}
+             {item.plaintiff || item.defendant || "---"}
+           </span>
+        </div>
   ) : (
     /* Án Dân sự/Hôn nhân: Hiện đủ NĐ và BĐ */
     <div className="space-y-2">
