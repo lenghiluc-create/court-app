@@ -913,7 +913,7 @@ if (!user && !isPublicView && !isScanningQR) {
           <th className="p-6 w-[15%] text-center">Lịch & Cập nhật</th>
           <th className="p-6 w-[45%] text-left">Nội dung & Cảnh báo</th>
           <th className="p-6 w-[25%] text-left">Thành phần HĐXX</th>
-          {(canEdit || currentUser?.role === 'judge') && (
+          {(canEdit || userRole === 'thamphan') && (
   <th className="p-6 w-[15%] text-center">Tác vụ</th>
 )}
         </tr>
@@ -1068,7 +1068,7 @@ if (!user && !isPublicView && !isScanningQR) {
 </td>
 
               {/* CỘT 4: TÁC VỤ (Khôi phục đầy đủ nút Xóa & Tạm ngừng) */}
-{(canEdit || currentUser?.role === 'judge') && (
+{(canEdit || userRole === 'thamphan') && (
   <td className="p-6 w-[15%] align-top text-center border-l border-gray-100">
     <div className="flex flex-col gap-2 w-full max-w-[130px] mx-auto">
       
