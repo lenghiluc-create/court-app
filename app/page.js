@@ -912,7 +912,9 @@ if (!user && !isPublicView && !isScanningQR) {
           <th className="p-6 w-[15%] text-center">Lịch & Cập nhật</th>
           <th className="p-6 w-[45%] text-left">Nội dung & Cảnh báo</th>
           <th className="p-6 w-[25%] text-left">Thành phần HĐXX</th>
-          {canEdit && <th className="p-6 w-[15%] text-center">Tác vụ</th>}
+          {(canEdit || currentUser?.role === 'judge') && (
+  <th className="p-6 w-[15%] text-center">Tác vụ</th>
+)}
         </tr>
       </thead>
 
@@ -1057,12 +1059,12 @@ if (!user && !isPublicView && !isScanningQR) {
 </td>
 
               {/* CỘT 4: TÁC VỤ (Khôi phục đầy đủ nút Xóa & Tạm ngừng) */}
-{canEdit && (
+{(canEdit || currentUser?.role === 'judge') && (
   <td className="p-6 w-[15%] align-top text-center border-l border-gray-100">
     <div className="flex flex-col gap-2 w-full max-w-[130px] mx-auto">
       
-      {/* 1. Nhóm nút khi án đang CHỜ XỬ */}
-      {(item.status === 'pending' || !item.status) && (
+      {/* 1. Nhóm nút khi án đang CHỜ XỬ (Đã KHÓA: Chỉ canEdit mới thấy) */}
+      {canEdit && (item.status === 'pending' || !item.status) && (
         <>
           <div className="grid grid-cols-2 gap-1">
             <button 
@@ -1078,7 +1080,6 @@ if (!user && !isPublicView && !isScanningQR) {
               HOÃN
             </button>
           </div>
-          {/* NÚT TẠM NGỪNG PHỤC HỒI TẠI ĐÂY */}
           <button 
             onClick={() => toggleStatus(item.id, 'suspended', item.caseName)} 
             className="w-full bg-purple-100 hover:bg-purple-200 text-purple-700 py-2 font-black uppercase text-[9px] rounded border border-purple-200 transition-all"
@@ -1092,7 +1093,7 @@ if (!user && !isPublicView && !isScanningQR) {
       {item.status === 'completed' && (
         <div className="grid grid-cols-1 gap-2">
           
-           {/* NÚT PHÁT HÀNH: Cam nhấp nháy (khi chưa PH) -> Xanh tem chốt (khi đã PH) */}
+           {/* NÚT PHÁT HÀNH: Không khóa canEdit -> Cả Thẩm phán và Thư ký đều thấy */}
            <button 
              onClick={() => togglePublish(item)} 
              className={`py-2 rounded text-[9px] font-black uppercase shadow-sm transition-all ${
@@ -1105,20 +1106,22 @@ if (!user && !isPublicView && !isScanningQR) {
              {item.publishedAt ? "✅ ĐÃ PH" : "📢 PHÁT HÀNH"}
            </button>
 
-           {/* NÚT MỞ LẠI: Giữ nguyên y chang code của Ní */}
-           <button 
-             onClick={() => toggleStatus(item.id, 'pending', item.caseName)} 
-             className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 py-2 font-black uppercase text-[9px] rounded border"
-             title="Chuyển vụ án về lại trạng thái Chờ xử"
-           >
-             MỞ LẠI
-           </button>
+           {/* NÚT MỞ LẠI: Đã KHÓA -> Chỉ canEdit mới thấy */}
+           {canEdit && (
+             <button 
+               onClick={() => toggleStatus(item.id, 'pending', item.caseName)} 
+               className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 py-2 font-black uppercase text-[9px] rounded border"
+               title="Chuyển vụ án về lại trạng thái Chờ xử"
+             >
+               MỞ LẠI
+             </button>
+           )}
            
         </div>
       )}
 
-      {/* 3. Nút khi án đang TẠM NGỪNG */}
-      {item.status === 'suspended' && (
+      {/* 3. Nút khi án đang TẠM NGỪNG (Ní đã khóa sẵn canEdit -> Chuẩn) */}
+      {canEdit && item.status !== 'completed' && (
         <button 
           onClick={() => handleReschedule(item)} 
           className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 font-black uppercase text-[9px] rounded shadow-md"
@@ -1127,33 +1130,36 @@ if (!user && !isPublicView && !isScanningQR) {
         </button>
       )}
 
-      {/* 4. Dòng cuối: SỬA, LOG và XÓA */}
-      <div className="pt-2 border-t border-dashed border-gray-200 mt-1 flex flex-col gap-1">
-        <div className="grid grid-cols-2 gap-1">
-          <button 
-            onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} 
-            className="bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 rounded text-[9px] font-black uppercase transition-all"
-          >
-            SỬA
-          </button>
-          <button 
-            onClick={() => setSelectedEvent(item)} 
-            className="bg-gray-50 hover:bg-gray-100 text-gray-500 py-2 rounded text-[9px] font-black uppercase transition-all"
-          >
-            LOG
-          </button>
+      {/* 4. Dòng cuối: SỬA, LOG (Đã KHÓA: Chỉ canEdit mới thấy) */}
+      {canEdit && (
+        <div className="pt-2 border-t border-dashed border-gray-200 mt-1 flex flex-col gap-1">
+          <div className="grid grid-cols-2 gap-1">
+            <button 
+              onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} 
+              className="bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 rounded text-[9px] font-black uppercase transition-all"
+            >
+              SỬA
+            </button>
+            <button 
+              onClick={() => setSelectedEvent(item)} 
+              className="bg-gray-50 hover:bg-gray-100 text-gray-500 py-2 rounded text-[9px] font-black uppercase transition-all"
+            >
+              LOG
+            </button>
+          </div>        
+          
+          {/* NÚT XÓA PHỤC HỒI TẠI ĐÂY (Chỉ Admin/Chánh án) */}
+          {(userRole === 'admin' || userRole === 'chanhan') && (
+            <button 
+              onClick={() => handleDelete(item.id, item.caseName)} 
+              className="w-full bg-red-50 hover:bg-red-500 hover:text-white text-red-500 py-1.5 rounded text-[9px] font-black uppercase transition-all border border-red-100"
+            >
+              XÓA HỒ SƠ
+            </button>
+          )}
         </div>
-        
-        {/* NÚT XÓA PHỤC HỒI TẠI ĐÂY (Chỉ Admin/Chánh án) */}
-        {(userRole === 'admin' || userRole === 'chanhan') && (
-          <button 
-            onClick={() => handleDelete(item.id, item.caseName)} 
-            className="w-full bg-red-50 hover:bg-red-500 hover:text-white text-red-500 py-1.5 rounded text-[9px] font-black uppercase transition-all border border-red-100"
-          >
-            XÓA HỒ SƠ
-          </button>
-        )}
-      </div>
+      )} 
+
     </div>
   </td>
 )}
