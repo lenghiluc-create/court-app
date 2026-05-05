@@ -1088,21 +1088,32 @@ if (!user && !isPublicView && !isScanningQR) {
         </>
       )}
 
-      {/* 2. Nhóm nút khi án ĐÃ XONG */}
+      {/* 2. Nhóm nút khi án ĐÃ XONG (COMPLETED) */}
       {item.status === 'completed' && (
         <div className="grid grid-cols-1 gap-2">
+          
+           {/* NÚT PHÁT HÀNH: Cam nhấp nháy (khi chưa PH) -> Xanh tem chốt (khi đã PH) */}
            <button 
              onClick={() => togglePublish(item)} 
-             className={`py-2 rounded text-[9px] font-black uppercase shadow-sm transition-all ${item.publishedAt ? 'bg-green-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+             className={`py-2 rounded text-[9px] font-black uppercase shadow-sm transition-all ${
+               item.publishedAt 
+                 ? 'bg-green-100 text-green-700 border border-green-300' 
+                 : 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse'
+             }`}
+             title={item.publishedAt ? "Đã phát hành" : "Nhấn để chốt phát hành án"}
            >
-             {item.publishedAt ? "✅ ĐÃ PH" : "📤 PHÁT HÀNH"}
+             {item.publishedAt ? "✅ ĐÃ PH" : "📢 PHÁT HÀNH"}
            </button>
+
+           {/* NÚT MỞ LẠI: Giữ nguyên y chang code của Ní */}
            <button 
              onClick={() => toggleStatus(item.id, 'pending', item.caseName)} 
              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 py-2 font-black uppercase text-[9px] rounded border"
+             title="Chuyển vụ án về lại trạng thái Chờ xử"
            >
              MỞ LẠI
            </button>
+           
         </div>
       )}
 
