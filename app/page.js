@@ -38,6 +38,7 @@ export default function PremiumCourtApp() {
   const [showTVMode, setShowTVMode] = useState(false);
   const [isPublicView, setIsPublicView] = useState(false);
   const [userFullName, setUserFullName] = useState("");
+  const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false); // Biến đóng/mở Dropdown Hệ thống
   
   // Modal States
   const [showPwdModal, setShowPwdModal] = useState(false);
@@ -230,7 +231,22 @@ export default function PremiumCourtApp() {
       return hasConflict;
     } catch (error) { return true; }
   };
-
+  // --- HÀM GHI NHẬT KÝ (GỌI MỖI KHI CÓ THAO TÁC) ---
+  const ghiNhatKy = async (hanhDong, chiTiet) => {
+    try {
+      const { collection, addDoc } = await import('firebase/firestore');
+      const { db } = await import('./firebase');
+      await addDoc(collection(db, "logs"), {
+        nguoiThucHien: user?.email || "Khách vô danh",
+        hanhDong: hanhDong,
+        chiTiet: chiTiet,
+        thoiGian: moment().toISOString()
+      });
+    } catch (error) {
+      console.error("Lỗi ghi log:", error);
+    }
+  };
+ 
   const handleSubmit = async () => {
     if (userRole === 'thamphan' || userRole === 'viewer') return showToast("Không có quyền!", "error");
     if (!form.datetime || !form.caseName || !form.room) return showToast("Vui lòng nhập đủ thông tin!", "error");
@@ -267,9 +283,11 @@ export default function PremiumCourtApp() {
       if (editingId) {
         await updateDoc(doc(db, "schedule", editingId), logData);
         showToast("💾 Đã cập nhật hồ sơ!", "success");
+        ghiNhatKy("Cập nhật lịch", `Sửa thông tin vụ án: ${form.caseName}`);
       } else {
         await addDoc(collection(db, "schedule"), { ...logData, createdAt: moment().toISOString(), createdBy: user.email });
         showToast("✅ Lưu lịch mới thành công!", "success");
+        ghiNhatKy("Thêm lịch mới", `Tạo vụ án: ${form.caseName} - Phòng: ${form.room}`);
       }
       setForm(initialForm); setEditingId(null);
     } catch (err) { showToast("Lỗi khi lưu dữ liệu", "error"); }
@@ -286,6 +304,7 @@ export default function PremiumCourtApp() {
       if (newStatus === 'suspended') msg = "⏸ Phiên tòa đã tạm ngừng (Chờ báo sau)!";
       
       showToast(msg, "success");
+      ghiNhatKy("Đổi trạng thái", `Chuyển vụ "${caseName}" sang: ${newStatus}`);
     } catch (err) { showToast("Lỗi cập nhật trạng thái", "error"); }
   };
 
@@ -304,6 +323,7 @@ export default function PremiumCourtApp() {
   const handleDelete = async (id, caseName) => {
     if(confirm("Xóa hồ sơ này?")) {
       await deleteDoc(doc(db,"schedule", id));
+      ghiNhatKy("Xóa lịch (Cảnh báo)", `Đã xóa vụ án: ${caseName}`); // DÒNG GHI LOG NÈ
     }
   };
   const handleDeleteIns = async (id) => {
@@ -682,14 +702,45 @@ if (!user && !isPublicView && !isScanningQR) {
     <span className="font-bold text-sm">📊 BÁO CÁO THỐNG KÊ</span>
   </div>
 )}
-{userRole === 'admin' && !isPublicView && (
-    <div 
-      onClick={() => setActiveTab("roles")} 
-      className={`cursor-pointer px-4 py-4 mt-2 rounded-lg flex justify-between items-center transition-all border border-dashed border-white/30 ${activeTab === 'roles' ? 'bg-slate-800 scale-105 shadow-lg' : 'bg-black/20 hover:bg-black/40'}`}
-    >
-      <span className="font-bold text-sm text-amber-300">⚙️ QUẢN LÝ PHÂN QUYỀN</span>
-    </div>
-  )}
+{/* ======================================================== */}
+          {/* ⚙️ NHÓM DROPDOWN: QUẢN TRỊ HỆ THỐNG (CHỈ ADMIN MỚI THẤY) */}
+          {/* ======================================================== */}
+          {userRole === 'admin' && !isPublicView && (
+            <div className="space-y-2 pt-2 border-t border-white/20 mt-4">
+              
+              {/* NÚT CHA: BẤM ĐỂ XỔ XUỐNG */}
+              <div 
+                onClick={() => setIsSystemMenuOpen(!isSystemMenuOpen)} 
+                className="cursor-pointer px-4 py-3 rounded-lg flex justify-between items-center transition-all bg-black/20 hover:bg-black/40 border border-white/10"
+              >
+                <span className="font-black text-xs text-gray-200 tracking-widest uppercase">⚙️ QUẢN TRỊ</span>
+                <span className="text-gray-400 text-xs transition-transform duration-300" style={{ transform: isSystemMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+              </div>
+
+              {/* CÁC NÚT CON: NẰM THỤT VÀO TRONG (CHỈ HIỆN KHI MỞ) */}
+              {isSystemMenuOpen && (
+                <div className="flex flex-col gap-2 pl-4 ml-2 border-l-2 border-white/20 animate-fadeIn">
+                  
+                  {/* Nút Phân Quyền */}
+                  <div 
+                    onClick={() => setActiveTab("roles")} 
+                    className={`cursor-pointer px-4 py-2.5 rounded-lg flex justify-between items-center transition-all ${activeTab === 'roles' ? 'bg-slate-800 shadow-md border-l-4 border-amber-300' : 'hover:bg-white/10'}`}
+                  >
+                    <span className={`font-bold text-[11px] uppercase tracking-wide ${activeTab === 'roles' ? 'text-amber-300' : 'text-gray-300'}`}>Phân Quyền</span>
+                  </div>
+
+                  {/* Nút Nhật Ký */}
+                  <div 
+                    onClick={() => setActiveTab("logs")} 
+                    className={`cursor-pointer px-4 py-2.5 rounded-lg flex justify-between items-center transition-all ${activeTab === 'logs' ? 'bg-slate-800 shadow-md border-l-4 border-amber-500' : 'hover:bg-white/10'}`}
+                  >
+                    <span className={`font-bold text-[11px] uppercase tracking-wide ${activeTab === 'logs' ? 'text-amber-500' : 'text-gray-300'}`}>Nhật Ký Thao Tác</span>
+                  </div>
+
+                </div>
+              )}
+            </div>
+          )}
 </div>
   <div className="mt-auto p-4 bg-white/5 rounded-2xl border border-white/10 flex flex-col items-center gap-3">
   <p className="text-[10px] font-light uppercase tracking-[0.2em] text-gray-400">Niêm yết công khai</p>
@@ -1502,6 +1553,10 @@ if (!user && !isPublicView && !isScanningQR) {
   {activeTab === "roles" && (
         <QuanLyPhanQuyen />
       )}
+      {/* KHỐI 5: TAB NHẬT KÝ */}
+    {activeTab === "logs" && (
+      <NhatKyThaoTac />
+    )}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center h-[70px] z-[100] shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)] pb-safe">
         
         {/* Nút Xét xử */}
@@ -1971,6 +2026,81 @@ const handleResetUserPassword = async (emailCanBo) => {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+// =========================================================================
+// COMPONENT: NHẬT KÝ THAO TÁC HỆ THỐNG (Dán ở cuối cùng file)
+// =========================================================================
+function NhatKyThaoTac() {
+  const [logs, React_useState] = React.useState([]);
+  const [loading, React_setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const taiNhatKy = async () => {
+      try {
+        const { collection, query, orderBy, limit, getDocs } = await import('firebase/firestore');
+        const { db } = await import('./firebase');
+        // Tải 100 thao tác mới nhất, sắp xếp từ mới đến cũ
+        const q = query(collection(db, "logs"), orderBy("thoiGian", "desc"), limit(100));
+        const dataSnapshot = await getDocs(q);
+        React_useState(dataSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        React_setLoading(false);
+      } catch (error) {
+        console.error("Lỗi tải nhật ký:", error);
+        React_setLoading(false);
+      }
+    };
+    taiNhatKy();
+  }, []);
+
+  if (loading) return <div className="p-10 text-center font-bold text-xl text-blue-600 animate-pulse">⏳ Đang trích xuất nhật ký...</div>;
+
+  return (
+    <div className="animate-fadeIn space-y-6">
+      <div className="bg-amber-800 p-6 rounded-2xl text-white shadow-lg flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-black uppercase">Nhật Ký Hệ Thống</h2>
+          <p className="opacity-70 text-[10px] font-bold uppercase tracking-widest">Lưu vết 100 thao tác gần nhất</p>
+        </div>
+        <div className="text-3xl">🕵️‍♂️</div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+        <table className="min-w-full text-left">
+          <thead className="bg-amber-50 text-[11px] font-black uppercase text-amber-900 border-b">
+            <tr>
+              <th className="p-4 w-[20%]">Thời gian</th>
+              <th className="p-4 w-[20%]">Người thực hiện</th>
+              <th className="p-4 w-[20%]">Thao tác</th>
+              <th className="p-4 w-[40%]">Chi tiết vụ việc</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {logs.map((log) => {
+              const thoiGianStr = log.thoiGian ? new Date(log.thoiGian).toLocaleString('vi-VN') : "---";
+              return (
+                <tr key={log.id} className="hover:bg-amber-50/30 transition-colors">
+                  <td className="p-4 text-xs font-bold text-gray-500">{thoiGianStr}</td>
+                  <td className="p-4 text-xs font-black text-blue-800">{log.nguoiThucHien}</td>
+                  <td className="p-4">
+                    <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md border ${
+                      log.hanhDong.includes('Xóa') ? 'bg-red-100 text-red-700 border-red-200' :
+                      log.hanhDong.includes('Thêm') ? 'bg-green-100 text-green-700 border-green-200' :
+                      log.hanhDong.includes('Cập nhật') ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                      'bg-gray-100 text-gray-700 border-gray-200'
+                    }`}>
+                      {log.hanhDong}
+                    </span>
+                  </td>
+                  <td className="p-4 text-xs font-bold text-gray-700">{log.chiTiet}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {logs.length === 0 && <div className="p-10 text-center text-gray-400 font-bold uppercase italic">Hệ thống chưa ghi nhận thao tác nào</div>}
+      </div>
     </div>
   );
 }
