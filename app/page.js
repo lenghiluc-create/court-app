@@ -148,14 +148,16 @@ export default function PremiumCourtApp() {
               const mangQuyen = userData.roles || [];
               
               // Phiên dịch mảng quyền sang hệ thống App
-              if (mangQuyen.includes("admin")) {
+              if (mangQuyen.includes("chanhan")) {
+                setUserRole("chanhan"); // Quyền tối cao (Chánh án)
+              } else if (mangQuyen.includes("admin")) {
                 setUserRole("admin"); // Full quyền (Sửa, Xóa, Quản lý tài khoản)
               } else if (mangQuyen.includes("thu_ky")) {
-                setUserRole("thuky"); // Quyền Thư ký (Đăng ký lịch, Kéo thả, nhưng KHÔNG được Xóa án)
+                setUserRole("thuky"); // Quyền Thư ký
               } else if (mangQuyen.includes("tham_phan")) {
-                setUserRole("thamphan"); // Thẩm phán (Xem và phát hành án)
+                setUserRole("thamphan"); // Thẩm phán
               } else {
-                setUserRole("viewer"); // Có tên nhưng chưa cấp quyền gì thì chỉ được xem
+                setUserRole("viewer"); // Chỉ được xem
               }
             } else {
               // Không có tên trong Database thì khóa lại, chỉ cho xem (Viewer)
@@ -1754,6 +1756,7 @@ function QuanLyPhanQuyen() {
   const [newInfo, setNewInfo] = React.useState({ hoTen: "", email: "", password: "" });
 
   const DANH_SACH_QUYEN = [
+    { maQuyen: "chanhan", tenQuyen: "Chánh án" }, // Dòng mới thêm cho Sếp
     { maQuyen: "thu_ky", tenQuyen: "Thư ký" },
     { maQuyen: "tham_phan", tenQuyen: "Thẩm phán" },
     { maQuyen: "admin", tenQuyen: "Quản trị viên" }
