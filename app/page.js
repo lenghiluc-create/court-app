@@ -37,7 +37,8 @@ export default function PremiumCourtApp() {
   const [viewMode, setViewMode] = useState("table"); 
   const [showTVMode, setShowTVMode] = useState(false);
   const [isPublicView, setIsPublicView] = useState(false);
-
+  const [userFullName, setUserFullName] = useState("");
+  
   // Modal States
   const [showPwdModal, setShowPwdModal] = useState(false);
   const [newPwd, setNewPwd] = useState("");
@@ -146,6 +147,7 @@ export default function PremiumCourtApp() {
               // Lấy mảng quyền của người đó về
               const userData = querySnapshot.docs[0].data();
               const mangQuyen = userData.roles || [];
+              setUserFullName(userData.hoTen || "");
               
               // Phiên dịch mảng quyền sang hệ thống App
               if (mangQuyen.includes("chanhan")) {
@@ -715,7 +717,9 @@ if (!user && !isPublicView && !isScanningQR) {
         <div className="p-6 border-t border-white/20 mt-auto bg-black/10">
           <div className="mb-6 p-4 bg-white/10 border border-white/20 rounded-lg shadow-inner">
              <p className="text-[10px] text-amber-300 font-bold uppercase mb-1 tracking-widest drop-shadow-md">Quyền: {roleDisplayNames[userRole]}</p>
-             <p className="text-sm font-semibold truncate opacity-90 drop-shadow-md tracking-wide">{user?.email}</p>
+             <p className="text-[13px] font-black capitalize text-white truncate drop-shadow-md tracking-wide">
+  {userFullName || "Đang tải tên..."}
+</p>
           </div>
           <div className="space-y-3">
              <button onClick={() => setShowPwdModal(true)} className="w-full bg-blue-600/80 hover:bg-blue-600 py-3 font-bold uppercase text-xs tracking-wider transition-all shadow-lg border border-white/20 rounded backdrop-blur-sm">🔑 ĐỔI MẬT KHẨU</button>
@@ -1754,7 +1758,8 @@ function QuanLyPhanQuyen() {
 
   // Biến tạm để giữ thông tin khi thêm người mới
   const [newInfo, setNewInfo] = React.useState({ hoTen: "", email: "", password: "" });
-
+  const [editingUserId, setEditingUserId] = React.useState(null); // Nhớ id người đang sửa
+  const [editingName, setEditingName] = React.useState("");
   const DANH_SACH_QUYEN = [
     { maQuyen: "chanhan", tenQuyen: "Chánh án" }, // Dòng mới thêm cho Sếp
     { maQuyen: "thu_ky", tenQuyen: "Thư ký" },
@@ -1820,9 +1825,40 @@ function QuanLyPhanQuyen() {
       await updateDoc(doc(db, "users", idNhanVien), { roles: rolesMoi });
     } catch (e) { alert("Lưu thất bại!"); }
   };
-
+// --- HÀM LƯU TÊN MỚI LÊN FIREBASE ---
+  const handleSaveName = async (idNhanVien) => {
+    if (!editingName.trim()) return alert("Tên không được để trống Ní ơi!");
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const { db } = await import('./firebase');
+      
+      // Bắn lệnh cập nhật tên lên Firebase
+      await updateDoc(doc(db, "users", idNhanVien), { hoTen: editingName });
+      
+      // Đổi tên trên màn hình ngay lập tức cho mượt
+      React_useState(users.map(u => u.id === idNhanVien ? { ...u, hoTen: editingName } : u));
+      
+      // Tắt chế độ sửa
+      setEditingUserId(null); 
+    } catch (error) {
+      alert("❌ Lưu thất bại: " + error.message);
+    }
+  };
   if (loading) return <div className="p-10 text-center text-blue-600 font-bold">⏳ Đang đồng bộ...</div>;
+const handleResetUserPassword = async (emailCanBo) => {
+    const xacNhan = window.confirm(`Ní có chắc muốn gửi Email đặt lại mật khẩu cho tài khoản: ${emailCanBo} không?`);
+    if (!xacNhan) return;
 
+    try {
+      const { sendPasswordResetEmail } = await import('firebase/auth');
+      const { auth } = await import('./firebase');
+      
+      await sendPasswordResetEmail(auth, emailCanBo);
+      alert(`✅ Đã gửi Link đặt lại mật khẩu thành công!\n\nCán bộ vui lòng mở hộp thư email (${emailCanBo}) để nhập mật khẩu mới.`);
+    } catch (error) {
+      alert("❌ Lỗi gửi email: " + error.message);
+    }
+  };
   return (
     <div className="animate-fadeIn space-y-6">
       {/* Header & Nút Thêm */}
@@ -1852,8 +1888,41 @@ function QuanLyPhanQuyen() {
             {users.map((u) => (
               <tr key={u.id} className="hover:bg-slate-50">
                 <td className="p-6">
-                  <p className="font-black text-blue-950 uppercase text-sm">{u.hoTen}</p>
-                  <p className="text-xs text-gray-400 font-bold">{u.email}</p>
+                  {/* Nếu người này đang được bấm sửa thì hiện ô nhập liệu */}
+                  {editingUserId === u.id ? (
+                    <div className="flex items-center gap-2 mb-2">
+                      <input 
+                        type="text" 
+                        value={editingName} 
+                        onChange={(e) => setEditingName(e.target.value)}
+                        className="border-2 border-blue-400 rounded-md px-2 py-1 text-sm font-bold text-blue-900 outline-none w-full shadow-inner"
+                        autoFocus
+                      />
+                      <button onClick={() => handleSaveName(u.id)} className="bg-green-500 hover:bg-green-600 text-white p-1.5 rounded-md text-xs shadow-sm" title="Lưu">💾</button>
+                      <button onClick={() => setEditingUserId(null)} className="bg-gray-300 hover:bg-gray-400 text-gray-700 p-1.5 rounded-md text-xs shadow-sm" title="Hủy">❌</button>
+                    </div>
+                  ) : (
+                    /* Nếu không sửa thì hiện tên bình thường kèm nút Cây bút chì */
+                    <div className="flex items-center gap-2 group mb-1">
+                      <p className="font-black text-blue-950 capitalize">{u.hoTen}</p>
+                      <button 
+                        onClick={() => { setEditingUserId(u.id); setEditingName(u.hoTen); }} 
+                        className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-blue-500 transition-all cursor-pointer"
+                        title="Sửa tên cán bộ"
+                      >
+                        ✏️
+                      </button>
+                    </div>
+                  )}
+                  
+                  <p className="text-xs text-gray-500 font-bold mb-3">{u.email}</p>
+                  <button 
+                    onClick={() => handleResetUserPassword(u.email)}
+                    className="bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 px-3 py-1.5 rounded-md text-[10px] font-black uppercase transition-all shadow-sm flex items-center gap-1 w-max"
+                    title="Gửi link khôi phục mật khẩu vào email này"
+                  >
+                    🔄 Khôi phục MK
+                  </button>
                 </td>
                 <td className="p-6">
                   <div className="flex gap-4">
