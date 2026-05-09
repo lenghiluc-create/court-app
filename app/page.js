@@ -131,23 +131,45 @@ export default function PremiumCourtApp() {
         setSchedule(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       });
 
-      // 4. KIỂM TRA ĐĂNG NHẬP & PHÂN QUYỀN (Đoạn ní vừa hỏi)
-      const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      // 4. KIỂM TRA ĐĂNG NHẬP & ĐỒNG BỘ QUYỀN TỰ ĐỘNG TỪ FIREBASE
+      const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
         if (currentUser) {
           setUser(currentUser);
           const email = currentUser.email ? currentUser.email.toLowerCase() : "";
           
-          // Logic phân quyền của ní
-          if (email === 'ltcnhung@thamphan.vn') setUserRole('chanhan');
-          else if (email.includes('admin') || email === 'truongphong@gmail.com') setUserRole('admin');
-          else if (email.includes('thuky')) setUserRole('thuky');
-          else if (email.includes('thamphan')) setUserRole('thamphan');
-          else setUserRole('viewer');
-      } else {
-    setUser(null);
-  }
-  setLoading(false);
-});
+          try {
+            // Lên Database, tìm cái hồ sơ nhân sự có email trùng với người đang đăng nhập
+            const q = query(collection(db, "users"), where("email", "==", email));
+            const querySnapshot = await getDocs(q);
+            
+            if (!querySnapshot.empty) {
+              // Lấy mảng quyền của người đó về
+              const userData = querySnapshot.docs[0].data();
+              const mangQuyen = userData.roles || [];
+              
+              // Phiên dịch mảng quyền sang hệ thống App
+              if (mangQuyen.includes("admin")) {
+                setUserRole("admin"); // Full quyền (Sửa, Xóa, Quản lý tài khoản)
+              } else if (mangQuyen.includes("thu_ky")) {
+                setUserRole("thuky"); // Quyền Thư ký (Đăng ký lịch, Kéo thả, nhưng KHÔNG được Xóa án)
+              } else if (mangQuyen.includes("tham_phan")) {
+                setUserRole("thamphan"); // Thẩm phán (Xem và phát hành án)
+              } else {
+                setUserRole("viewer"); // Có tên nhưng chưa cấp quyền gì thì chỉ được xem
+              }
+            } else {
+              // Không có tên trong Database thì khóa lại, chỉ cho xem (Viewer)
+              setUserRole("viewer"); 
+            }
+          } catch (error) {
+            console.error("Lỗi đồng bộ quyền:", error);
+            setUserRole("viewer");
+          }
+        } else {
+          setUser(null);
+        }
+        setLoading(false);
+      });
     return () => {
         unsubscribeIns();
         unsubscribeSchedule();
@@ -656,6 +678,14 @@ if (!user && !isPublicView && !isScanningQR) {
     <span className="font-bold text-sm">📊 BÁO CÁO THỐNG KÊ</span>
   </div>
 )}
+{userRole === 'admin' && !isPublicView && (
+    <div 
+      onClick={() => setActiveTab("roles")} 
+      className={`cursor-pointer px-4 py-4 mt-2 rounded-lg flex justify-between items-center transition-all border border-dashed border-white/30 ${activeTab === 'roles' ? 'bg-slate-800 scale-105 shadow-lg' : 'bg-black/20 hover:bg-black/40'}`}
+    >
+      <span className="font-bold text-sm text-amber-300">⚙️ QUẢN LÝ PHÂN QUYỀN</span>
+    </div>
+  )}
 </div>
   <div className="mt-auto p-4 bg-white/5 rounded-2xl border border-white/10 flex flex-col items-center gap-3">
   <p className="text-[10px] font-light uppercase tracking-[0.2em] text-gray-400">Niêm yết công khai</p>
@@ -1448,6 +1478,10 @@ if (!user && !isPublicView && !isScanningQR) {
                </div>
             </div>
           ))}
+          {/* KHỐI 4: TAB QUẢN LÝ PHÂN QUYỀN */}
+  {activeTab === "roles" && (
+    <QuanLyPhanQuyen />
+  )}
           
           {completedByMonth.length === 0 && (
             <div className="text-center py-16">
@@ -1459,7 +1493,9 @@ if (!user && !isPublicView && !isScanningQR) {
       </div>
     </div>
   )}
-  {/* 👇👇👇 THANH ĐIỀU HƯỚNG DƯỚI ĐÁY DÀNH RIÊNG CHO ĐIỆN THOẠI 👇👇👇 */}
+  {activeTab === "roles" && (
+        <QuanLyPhanQuyen />
+      )}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center h-[70px] z-[100] shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)] pb-safe">
         
         {/* Nút Xét xử */}
@@ -1704,6 +1740,163 @@ if (!user && !isPublicView && !isScanningQR) {
       {toast.show && (
         <div className={`fixed bottom-6 right-6 z-[200] px-8 py-4 shadow-2xl font-black text-white rounded-xl ${toast.type === 'error' ? 'bg-red-600' : 'bg-blue-950'}`}>
           {toast.message}
+        </div>
+      )}
+    </div>
+  );
+}
+function QuanLyPhanQuyen() {
+  const [users, React_useState] = React.useState([]);
+  const [loading, React_setLoading] = React.useState(true);
+  const [showAddModal, setShowAddModal] = React.useState(false); // Trạng thái ẩn/hiện Modal
+
+  // Biến tạm để giữ thông tin khi thêm người mới
+  const [newInfo, setNewInfo] = React.useState({ hoTen: "", email: "", password: "" });
+
+  const DANH_SACH_QUYEN = [
+    { maQuyen: "thu_ky", tenQuyen: "Thư ký" },
+    { maQuyen: "tham_phan", tenQuyen: "Thẩm phán" },
+    { maQuyen: "admin", tenQuyen: "Quản trị viên" }
+  ];
+
+  // --- HÀM TẢI DỮ LIỆU ---
+  const taiDuLieu = async () => {
+    const { collection, getDocs } = await import('firebase/firestore');
+    const { db } = await import('./firebase');
+    const snapshot = await getDocs(collection(db, "users"));
+    React_useState(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    React_setLoading(false);
+  };
+
+  React.useEffect(() => { taiDuLieu(); }, []);
+
+  // --- HÀM THÊM CÁN BỘ MỚI (CHỦ CHỐT) ---
+  const handleAddUser = async (e) => {
+    e.preventDefault();
+    if (!newInfo.email || !newInfo.hoTen) return alert("Điền đủ tên và email nhé Ní!");
+
+    try {
+      const { setDoc, doc } = await import('firebase/firestore');
+      const { db, auth } = await import('./firebase');
+      const { createUserWithEmailAndPassword } = await import('firebase/auth');
+
+      // 1. Cố gắng tạo tài khoản bên Auth (Nếu email đã tồn tại nó sẽ báo lỗi, mình sẽ bắt lỗi ở dưới)
+      try {
+        await createUserWithEmailAndPassword(auth, newInfo.email, newInfo.password || "Toaan@123");
+      } catch (authError) {
+        if (authError.code === 'auth/email-already-in-use') {
+          console.log("Tài khoản đã có trên Auth, chỉ tiến hành tạo hồ sơ quyền.");
+        }
+      }
+
+      // 2. Tạo hồ sơ quyền trên Firestore (Dùng email làm mã định danh cho chắc)
+      const docId = newInfo.email.replace(/\./g, '_'); // Thay dấu chấm bằng gạch dưới để làm ID file
+      await setDoc(doc(db, "users", docId), {
+        hoTen: newInfo.hoTen,
+        email: newInfo.email.toLowerCase(),
+        roles: ["thu_ky"], // Mặc định là thư ký
+        createdAt: new Date().toISOString()
+      });
+
+      alert("✅ Đã đồng bộ cán bộ thành công!");
+      setShowAddModal(false);
+      setNewInfo({ hoTen: "", email: "", password: "" });
+      taiDuLieu(); // Tải lại bảng
+    } catch (error) {
+      alert("❌ Lỗi: " + error.message);
+    }
+  };
+
+  // --- HÀM ĐỔI QUYỀN ---
+  const xuLyDoiQuyen = async (idNhanVien, danhSachQuyenHienTai, maQuyenVuaBam, laDangTick) => {
+    let rolesMoi = laDangTick ? [...(danhSachQuyenHienTai || []), maQuyenVuaBam] : (danhSachQuyenHienTai || []).filter(r => r !== maQuyenVuaBam);
+    React_useState(users.map(u => u.id === idNhanVien ? { ...u, roles: rolesMoi } : u));
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const { db } = await import('./firebase');
+      await updateDoc(doc(db, "users", idNhanVien), { roles: rolesMoi });
+    } catch (e) { alert("Lưu thất bại!"); }
+  };
+
+  if (loading) return <div className="p-10 text-center text-blue-600 font-bold">⏳ Đang đồng bộ...</div>;
+
+  return (
+    <div className="animate-fadeIn space-y-6">
+      {/* Header & Nút Thêm */}
+      <div className="bg-slate-800 p-6 rounded-2xl text-white shadow-lg flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-black uppercase">Cán bộ hệ thống</h2>
+          <p className="opacity-70 text-[10px] font-bold uppercase tracking-widest">Danh sách nhân sự & Phân quyền</p>
+        </div>
+        <button 
+          onClick={() => setShowAddModal(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-black text-xs uppercase shadow-lg transition-all active:scale-95"
+        >
+          ➕ THÊM CÁN BỘ
+        </button>
+      </div>
+
+      {/* Bảng danh sách */}
+      <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+        <table className="min-w-full text-left">
+          <thead className="bg-slate-50 text-[11px] font-black uppercase text-slate-500 border-b">
+            <tr>
+              <th className="p-6">Cán bộ</th>
+              <th className="p-6">Quyền hạn (Tick để cấp quyền)</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {users.map((u) => (
+              <tr key={u.id} className="hover:bg-slate-50">
+                <td className="p-6">
+                  <p className="font-black text-blue-950 uppercase text-sm">{u.hoTen}</p>
+                  <p className="text-xs text-gray-400 font-bold">{u.email}</p>
+                </td>
+                <td className="p-6">
+                  <div className="flex gap-4">
+                    {DANH_SACH_QUYEN.map((q) => {
+                      const isActive = (u.roles || []).includes(q.maQuyen);
+                      return (
+                        <label key={q.maQuyen} className="flex items-center gap-2 cursor-pointer bg-white border px-3 py-2 rounded-lg hover:shadow-sm">
+                          <input type="checkbox" checked={isActive} onChange={(e) => xuLyDoiQuyen(u.id, u.roles, q.maQuyen, e.target.checked)} className="w-4 h-4 accent-blue-600" />
+                          <span className={`text-[11px] font-black uppercase ${isActive ? 'text-blue-700' : 'text-gray-400'}`}>{q.tenQuyen}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* MODAL THÊM CÁN BỘ (HIỆN LÊN GIỮA MÀN HÌNH) */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-popIn">
+            <div className="bg-blue-900 p-6 text-white text-center">
+              <h3 className="font-black uppercase tracking-widest">Thêm Cán Bộ Mới</h3>
+            </div>
+            <form onSubmit={handleAddUser} className="p-8 space-y-5">
+              <div>
+                <label className="block text-[10px] font-black uppercase text-gray-400 mb-2">Họ và Tên</label>
+                <input type="text" value={newInfo.hoTen} onChange={e => setNewInfo({...newInfo, hoTen: e.target.value})} className="w-full border-2 border-gray-100 p-4 rounded-xl outline-none focus:border-blue-500 font-bold" placeholder="VD: Nguyễn Văn A" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase text-gray-400 mb-2">Email đăng nhập</label>
+                <input type="email" value={newInfo.email} onChange={e => setNewInfo({...newInfo, email: e.target.value})} className="w-full border-2 border-gray-100 p-4 rounded-xl outline-none focus:border-blue-500 font-bold" placeholder="email@toaan.gov.vn" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase text-gray-400 mb-2">Mật khẩu (Mặc định)</label>
+                <input type="text" value={newInfo.password} onChange={e => setNewInfo({...newInfo, password: e.target.value})} className="w-full border-2 border-gray-100 p-4 rounded-xl outline-none focus:border-blue-500 font-bold" placeholder="Toaan@123" />
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button type="button" onClick={() => setShowAddModal(false)} className="w-1/2 py-4 font-black uppercase text-xs text-gray-400 bg-gray-100 rounded-xl">Hủy</button>
+                <button type="submit" className="w-1/2 py-4 font-black uppercase text-xs text-white bg-blue-600 rounded-xl shadow-lg">Lưu hồ sơ</button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
