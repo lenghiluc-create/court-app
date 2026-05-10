@@ -34,12 +34,18 @@ export default function PremiumCourtApp() {
   const [showOnlyUrgent, setShowOnlyUrgent] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [viewMode, setViewMode] = useState("table"); 
+  const [displayMode, setDisplayMode] = useState("table"); 
   const [showTVMode, setShowTVMode] = useState(false);
   const [isPublicView, setIsPublicView] = useState(false);
   const [userFullName, setUserFullName] = useState("");
   const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false); 
   const [editingUserId, setEditingUserId] = useState(null);
+  const [viewMode, setViewMode] = useState("portal");
+  const [newsList, setNewsList] = useState([]);
+  const [legalDocs, setLegalDocs] = useState([]);
+  const [quickLinks, setQuickLinks] = useState([]);
+  const [readingLink, setReadingLink] = useState(null); // Lưu link đang đọc
+  const [newsForm, setNewsForm] = useState({ title: "", content: "", date: moment().format("YYYY-MM-DD") });
   
   // Modal States
   const [showPwdModal, setShowPwdModal] = useState(false);
@@ -96,6 +102,22 @@ export default function PremiumCourtApp() {
     showToast("Lỗi khi lưu dữ liệu vào hệ thống!", "error"); 
   }
 };
+const handlePostNews = async () => {
+  if (!newsForm.title || !newsForm.content) {
+    return showToast("Vui lòng nhập đủ Tiêu đề và Nội dung tin!", "error");
+  }
+  try {
+    await addDoc(collection(db, "news"), { 
+      ...newsForm, 
+      createdAt: moment().toISOString(), 
+      createdBy: user.email 
+    });
+    showToast("✅ Đã đăng tin thành công!", "success");
+    setNewsForm({ title: "", content: "", date: moment().format("YYYY-MM-DD") }); // Reset form
+  } catch (e) {
+    showToast("Lỗi khi đăng tin!", "error"); 
+  }
+};
 
   const inputBase = "w-full border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[15px] font-medium text-gray-800";
   const labelStyle = "block text-center text-[13px] font-black text-teal-900 bg-teal-100 border border-teal-200 py-2.5 px-4 rounded-md mb-2 w-full uppercase tracking-widest shadow-sm"; 
@@ -108,7 +130,24 @@ export default function PremiumCourtApp() {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3500);
   };
+  // Đảm bảo đoạn này nằm riêng biệt, không lồng trong hàm nào khác
+useEffect(() => {
+  const qNews = query(collection(db, "news"), orderBy("date", "desc"));
+  onSnapshot(qNews, (snap) => setNewsList(snap.docs.map(d => ({id: d.id, ...d.data()}))));
 
+  // Lấy Văn bản pháp luật
+  const qDocs = query(collection(db, "legal_docs"), orderBy("createdAt", "desc"));
+  onSnapshot(qDocs, (snap) => setLegalDocs(snap.docs.map(d => ({id: d.id, ...d.data()}))));
+
+  // Lấy Liên kết nhanh
+  const qLinks = query(collection(db, "quick_links"), orderBy("order", "asc"));
+  onSnapshot(qLinks, (snap) => setQuickLinks(snap.docs.map(d => ({id: d.id, ...d.data()}))));
+  const unsubscribeNews = onSnapshot(qNews, (snapshot) => {
+    setNewsList(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
+  
+  return () => unsubscribeNews(); // Luôn luôn dọn dẹp listener khi component unmount
+}, []);
   useEffect(() => {
     if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
@@ -127,7 +166,6 @@ export default function PremiumCourtApp() {
       const unsubscribeSchedule = onSnapshot(qSchedule, (snapshot) => {
         setSchedule(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       });
-
       const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
         if (currentUser) {
           setUser(currentUser);
@@ -537,6 +575,114 @@ export default function PremiumCourtApp() {
       ...i, title: `${i.status === 'completed' ? '✅ ' : ''}[${i.room}] ${i.caseName || 'Chưa có tên'}`, start: new Date(i.datetime), end: new Date(new Date(i.datetime).getTime() + (i.duration || 60) * 60000) 
     }));
   }, [schedule]);
+  const CourtPortal = () => (
+  <div className="animate-fadeIn pb-20">
+    {/* Banner Chính */}
+    <div className="relative h-64 md:h-80 w-full overflow-hidden rounded-2xl shadow-2xl mb-10">
+      <div className="absolute inset-0 bg-gradient-to-r from-red-800 to-transparent z-10"></div>
+      <img src="/toaan.jpg" className="absolute inset-0 w-full h-full object-cover" alt="Banner" />
+      <div className="relative z-20 p-8 md:p-12 h-full flex flex-col justify-center">
+        <h2 className="text-white text-3xl md:text-5xl font-black uppercase mb-4 drop-shadow-lg">
+          Cổng Thông Tin Điện Tử
+        </h2>
+        <p className="text-yellow-400 text-lg md:text-xl font-bold uppercase tracking-widest drop-shadow-md">
+          Tòa án nhân dân khu vực 9 - TP. Cần Thơ
+        </p>
+      </div>
+    </div>
+
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      {/* Cột trái: Tin tức & Thông báo */}
+      <div className="xl:col-span-2 space-y-8">
+        <div className="bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
+          <h3 className="text-red-700 font-black uppercase text-lg border-b-2 border-red-700 pb-3 mb-6 flex items-center gap-2">
+  <span className="text-2xl">📰</span> Tin tức hoạt động
+</h3>
+{/* Cập nhật lại phần hiển thị tin tức trong CourtPortal */}
+<div className="space-y-6">
+  {newsList.length > 0 ? newsList.map((item) => (
+    // Tìm đoạn map tin tức lúc nãy, sửa lại như sau:
+<div 
+  key={item.id} 
+  onClick={() => {
+    if(item.link) setReadingLink(item.link);
+  }}
+  className="flex gap-4 group cursor-pointer border-b border-gray-50 pb-4 last:border-0"
+>
+  <div className="w-20 h-20 bg-red-50 rounded-lg flex-shrink-0 flex items-center justify-center border border-red-100 group-hover:bg-red-100 transition-colors">
+    <span className="text-3xl">📰</span>
+  </div>
+  <div className="flex-1">
+    <h4 className="font-bold text-blue-900 group-hover:text-red-600 transition-colors leading-tight mb-1 text-sm">
+      {item.title}
+    </h4>
+    <p className="text-[10px] text-gray-400 font-medium italic mb-1">
+      Ngày {moment(item.date).format("DD/MM/YYYY")}
+    </p>
+    <p className="text-[11px] text-gray-600 line-clamp-2">{item.content}</p>
+    {item.link && (
+      <span className="text-[9px] text-blue-500 font-bold uppercase mt-1 inline-block">
+        👁️ Xem trực tiếp tại đây...
+      </span>
+    )}
+  </div>
+</div>
+  )) : (
+    <p className="text-sm italic text-gray-400">Chưa có bản tin nào được đăng.</p>
+  )}
+</div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
+  <h3 className="text-blue-900 font-black uppercase text-lg border-b-2 border-blue-900 pb-3 mb-6 flex items-center gap-2">
+    <span className="text-2xl">⚖️</span> Văn bản pháp luật mới
+  </h3>
+  <ul className="space-y-3">
+    {legalDocs.map((doc) => (
+      <li key={doc.id} className="flex items-center justify-between p-3 bg-blue-50/50 rounded-lg border border-blue-100 hover:bg-blue-100 transition-all">
+        <span className="text-sm font-bold text-gray-700">{doc.title}</span>
+        <a href={doc.fileUrl} target="_blank" className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded uppercase font-black hover:bg-blue-700">Tải về</a>
+      </li>
+    ))}
+  </ul>
+</div>
+      </div>
+
+      {/* Cột phải: Tiện ích & Nút vào App */}
+      <div className="space-y-8">
+        <div className="bg-gradient-to-br from-blue-900 to-blue-700 rounded-2xl p-8 text-white shadow-2xl">
+          <h3 className="font-black text-center text-xl uppercase mb-6 leading-tight">
+            Hệ Thống Nghiệp Vụ Lịch Công Tác
+          </h3>
+          <p className="text-center text-xs opacity-80 mb-8 italic">Vui lòng truy cập để thực hiện đăng ký, theo dõi và quản lý lịch xét xử trực tuyến.</p>
+          <button 
+            onClick={() => setViewMode("app")}
+            className="w-full bg-yellow-400 hover:bg-yellow-500 text-blue-950 font-black py-4 rounded-xl shadow-lg transition-all active:scale-95 text-lg uppercase"
+          >
+            Vào Trang Quản Lý ⚖️
+          </button>
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
+  <h3 className="text-gray-800 font-black uppercase text-sm mb-4 tracking-widest text-center">Liên kết nhanh</h3>
+  <div className="grid grid-cols-2 gap-3">
+    {quickLinks.map(link => (
+      <a 
+        key={link.id} 
+        href={link.url} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-[10px] font-black uppercase text-gray-600 hover:border-red-500 hover:text-red-600 transition-all text-center block"
+      >
+        {link.title}
+      </a>
+    ))}
+  </div>
+</div>
+      </div>
+    </div>
+  </div>
+);
 
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-blue-950 font-sans">
@@ -650,6 +796,12 @@ if (!user && !isPublicView && !isScanningQR) {
           boxShadow: '4px 0 32px 0 rgba(0, 0, 0, 0.2)'
         }}
       >
+        <div 
+  onClick={() => setViewMode("portal")} 
+  className={`cursor-pointer px-3 py-3 rounded-lg flex justify-between items-center mb-4 transition-all ${viewMode === 'portal' ? 'bg-yellow-500 text-blue-950' : 'bg-white/10 hover:bg-white/20'}`}
+>
+  <span className="font-bold text-sm">🏠 TRANG CHỦ PORTAL</span>
+</div>
         <div className="py-10 px-6 text-center border-b border-white/20">
           <img src="/lgtoaan1.png" alt="Logo Tòa án" className="w-20 h-20 mx-auto mb-4 drop-shadow-xl" />
           <h2 className="font-extrabold text-2xl uppercase tracking-widest drop-shadow-md">KV9-Cần Thơ</h2>
@@ -657,7 +809,7 @@ if (!user && !isPublicView && !isScanningQR) {
         <div className="p-4 space-y-2">
   {/* ⚖️ LỊCH XÉT XỬ */}
   <div 
-    onClick={() => setActiveTab("trial")} 
+    onClick={() => { setActiveTab("trial"); setViewMode("app"); }} 
     className={`cursor-pointer px-3 py-3 rounded-lg flex justify-between items-center transition-all ${activeTab === 'trial' ? 'bg-blue-600 scale-105' : 'bg-white/10 hover:bg-white/20'}`}
   >
     <span className="font-bold text-sm">⚖️ LỊCH XÉT XỬ</span>
@@ -666,7 +818,7 @@ if (!user && !isPublicView && !isScanningQR) {
   {/* 🌍 LỊCH THẨM ĐỊNH */}
   {!isPublicView && (
     <div 
-      onClick={() => setActiveTab("inspection")} 
+      onClick={() => { setActiveTab("inspection"); setViewMode("app"); }} 
       className={`cursor-pointer px-3 py-3 rounded-lg flex justify-between items-center transition-all ${activeTab === 'inspection' ? 'bg-teal-600 scale-105' : 'bg-white/10 hover:bg-white/20'}`}
     >
       <span className="font-bold text-sm">🌍 LỊCH THẨM ĐỊNH</span>
@@ -675,10 +827,15 @@ if (!user && !isPublicView && !isScanningQR) {
   )}
   {!isPublicView && (
   <div 
-    onClick={() => setActiveTab("report")} 
+    onClick={() => { setActiveTab("report"); setViewMode("app"); }} 
     className={`cursor-pointer px-3 py-3 rounded-lg flex justify-between items-center transition-all ${activeTab === 'report' ? 'bg-amber-600 scale-105' : 'bg-white/10 hover:bg-white/20'}`}
   >
     <span className="font-bold text-sm">📊 BÁO CÁO THỐNG KÊ</span>
+  </div>
+)}
+{userRole === 'admin' && (
+  <div onClick={() => { setActiveTab("post_news"); setViewMode("app"); }} className={`cursor-pointer px-3 py-3 rounded-lg flex justify-between items-center transition-all ${activeTab === 'post_news' ? 'bg-purple-600 scale-105' : 'bg-white/10 hover:bg-white/20'}`}>
+    <span className="font-bold text-sm">✍️ VIẾT BẢN TIN</span>
   </div>
 )}
           {/* ⚙️ NHÓM DROPDOWN: QUẢN TRỊ HỆ THỐNG (CHỈ ADMIN MỚI THẤY) */}
@@ -709,6 +866,14 @@ if (!user && !isPublicView && !isScanningQR) {
                   >
                     <span className={`font-bold text-[11px] uppercase tracking-wide ${activeTab === 'logs' ? 'text-amber-500' : 'text-gray-300'}`}>Nhật Ký Thao Tác</span>
                   </div>
+                  <div 
+  onClick={() => { setActiveTab("manage_portal"); setDisplayMode("app"); }} 
+  className={`cursor-pointer px-3 py-2 rounded-lg flex justify-between items-center transition-all mt-2 ${activeTab === 'manage_portal' ? 'bg-slate-800 shadow-md border-l-4 border-blue-400' : 'hover:bg-white/10'}`}
+>
+  <span className={`font-bold text-[11px] uppercase tracking-wide ${activeTab === 'manage_portal' ? 'text-blue-400' : 'text-gray-300'}`}>
+    Quản Trị Portal
+  </span>
+</div>
 
                 </div>
               )}
@@ -777,33 +942,66 @@ if (!user && !isPublicView && !isScanningQR) {
 </header>
 
        <div className="p-4 md:p-12 flex-1">
-    {activeTab === "trial" && (
-      <>
-          <div className="bg-white shadow-xl rounded-xl mb-8 border border-gray-200 overflow-hidden">
-            <div className="grid grid-cols-2 md:grid-cols-7 divide-x divide-y md:divide-y-0 divide-gray-200">
-              <div onClick={() => handleStatCardClick('pending')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-blue-50 transition-colors">
-                <p className="text-gray-500 text-[9px] font-black uppercase mb-1">Chờ xử</p><p className="text-2xl font-black text-blue-950">{pendingCases.length}</p>
-              </div>
-              <div onClick={() => handleStatCardClick('urgent')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-red-100 bg-red-50 transition-colors relative">
-                <p className="text-red-600 text-[9px] font-black uppercase mb-1">Sắp xử</p><p className={`text-2xl font-black text-red-600 ${urgentCount > 0 ? 'animate-pulse' : ''}`}>{urgentCount}</p>
-              </div>
-              <div onClick={() => handleStatCardClick('suspended')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-purple-50 transition-colors">
-                <p className="text-gray-500 text-[9px] font-black uppercase mb-1">Tạm ngừng</p><p className="text-2xl font-black text-purple-600">{schedule.filter(i => i.status === 'suspended').length}</p>
-              </div>
-              <div onClick={() => handleStatCardClick('completed')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-green-50 transition-colors">
-                <p className="text-gray-500 text-[9px] font-black uppercase mb-1">Đã xong</p><p className="text-2xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p>
-              </div>
-              <div onClick={() => handleStatCardClick('overdue_publish')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-red-50 transition-colors">
-                <p className="text-red-700 text-[9px] font-black uppercase mb-1">Chưa PH ({'>'}5n)</p><p className="text-2xl font-black text-red-700">{overduePublishCount}</p>
-              </div>
-              <div onClick={() => handleStatCardClick('effective')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-teal-50 transition-colors">
-                <p className="text-teal-700 text-[9px] font-black uppercase mb-1">Hiệu lực ({'>'}30n)</p><p className="text-2xl font-black text-teal-700">{effectiveCount}</p>
-              </div>
-              <div onClick={() => handleStatCardClick('all')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-colors">
-                <p className="text-gray-500 text-[9px] font-black uppercase mb-1">Tổng vụ</p><p className="text-2xl font-black text-gray-500">{schedule.length}</p>
-              </div>
-            </div>
+          {/* --- CHỈ HIỆN PORTAL KHI VIEWMODE LÀ PORTAL --- */}
+          {viewMode === "portal" ? (
+    <>
+      {readingLink ? (
+        /* GIAO DIỆN ĐỌC TIN TẠI CHỖ */
+        <div className="animate-fadeIn flex flex-col h-[80vh] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+          <div className="p-4 bg-gray-100 border-b flex justify-between items-center">
+            <button 
+              onClick={() => setReadingLink(null)} 
+              className="bg-white border px-4 py-2 rounded-lg font-bold text-sm text-red-600 hover:bg-red-50 transition-all flex items-center gap-2"
+            >
+              ⬅️ TRỞ VỀ DANH SÁCH
+            </button>
+            <p className="text-xs font-bold text-gray-500 truncate max-w-md italic">Đang xem: {readingLink}</p>
           </div>
+          
+          <div className="flex-1 w-full bg-white">
+            <iframe 
+              src={readingLink} 
+              className="w-full h-full border-none"
+              title="News Reader"
+            />
+          </div>
+        </div>
+      ) : (
+            <CourtPortal />
+      )}
+    </>
+  ) : (
+            /* --- NẾU KHÔNG PHẢI PORTAL THÌ HIỆN CÁC TAB NGHIỆP VỤ --- */
+            <>
+              {activeTab === "trial" && (
+                <div className="animate-fadeIn">
+                  {/* Dưới đây là phần Thống kê (Stat Cards) của Ní */}
+                  <div className="bg-white shadow-xl rounded-xl mb-8 border border-gray-200 overflow-hidden">
+                    <div className="grid grid-cols-2 md:grid-cols-7 divide-x divide-y md:divide-y-0 divide-gray-200">
+                      <div onClick={() => handleStatCardClick('pending')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-blue-50 transition-colors">
+                        <p className="text-gray-500 text-[9px] font-black uppercase mb-1">Chờ xử</p><p className="text-2xl font-black text-blue-950">{pendingCases.length}</p>
+                      </div>
+                      {/* ... Các ô Stat Card khác giữ nguyên ... */}
+                      <div onClick={() => handleStatCardClick('urgent')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-red-100 bg-red-50 transition-colors relative">
+                        <p className="text-red-600 text-[9px] font-black uppercase mb-1">Sắp xử</p><p className={`text-2xl font-black text-red-600 ${urgentCount > 0 ? 'animate-pulse' : ''}`}>{urgentCount}</p>
+                      </div>
+                      <div onClick={() => handleStatCardClick('suspended')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-purple-50 transition-colors">
+                        <p className="text-gray-500 text-[9px] font-black uppercase mb-1">Tạm ngừng</p><p className="text-2xl font-black text-purple-600">{schedule.filter(i => i.status === 'suspended').length}</p>
+                      </div>
+                      <div onClick={() => handleStatCardClick('completed')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-green-50 transition-colors">
+                        <p className="text-gray-500 text-[9px] font-black uppercase mb-1">Đã xong</p><p className="text-2xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p>
+                      </div>
+                      <div onClick={() => handleStatCardClick('overdue_publish')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-red-50 transition-colors">
+                        <p className="text-red-700 text-[9px] font-black uppercase mb-1">Chưa PH ({'>'}5n)</p><p className="text-2xl font-black text-red-700">{overduePublishCount}</p>
+                      </div>
+                      <div onClick={() => handleStatCardClick('effective')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-teal-50 transition-colors">
+                        <p className="text-teal-700 text-[9px] font-black uppercase mb-1">Hiệu lực ({'>'}30n)</p><p className="text-2xl font-black text-teal-700">{effectiveCount}</p>
+                      </div>
+                      <div onClick={() => handleStatCardClick('all')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-colors">
+                        <p className="text-gray-500 text-[9px] font-black uppercase mb-1">Tổng vụ</p><p className="text-2xl font-black text-gray-500">{schedule.length}</p>
+                      </div>
+                    </div>
+                  </div>
 
           {canEdit && (
             <div className="bg-white p-6 md:p-10 border shadow-xl rounded-xl mb-12">
@@ -930,8 +1128,8 @@ if (!user && !isPublicView && !isScanningQR) {
                 <div className="flex justify-between items-center w-full">
                    <h3 className="font-black uppercase text-xl md:text-2xl text-blue-950 flex items-center gap-4"><span className="w-1.5 h-8 bg-blue-950 rounded-full"></span>Sổ tổng hợp lịch </h3>
                    <div className="flex bg-gray-100 p-1.5 rounded-lg border border-gray-200 shadow-inner">
-                     <button onClick={() => setViewMode('table')} className={`px-4 py-2 text-xs font-black uppercase rounded-md transition-all ${viewMode === 'table' ? 'bg-white text-blue-700 shadow-md' : 'text-gray-500 hover:text-gray-800'}`}>Danh sách</button>
-                     <button onClick={() => setViewMode('kanban')} className={`px-4 py-2 text-xs font-black uppercase rounded-md transition-all ${viewMode === 'kanban' ? 'bg-white text-blue-700 shadow-md' : 'text-gray-500 hover:text-gray-800'}`}>Bảng Kéo Thả</button>
+                     <button onClick={() => setDisplayMode('table')} className={`px-4 py-2 text-xs font-black uppercase rounded-md transition-all ${viewMode === 'table' ? 'bg-white text-blue-700 shadow-md' : 'text-gray-500 hover:text-gray-800'}`}>Danh sách</button>
+                     <button onClick={() => setDisplayMode('kanban')} className={`px-4 py-2 text-xs font-black uppercase rounded-md transition-all ${viewMode === 'kanban' ? 'bg-white text-blue-700 shadow-md' : 'text-gray-500 hover:text-gray-800'}`}>Bảng Kéo Thả</button>
                    </div>
                 </div>
                 
@@ -959,7 +1157,7 @@ if (!user && !isPublicView && !isScanningQR) {
               </div>
 
              <div className="flex-1 overflow-x-auto bg-gray-50/50 rounded-b-xl custom-scrollbar">
-  {viewMode === 'table' ? (
+  {displayMode === 'table' ? (
     <table className="w-full border-collapse table-fixed min-w-[1100px] border border-gray-300 text-[11px]">
       <thead className="bg-gray-100 text-[11px] font-black uppercase text-gray-500 sticky top-0 z-10 border-b border-gray-200">
         <tr>
@@ -1256,10 +1454,11 @@ if (!user && !isPublicView && !isScanningQR) {
                   </div>
                 )}
               </div>
-            </div>
-          </div> 
-        </>
-      )}
+                </div>
+              </div>
+            </div> 
+          )}
+
       {activeTab === "inspection" && (
     <div className="animate-fadeIn space-y-10">
         <div className="bg-teal-700 p-10 rounded-xl text-white shadow-2xl flex flex-col items-center">
@@ -1459,9 +1658,6 @@ if (!user && !isPublicView && !isScanningQR) {
                </div>
             </div>
           ))}
-  {activeTab === "roles" && (
-    <QuanLyPhanQuyen />
-  )}
           
           {completedByMonth.length === 0 && (
             <div className="text-center py-16">
@@ -1473,16 +1669,99 @@ if (!user && !isPublicView && !isScanningQR) {
       </div>
     </div>
   )}
-  {activeTab === "roles" && (
+  {activeTab === "news_admin" && (
+        <QuanLyTinTuc />
+      )}
+      {activeTab === "post_news" && (
+  <div className="animate-fadeIn space-y-6 max-w-4xl mx-auto">
+    <div className="bg-white p-8 rounded-xl shadow-xl border border-gray-200">
+      <h2 className="text-2xl font-black text-blue-900 uppercase mb-6 flex items-center gap-2">
+        <span className="text-3xl">✍️</span> Đăng Tin Tức Mới
+      </h2>
+      <div className="space-y-5">
+        <div>
+          <label className="block text-xs font-black uppercase text-gray-600 mb-2">Tiêu đề bản tin</label>
+          <input type="text" value={newsForm.title} onChange={e => setNewsForm({...newsForm, title: e.target.value})} className={inputBase} placeholder="Nhập tiêu đề..." />
+        </div>
+        <div className="flex gap-4">
+          <div className="w-1/3">
+            <label className="block text-xs font-black uppercase text-gray-600 mb-2">Ngày đăng</label>
+            <input type="date" value={newsForm.date} onChange={e => setNewsForm({...newsForm, date: e.target.value})} className={inputBase} />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-black uppercase text-gray-600 mb-2">Nội dung</label>
+          <textarea rows="5" value={newsForm.content} onChange={e => setNewsForm({...newsForm, content: e.target.value})} className={inputBase} placeholder="Nhập nội dung bản tin..." />
+        </div>
+        <button onClick={handlePostNews} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-lg uppercase shadow-lg transition-all">
+          Đăng lên Cổng thông tin
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+{activeTab === "manage_portal" && (
+  <div className="space-y-10 max-w-5xl mx-auto animate-fadeIn">
+    {/* FORM ĐĂNG VĂN BẢN */}
+    <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
+      <h3 className="font-black text-blue-900 uppercase mb-4 flex items-center gap-2">⚖️ Cập nhật Văn bản mới</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input type="text" id="docTitle" placeholder="Tên văn bản/nghị quyết..." className={inputBase} />
+        <input type="text" id="docUrl" placeholder="Đường dẫn tải file (PDF/Drive)..." className={inputBase} />
+        <button 
+          onClick={async () => {
+            const title = document.getElementById('docTitle').value;
+            const fileUrl = document.getElementById('docUrl').value;
+            if(title && fileUrl) {
+              await addDoc(collection(db, "legal_docs"), { title, fileUrl, createdAt: moment().toISOString() });
+              showToast("Đã thêm văn bản!");
+            }
+          }}
+          className="md:col-span-2 bg-blue-600 text-white font-black py-3 rounded-lg uppercase"
+        >
+          Thêm vào danh sách
+        </button>
+      </div>
+    </div>
+
+    {/* FORM ĐĂNG LIÊN KẾT NHANH */}
+    <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
+      <h3 className="font-black text-gray-700 uppercase mb-4 flex items-center gap-2">🔗 Quản lý Liên kết nhanh</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input type="text" id="linkTitle" placeholder="Tên nút (VD: Án lệ điện tử)..." className={inputBase} />
+        <input type="text" id="linkUrl" placeholder="Link web liên kết..." className={inputBase} />
+        <button 
+          onClick={async () => {
+            const title = document.getElementById('linkTitle').value;
+            const url = document.getElementById('linkUrl').value;
+            if(title && url) {
+              await addDoc(collection(db, "quick_links"), { title, url, order: quickLinks.length + 1 });
+              showToast("Đã tạo liên kết!");
+            }
+          }}
+          className="md:col-span-2 bg-gray-800 text-white font-black py-3 rounded-lg uppercase"
+        >
+          Tạo nút liên kết
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+      {activeTab === "roles" && (
         <QuanLyPhanQuyen />
       )}
-    {activeTab === "logs" && (
-      <NhatKyThaoTac />
-    )}
+      {activeTab === "manage_portal" && (
+  <QuanLyPortal db={db} userEmail={user?.email} showToast={showToast} />
+)}
+      {activeTab === "logs" && (
+        <NhatKyThaoTac />
+      )}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center h-[70px] z-[100] shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)] pb-safe">
         
         <button 
-          onClick={() => setActiveTab("trial")} 
+          onClick={() => {
+    setActiveTab("trial"); setViewMode("app"); // Dòng này cực kỳ quan trọng để ẩn Portal nè Ní
+  }} 
           className={`flex flex-col items-center justify-center w-full h-full transition-all ${activeTab === 'trial' ? 'text-red-700 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
         >
           <span className="text-2xl mb-1">{activeTab === 'trial' ? '⚖️' : '⚖️'}</span>
@@ -1490,7 +1769,9 @@ if (!user && !isPublicView && !isScanningQR) {
         </button>
         
         <button 
-          onClick={() => setActiveTab("inspection")} 
+          onClick={() => {
+    setActiveTab("inspection"); setViewMode("app");
+  }} 
           className={`flex flex-col items-center justify-center w-full h-full transition-all ${activeTab === 'inspection' ? 'text-red-700 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
         >
           <span className="text-2xl mb-1">{activeTab === 'inspection' ? '📍' : '📍'}</span>
@@ -1498,16 +1779,31 @@ if (!user && !isPublicView && !isScanningQR) {
         </button>
         
         <button 
-          onClick={() => setActiveTab("report")} 
+          onClick={() => {
+    setActiveTab("report"); setViewMode("app");
+  }} 
           className={`flex flex-col items-center justify-center w-full h-full transition-all ${activeTab === 'report' ? 'text-red-700 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
         >
           <span className="text-2xl mb-1">{activeTab === 'report' ? '📊' : '📊'}</span>
           <span className="text-[10px] font-black uppercase tracking-wider">Báo cáo</span>
         </button>
+        <button 
+  onClick={() => {
+    setActiveTab("news_admin"); 
+    setViewMode("app"); 
+  }} 
+  className={`flex flex-col items-center justify-center w-full h-full transition-all ${activeTab === 'news_admin' ? 'text-red-700 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
+>
+  <span className="text-2xl mb-1">✍️</span> 
+  <span className="text-[10px] font-black uppercase tracking-wider">Tin tức</span>
+</button>
 
-      </div>
-    </div>
-  </main>
+      </div> {/* Đây là thẻ đóng của thanh điều hướng Mobile (md:hidden) */}
+      
+    </> /* Đóng thẻ Fragment của nhánh App */
+  )} 
+</div>
+</main>
 
       {selectedEvent && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onClick={() => setSelectedEvent(null)}>
@@ -1922,7 +2218,74 @@ const handleResetUserPassword = async (emailCanBo) => {
     </div>
   );
 }
+// =========================================================================
+// COMPONENT: QUẢN LÝ TIN TỨC
+// =========================================================================
+function QuanLyTinTuc() {
+  const [title, setTitle] = React.useState("");
+  const [summary, setSummary] = React.useState("");
+  const [imageUrl, setImageUrl] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
 
+  const handleAddNews = async (e) => {
+    e.preventDefault();
+    if (!title || !summary) return alert("Vui lòng nhập đủ tiêu đề và nội dung nhé Ní!");
+    setLoading(true);
+    try {
+      const { collection, addDoc } = await import('firebase/firestore');
+      const { db } = await import('./firebase');
+      const moment = (await import('moment')).default;
+
+      await addDoc(collection(db, "news"), {
+        title,
+        summary,
+        imageUrl: imageUrl || "/lgtoaan1.png", // Ảnh mặc định nếu không có
+        date: moment().toISOString(),
+      });
+
+      alert("✅ Đăng tin tức thành công!");
+      setTitle(""); setSummary(""); setImageUrl("");
+    } catch (error) {
+      alert("❌ Lỗi khi đăng tin: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="animate-fadeIn space-y-6">
+      <div className="bg-blue-900 p-6 rounded-2xl text-white shadow-lg flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-black uppercase">Quản Lý Tin Tức</h2>
+          <p className="opacity-70 text-[10px] font-bold uppercase tracking-widest">Đăng thông báo & sự kiện</p>
+        </div>
+        <div className="text-3xl">📰</div>
+      </div>
+
+      <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
+        <form onSubmit={handleAddNews} className="space-y-5">
+          <div>
+            <label className="block text-[11px] font-black uppercase text-gray-600 mb-2">Tiêu đề tin tức <span className="text-red-500">*</span></label>
+            <input type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full border-2 border-gray-100 p-3 rounded-xl outline-none focus:border-blue-500 font-bold text-sm" placeholder="Nhập tiêu đề..." required />
+          </div>
+          <div>
+            <label className="block text-[11px] font-black uppercase text-gray-600 mb-2">Tóm tắt nội dung <span className="text-red-500">*</span></label>
+            <textarea value={summary} onChange={e => setSummary(e.target.value)} className="w-full border-2 border-gray-100 p-3 rounded-xl outline-none focus:border-blue-500 font-medium text-sm" rows="3" placeholder="Nhập nội dung tóm tắt..." required />
+          </div>
+          <div>
+            <label className="block text-[11px] font-black uppercase text-gray-600 mb-2">Link ảnh minh họa (Tùy chọn)</label>
+            <input type="text" value={imageUrl} onChange={e => setImageUrl(e.target.value)} className="w-full border-2 border-gray-100 p-3 rounded-xl outline-none focus:border-blue-500 font-medium text-sm" placeholder="https://..." />
+          </div>
+          <div className="pt-4 border-t border-gray-100">
+            <button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-black py-3 px-8 rounded-xl uppercase shadow-lg transition-all text-sm">
+              {loading ? "ĐANG ĐĂNG..." : "ĐĂNG TIN MỚI"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 // =========================================================================
 // COMPONENT: NHẬT KÝ THAO TÁC HỆ THỐNG
 // =========================================================================
@@ -1993,6 +2356,140 @@ function NhatKyThaoTac() {
           </tbody>
         </table>
         {logs.length === 0 && <div className="p-10 text-center text-gray-400 font-bold uppercase italic">Hệ thống chưa ghi nhận thao tác nào</div>}
+      </div>
+    </div>
+  );
+}
+// =========================================================================
+// COMPONENT: QUẢN TRỊ TRANG CHỦ PORTAL (ĐĂNG TIN, VĂN BẢN, LIÊN KẾT)
+// =========================================================================
+function QuanLyPortal({ db, userEmail, showToast }) {
+  const [newsTitle, setNewsTitle] = React.useState("");
+  const [newsContent, setNewsContent] = React.useState("");
+  const [newsLink, setNewsLink] = React.useState("");
+  const [newsDate, setNewsDate] = React.useState(moment().format("YYYY-MM-DD"));
+
+  const [docTitle, setDocTitle] = React.useState("");
+  const [docUrl, setDocUrl] = React.useState("");
+
+  const [linkTitle, setLinkTitle] = React.useState("");
+  const [linkUrl, setLinkUrl] = React.useState("");
+
+  const inputStyle = "w-full border border-gray-300 rounded-md px-4 py-3 bg-gray-50 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm font-bold text-gray-800";
+  const labelStyle = "block text-xs font-black uppercase text-gray-600 mb-2";
+
+  // Hàm lưu Tin tức
+  const handleAddNews = async () => {
+    if (!newsTitle || !newsContent) return showToast("Vui lòng nhập đủ Tiêu đề và Nội dung tin!", "error");
+    try {
+      const { collection, addDoc } = await import('firebase/firestore');
+      await addDoc(collection(db, "news"), {
+        title: newsTitle,
+        content: newsContent,
+        link: newsLink,
+        date: newsDate,
+        createdAt: moment().toISOString(),
+        createdBy: userEmail
+      });
+      showToast("✅ Đã đăng bản tin thành công!");
+      setNewsTitle(""); setNewsContent(""); setNewsLink(""); // Reset form
+    } catch (e) { showToast("Lỗi đăng tin: " + e.message, "error"); }
+  };
+
+  // Hàm lưu Văn bản pháp luật
+  const handleAddDoc = async () => {
+    if (!docTitle || !docUrl) return showToast("Vui lòng nhập Tên văn bản và Link tải!", "error");
+    try {
+      const { collection, addDoc } = await import('firebase/firestore');
+      await addDoc(collection(db, "legal_docs"), {
+        title: docTitle,
+        fileUrl: docUrl,
+        createdAt: moment().toISOString()
+      });
+      showToast("✅ Đã thêm văn bản thành công!");
+      setDocTitle(""); setDocUrl(""); // Reset form
+    } catch (e) { showToast("Lỗi thêm văn bản: " + e.message, "error"); }
+  };
+
+  // Hàm lưu Liên kết nhanh
+  const handleAddLink = async () => {
+    if (!linkTitle || !linkUrl) return showToast("Vui lòng nhập Tên nút và Link web!", "error");
+    try {
+      const { collection, addDoc, getDocs } = await import('firebase/firestore');
+      // Đếm xem đang có bao nhiêu link để xếp số thứ tự (order)
+      const snap = await getDocs(collection(db, "quick_links"));
+      await addDoc(collection(db, "quick_links"), {
+        title: linkTitle,
+        url: linkUrl,
+        order: snap.docs.length + 1
+      });
+      showToast("✅ Đã tạo nút liên kết thành công!");
+      setLinkTitle(""); setLinkUrl(""); // Reset form
+    } catch (e) { showToast("Lỗi tạo liên kết: " + e.message, "error"); }
+  };
+
+  return (
+    <div className="animate-fadeIn space-y-8 max-w-5xl mx-auto pb-10">
+      <div className="bg-blue-900 p-6 rounded-2xl text-white shadow-lg flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-black uppercase">Quản Trị Cổng Thông Tin</h2>
+          <p className="opacity-70 text-[10px] font-bold uppercase tracking-widest">Đăng tin tức, văn bản & liên kết</p>
+        </div>
+        <div className="text-3xl">⚙️</div>
+      </div>
+
+      {/* 1. FORM ĐĂNG TIN TỨC */}
+      <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
+        <h3 className="font-black text-red-700 uppercase mb-6 flex items-center gap-2 border-b pb-3"><span className="text-2xl">📰</span> Đăng Tin Tức Hoạt Động</h3>
+        <div className="space-y-5">
+          <div>
+            <label className={labelStyle}>Tiêu đề bản tin <span className="text-red-500">*</span></label>
+            <input type="text" value={newsTitle} onChange={e => setNewsTitle(e.target.value)} className={inputStyle} placeholder="VD: Hội nghị sơ kết công tác..." />
+          </div>
+          <div>
+            <label className={labelStyle}>Đường dẫn bài viết (Link báo - Nếu có)</label>
+            <input type="url" value={newsLink} onChange={e => setNewsLink(e.target.value)} className={inputStyle} placeholder="https://..." />
+          </div>
+          <div>
+            <label className={labelStyle}>Nội dung tóm tắt <span className="text-red-500">*</span></label>
+            <textarea rows="3" value={newsContent} onChange={e => setNewsContent(e.target.value)} className={inputStyle} placeholder="Nhập nội dung tóm tắt..." />
+          </div>
+          <button onClick={handleAddNews} className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-xl uppercase shadow-lg transition-all active:scale-95">Đăng Bản Tin</button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        {/* 2. FORM ĐĂNG VĂN BẢN */}
+        <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
+          <h3 className="font-black text-blue-900 uppercase mb-6 flex items-center gap-2 border-b pb-3"><span className="text-2xl">⚖️</span> Đăng Văn Bản Mới</h3>
+          <div className="space-y-5">
+            <div>
+              <label className={labelStyle}>Tên văn bản/Nghị quyết <span className="text-red-500">*</span></label>
+              <input type="text" value={docTitle} onChange={e => setDocTitle(e.target.value)} className={inputStyle} placeholder="VD: Nghị quyết 01/2026/NQ-HĐTP..." />
+            </div>
+            <div>
+              <label className={labelStyle}>Link tải file (Drive/PDF) <span className="text-red-500">*</span></label>
+              <input type="url" value={docUrl} onChange={e => setDocUrl(e.target.value)} className={inputStyle} placeholder="https://drive.google.com/..." />
+            </div>
+            <button onClick={handleAddDoc} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl uppercase shadow-lg transition-all active:scale-95">Thêm Văn Bản</button>
+          </div>
+        </div>
+
+        {/* 3. FORM ĐĂNG LIÊN KẾT NHANH */}
+        <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
+          <h3 className="font-black text-gray-700 uppercase mb-6 flex items-center gap-2 border-b pb-3"><span className="text-2xl">🔗</span> Thêm Liên Kết Nhanh</h3>
+          <div className="space-y-5">
+            <div>
+              <label className={labelStyle}>Tên nút bấm <span className="text-red-500">*</span></label>
+              <input type="text" value={linkTitle} onChange={e => setLinkTitle(e.target.value)} className={inputStyle} placeholder="VD: Án lệ điện tử..." />
+            </div>
+            <div>
+              <label className={labelStyle}>Đường dẫn web (URL) <span className="text-red-500">*</span></label>
+              <input type="url" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} className={inputStyle} placeholder="https://anle.toaan.gov.vn..." />
+            </div>
+            <button onClick={handleAddLink} className="w-full bg-gray-800 hover:bg-black text-white font-black py-4 rounded-xl uppercase shadow-lg transition-all active:scale-95">Tạo Nút Liên Kết</button>
+          </div>
+        </div>
       </div>
     </div>
   );
