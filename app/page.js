@@ -2361,133 +2361,173 @@ function NhatKyThaoTac() {
   );
 }
 // =========================================================================
-// COMPONENT: QUẢN TRỊ TRANG CHỦ PORTAL (ĐĂNG TIN, VĂN BẢN, LIÊN KẾT)
+// COMPONENT: QUẢN TRỊ TRANG CHỦ PORTAL (ĐĂNG & XÓA)
 // =========================================================================
 function QuanLyPortal({ db, userEmail, showToast }) {
+  // State Form
   const [newsTitle, setNewsTitle] = React.useState("");
   const [newsContent, setNewsContent] = React.useState("");
   const [newsLink, setNewsLink] = React.useState("");
   const [newsDate, setNewsDate] = React.useState(moment().format("YYYY-MM-DD"));
-
   const [docTitle, setDocTitle] = React.useState("");
   const [docUrl, setDocUrl] = React.useState("");
-
   const [linkTitle, setLinkTitle] = React.useState("");
   const [linkUrl, setLinkUrl] = React.useState("");
+
+  // State Dữ liệu để hiển thị list xóa
+  const [listNews, setListNews] = React.useState([]);
+  const [listDocs, setListDocs] = React.useState([]);
+  const [listLinks, setListLinks] = React.useState([]);
 
   const inputStyle = "w-full border border-gray-300 rounded-md px-4 py-3 bg-gray-50 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm font-bold text-gray-800";
   const labelStyle = "block text-xs font-black uppercase text-gray-600 mb-2";
 
-  // Hàm lưu Tin tức
+  // Lấy dữ liệu real-time để hiện danh sách xóa
+  React.useEffect(() => {
+    let unsubNews, unsubDocs, unsubLinks;
+    const loadData = async () => {
+      const { collection, query, orderBy, onSnapshot } = await import('firebase/firestore');
+      
+      // Kéo Tin tức
+      unsubNews = onSnapshot(query(collection(db, "news"), orderBy("createdAt", "desc")), (snap) => {
+        setListNews(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+      // Kéo Văn bản
+      unsubDocs = onSnapshot(query(collection(db, "legal_docs"), orderBy("createdAt", "desc")), (snap) => {
+        setListDocs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+      // Kéo Liên kết
+      unsubLinks = onSnapshot(query(collection(db, "quick_links"), orderBy("order", "asc")), (snap) => {
+        setListLinks(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+    };
+    loadData();
+    return () => { if(unsubNews) unsubNews(); if(unsubDocs) unsubDocs(); if(unsubLinks) unsubLinks(); }
+  }, [db]);
+
+  // HÀM XÓA CHUNG
+  const handleDelete = async (collectionName, id) => {
+    if (window.confirm("⚠️ Ní có chắc chắn muốn xóa mục này không? Xóa xong không lấy lại được đâu nhé!")) {
+      try {
+        const { doc, deleteDoc } = await import('firebase/firestore');
+        await deleteDoc(doc(db, collectionName, id));
+        showToast("🗑️ Đã xóa thành công!");
+      } catch (e) {
+        showToast("Lỗi khi xóa: " + e.message, "error");
+      }
+    }
+  };
+
+  // Các hàm Thêm (Giữ nguyên)
   const handleAddNews = async () => {
     if (!newsTitle || !newsContent) return showToast("Vui lòng nhập đủ Tiêu đề và Nội dung tin!", "error");
     try {
       const { collection, addDoc } = await import('firebase/firestore');
-      await addDoc(collection(db, "news"), {
-        title: newsTitle,
-        content: newsContent,
-        link: newsLink,
-        date: newsDate,
-        createdAt: moment().toISOString(),
-        createdBy: userEmail
-      });
+      await addDoc(collection(db, "news"), { title: newsTitle, content: newsContent, link: newsLink, date: newsDate, createdAt: moment().toISOString(), createdBy: userEmail });
       showToast("✅ Đã đăng bản tin thành công!");
-      setNewsTitle(""); setNewsContent(""); setNewsLink(""); // Reset form
+      setNewsTitle(""); setNewsContent(""); setNewsLink(""); 
     } catch (e) { showToast("Lỗi đăng tin: " + e.message, "error"); }
   };
 
-  // Hàm lưu Văn bản pháp luật
   const handleAddDoc = async () => {
     if (!docTitle || !docUrl) return showToast("Vui lòng nhập Tên văn bản và Link tải!", "error");
     try {
       const { collection, addDoc } = await import('firebase/firestore');
-      await addDoc(collection(db, "legal_docs"), {
-        title: docTitle,
-        fileUrl: docUrl,
-        createdAt: moment().toISOString()
-      });
+      await addDoc(collection(db, "legal_docs"), { title: docTitle, fileUrl: docUrl, createdAt: moment().toISOString() });
       showToast("✅ Đã thêm văn bản thành công!");
-      setDocTitle(""); setDocUrl(""); // Reset form
+      setDocTitle(""); setDocUrl(""); 
     } catch (e) { showToast("Lỗi thêm văn bản: " + e.message, "error"); }
   };
 
-  // Hàm lưu Liên kết nhanh
   const handleAddLink = async () => {
     if (!linkTitle || !linkUrl) return showToast("Vui lòng nhập Tên nút và Link web!", "error");
     try {
-      const { collection, addDoc, getDocs } = await import('firebase/firestore');
-      // Đếm xem đang có bao nhiêu link để xếp số thứ tự (order)
-      const snap = await getDocs(collection(db, "quick_links"));
-      await addDoc(collection(db, "quick_links"), {
-        title: linkTitle,
-        url: linkUrl,
-        order: snap.docs.length + 1
-      });
+      const { collection, addDoc } = await import('firebase/firestore');
+      await addDoc(collection(db, "quick_links"), { title: linkTitle, url: linkUrl, order: listLinks.length + 1 });
       showToast("✅ Đã tạo nút liên kết thành công!");
-      setLinkTitle(""); setLinkUrl(""); // Reset form
+      setLinkTitle(""); setLinkUrl(""); 
     } catch (e) { showToast("Lỗi tạo liên kết: " + e.message, "error"); }
   };
 
   return (
-    <div className="animate-fadeIn space-y-8 max-w-5xl mx-auto pb-10">
+    <div className="animate-fadeIn space-y-8 max-w-6xl mx-auto pb-10">
       <div className="bg-blue-900 p-6 rounded-2xl text-white shadow-lg flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-black uppercase">Quản Trị Cổng Thông Tin</h2>
-          <p className="opacity-70 text-[10px] font-bold uppercase tracking-widest">Đăng tin tức, văn bản & liên kết</p>
+          <p className="opacity-70 text-[10px] font-bold uppercase tracking-widest">Đăng bài & Dọn dẹp dữ liệu</p>
         </div>
         <div className="text-3xl">⚙️</div>
       </div>
 
-      {/* 1. FORM ĐĂNG TIN TỨC */}
+      {/* 1. QUẢN LÝ TIN TỨC */}
       <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
-        <h3 className="font-black text-red-700 uppercase mb-6 flex items-center gap-2 border-b pb-3"><span className="text-2xl">📰</span> Đăng Tin Tức Hoạt Động</h3>
-        <div className="space-y-5">
-          <div>
-            <label className={labelStyle}>Tiêu đề bản tin <span className="text-red-500">*</span></label>
-            <input type="text" value={newsTitle} onChange={e => setNewsTitle(e.target.value)} className={inputStyle} placeholder="VD: Hội nghị sơ kết công tác..." />
+        <h3 className="font-black text-red-700 uppercase mb-6 flex items-center gap-2 border-b pb-3"><span className="text-2xl">📰</span> Quản Lý Tin Tức Hoạt Động</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Cột nhập liệu */}
+          <div className="space-y-4">
+            <div>
+              <label className={labelStyle}>Tiêu đề bản tin <span className="text-red-500">*</span></label>
+              <input type="text" value={newsTitle} onChange={e => setNewsTitle(e.target.value)} className={inputStyle} placeholder="VD: Hội nghị sơ kết công tác..." />
+            </div>
+            <div>
+              <label className={labelStyle}>Link bài viết gốc (Nếu có)</label>
+              <input type="url" value={newsLink} onChange={e => setNewsLink(e.target.value)} className={inputStyle} placeholder="https://..." />
+            </div>
+            <div>
+              <label className={labelStyle}>Nội dung tóm tắt <span className="text-red-500">*</span></label>
+              <textarea rows="3" value={newsContent} onChange={e => setNewsContent(e.target.value)} className={inputStyle} placeholder="Nhập nội dung tóm tắt..." />
+            </div>
+            <button onClick={handleAddNews} className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-3 rounded-xl uppercase shadow-md transition-all active:scale-95">Đăng Bản Tin</button>
           </div>
-          <div>
-            <label className={labelStyle}>Đường dẫn bài viết (Link báo - Nếu có)</label>
-            <input type="url" value={newsLink} onChange={e => setNewsLink(e.target.value)} className={inputStyle} placeholder="https://..." />
+          {/* Cột Danh sách xóa */}
+          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 h-96 overflow-y-auto">
+            <p className="text-xs font-bold text-gray-500 uppercase mb-3 sticky top-0 bg-gray-50 py-1">Tin đã đăng ({listNews.length})</p>
+            <div className="space-y-2">
+              {listNews.map(item => (
+                <div key={item.id} className="flex justify-between items-center p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:border-red-300">
+                  <div className="truncate pr-2"><p className="text-sm font-bold text-gray-800 truncate">{item.title}</p><p className="text-[10px] text-gray-400">{moment(item.date).format("DD/MM/YYYY")}</p></div>
+                  <button onClick={() => handleDelete("news", item.id)} className="text-red-500 hover:text-white hover:bg-red-500 p-2 rounded-md transition-all">🗑️</button>
+                </div>
+              ))}
+            </div>
           </div>
-          <div>
-            <label className={labelStyle}>Nội dung tóm tắt <span className="text-red-500">*</span></label>
-            <textarea rows="3" value={newsContent} onChange={e => setNewsContent(e.target.value)} className={inputStyle} placeholder="Nhập nội dung tóm tắt..." />
-          </div>
-          <button onClick={handleAddNews} className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-xl uppercase shadow-lg transition-all active:scale-95">Đăng Bản Tin</button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        {/* 2. FORM ĐĂNG VĂN BẢN */}
-        <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
-          <h3 className="font-black text-blue-900 uppercase mb-6 flex items-center gap-2 border-b pb-3"><span className="text-2xl">⚖️</span> Đăng Văn Bản Mới</h3>
-          <div className="space-y-5">
-            <div>
-              <label className={labelStyle}>Tên văn bản/Nghị quyết <span className="text-red-500">*</span></label>
-              <input type="text" value={docTitle} onChange={e => setDocTitle(e.target.value)} className={inputStyle} placeholder="VD: Nghị quyết 01/2026/NQ-HĐTP..." />
-            </div>
-            <div>
-              <label className={labelStyle}>Link tải file (Drive/PDF) <span className="text-red-500">*</span></label>
-              <input type="url" value={docUrl} onChange={e => setDocUrl(e.target.value)} className={inputStyle} placeholder="https://drive.google.com/..." />
-            </div>
-            <button onClick={handleAddDoc} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl uppercase shadow-lg transition-all active:scale-95">Thêm Văn Bản</button>
+        {/* 2. QUẢN LÝ VĂN BẢN */}
+        <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200 flex flex-col">
+          <h3 className="font-black text-blue-900 uppercase mb-6 flex items-center gap-2 border-b pb-3"><span className="text-2xl">⚖️</span> Quản Lý Văn Bản</h3>
+          <div className="space-y-4 mb-6">
+            <input type="text" value={docTitle} onChange={e => setDocTitle(e.target.value)} className={inputStyle} placeholder="Tên văn bản (VD: NQ 01/2026...)" />
+            <input type="url" value={docUrl} onChange={e => setDocUrl(e.target.value)} className={inputStyle} placeholder="Link tải file..." />
+            <button onClick={handleAddDoc} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3 rounded-xl uppercase shadow-md active:scale-95">Thêm Văn Bản</button>
+          </div>
+          <div className="flex-1 bg-gray-50 p-4 rounded-xl border border-gray-200 max-h-60 overflow-y-auto">
+            {listDocs.map(item => (
+              <div key={item.id} className="flex justify-between items-center p-2 mb-2 bg-white border border-gray-200 rounded-lg shadow-sm">
+                <p className="text-xs font-bold text-gray-800 truncate pr-2">{item.title}</p>
+                <button onClick={() => handleDelete("legal_docs", item.id)} className="text-red-500 hover:bg-red-100 p-1 rounded">❌</button>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* 3. FORM ĐĂNG LIÊN KẾT NHANH */}
-        <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
-          <h3 className="font-black text-gray-700 uppercase mb-6 flex items-center gap-2 border-b pb-3"><span className="text-2xl">🔗</span> Thêm Liên Kết Nhanh</h3>
-          <div className="space-y-5">
-            <div>
-              <label className={labelStyle}>Tên nút bấm <span className="text-red-500">*</span></label>
-              <input type="text" value={linkTitle} onChange={e => setLinkTitle(e.target.value)} className={inputStyle} placeholder="VD: Án lệ điện tử..." />
-            </div>
-            <div>
-              <label className={labelStyle}>Đường dẫn web (URL) <span className="text-red-500">*</span></label>
-              <input type="url" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} className={inputStyle} placeholder="https://anle.toaan.gov.vn..." />
-            </div>
-            <button onClick={handleAddLink} className="w-full bg-gray-800 hover:bg-black text-white font-black py-4 rounded-xl uppercase shadow-lg transition-all active:scale-95">Tạo Nút Liên Kết</button>
+        {/* 3. QUẢN LÝ LIÊN KẾT NHANH */}
+        <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200 flex flex-col">
+          <h3 className="font-black text-gray-700 uppercase mb-6 flex items-center gap-2 border-b pb-3"><span className="text-2xl">🔗</span> Liên Kết Nhanh</h3>
+          <div className="space-y-4 mb-6">
+            <input type="text" value={linkTitle} onChange={e => setLinkTitle(e.target.value)} className={inputStyle} placeholder="Tên nút (VD: Án lệ điện tử...)" />
+            <input type="url" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} className={inputStyle} placeholder="Đường dẫn web..." />
+            <button onClick={handleAddLink} className="w-full bg-gray-800 hover:bg-black text-white font-black py-3 rounded-xl uppercase shadow-md active:scale-95">Tạo Nút Liên Kết</button>
+          </div>
+          <div className="flex-1 bg-gray-50 p-4 rounded-xl border border-gray-200 max-h-60 overflow-y-auto">
+             {listLinks.map(item => (
+              <div key={item.id} className="flex justify-between items-center p-2 mb-2 bg-white border border-gray-200 rounded-lg shadow-sm">
+                <p className="text-xs font-bold text-gray-800 truncate pr-2">{item.title}</p>
+                <button onClick={() => handleDelete("quick_links", item.id)} className="text-red-500 hover:bg-red-100 p-1 rounded">❌</button>
+              </div>
+            ))}
           </div>
         </div>
       </div>
