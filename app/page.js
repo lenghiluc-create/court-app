@@ -609,9 +609,17 @@ useEffect(() => {
   }}
   className="flex gap-4 group cursor-pointer border-b border-gray-50 pb-4 last:border-0"
 >
-  <div className="w-20 h-20 bg-red-50 rounded-lg flex-shrink-0 flex items-center justify-center border border-red-100 group-hover:bg-red-100 transition-colors">
-    <span className="text-3xl">📰</span>
-  </div>
+  <div className="w-20 h-20 bg-red-50 rounded-lg flex-shrink-0 flex items-center justify-center border border-red-100 overflow-hidden">
+  {item.imageUrl ? (
+    <img 
+      src={item.imageUrl} 
+      alt="thumbnail" 
+      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+    />
+  ) : (
+    <span className="text-3xl group-hover:scale-110 transition-transform">📰</span>
+  )}
+</div>
   <div className="flex-1">
     <h4 className="font-bold text-blue-900 group-hover:text-red-600 transition-colors leading-tight mb-1 text-sm">
       {item.title}
@@ -2368,6 +2376,7 @@ function QuanLyPortal({ db, userEmail, showToast }) {
   const [newsTitle, setNewsTitle] = React.useState("");
   const [newsContent, setNewsContent] = React.useState("");
   const [newsLink, setNewsLink] = React.useState("");
+  const [newsImage, setNewsImage] = React.useState("");
   const [newsDate, setNewsDate] = React.useState(moment().format("YYYY-MM-DD"));
   const [docTitle, setDocTitle] = React.useState("");
   const [docUrl, setDocUrl] = React.useState("");
@@ -2423,11 +2432,11 @@ function QuanLyPortal({ db, userEmail, showToast }) {
     if (!newsTitle || !newsContent) return showToast("Vui lòng nhập đủ Tiêu đề và Nội dung tin!", "error");
     try {
       const { collection, addDoc } = await import('firebase/firestore');
-      await addDoc(collection(db, "news"), { title: newsTitle, content: newsContent, link: newsLink, date: newsDate, createdAt: moment().toISOString(), createdBy: userEmail });
+      await addDoc(collection(db, "news"), { title: newsTitle, content: newsContent, link: newsLink, imageUrl: newsImage, date: newsDate, createdAt: moment().toISOString(), createdBy: userEmail });
       showToast("✅ Đã đăng bản tin thành công!");
-      setNewsTitle(""); setNewsContent(""); setNewsLink(""); 
-    } catch (e) { showToast("Lỗi đăng tin: " + e.message, "error"); }
-  };
+     setNewsTitle(""); setNewsContent(""); setNewsLink(""); setNewsImage(""); 
+  } catch (e) { showToast("Lỗi đăng tin: " + e.message, "error"); }
+};
 
   const handleAddDoc = async () => {
     if (!docTitle || !docUrl) return showToast("Vui lòng nhập Tên văn bản và Link tải!", "error");
@@ -2469,6 +2478,10 @@ function QuanLyPortal({ db, userEmail, showToast }) {
               <label className={labelStyle}>Tiêu đề bản tin <span className="text-red-500">*</span></label>
               <input type="text" value={newsTitle} onChange={e => setNewsTitle(e.target.value)} className={inputStyle} placeholder="VD: Hội nghị sơ kết công tác..." />
             </div>
+            <div>
+  <label className={labelStyle}>Link Hình Ảnh Đại Diện (Nếu có)</label>
+  <input type="url" value={newsImage} onChange={e => setNewsImage(e.target.value)} className={inputStyle} placeholder="https://..." />
+</div>
             <div>
               <label className={labelStyle}>Link bài viết gốc (Nếu có)</label>
               <input type="url" value={newsLink} onChange={e => setNewsLink(e.target.value)} className={inputStyle} placeholder="https://..." />
