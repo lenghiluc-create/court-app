@@ -965,6 +965,12 @@ if (!user && !isPublicView && !isScanningQR) {
                   >
                     <span className={`font-bold text-[11px] uppercase tracking-wide ${activeTab === 'roles' ? 'text-amber-300' : 'text-gray-300'}`}>Phân Quyền</span>
                   </div>
+                  <div 
+                    onClick={() => setActiveTab("config_judges")} 
+                    className={`cursor-pointer px-3 py-2 rounded-lg flex justify-between items-center transition-all mt-2 ${activeTab === 'config_judges' ? 'bg-slate-800 shadow-md border-l-4 border-green-400' : 'hover:bg-white/10'}`}
+                  >
+                    <span className={`font-bold text-[11px] uppercase tracking-wide ${activeTab === 'config_judges' ? 'text-green-400' : 'text-gray-300'}`}>Cấu hình Thẩm phán</span>
+                  </div>
 
                   <div 
                     onClick={() => setActiveTab("logs")} 
