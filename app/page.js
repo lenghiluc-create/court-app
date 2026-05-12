@@ -2939,12 +2939,15 @@ function QuanLyPortal({ db, userEmail, showToast }) {
 // =========================================================================
 // COMPONENT: THIẾT LẬP DANH SÁCH 14 THẨM PHÁN & SỐ DƯ ĐẦU KỲ CHI TIẾT
 // =========================================================================
+// =========================================================================
+// COMPONENT: QUẢN LÝ THẨM PHÁN (HỖ TRỢ THÊM, SỬA, XÓA)
+// =========================================================================
 function QuanLyThamPhan({ db, showToast }) {
   const [name, setName] = React.useState("");
-  const [role, setRole] = React.useState("Thẩm phán"); // Mặc định
+  const [role, setRole] = React.useState("Thẩm phán");
   const [listJudges, setListJudges] = React.useState([]);
+  const [editingJudgeId, setEditingJudgeId] = React.useState(null); // Lưu ID khi đang sửa
 
-  // Khai báo state lưu chi tiết từng loại án
   const [tonCuChiTiet, setTonCuChiTiet] = React.useState({
     "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "Cai nghiện": 0
   });
@@ -2953,49 +2956,87 @@ function QuanLyThamPhan({ db, showToast }) {
 
   React.useEffect(() => {
     const loadJudges = async () => {
-      const { collection, onSnapshot } = await import('firebase/firestore');
-      onSnapshot(collection(db, "judges"), (snap) => {
+      const { collection, onSnapshot, query, orderBy } = await import('firebase/firestore');
+      const q = query(collection(db, "judges"), orderBy("createdAt", "desc"));
+      onSnapshot(q, (snap) => {
         setListJudges(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       });
     };
     loadJudges();
   }, [db]);
 
+  // Khi bấm nút Sửa
+  const handleEditClick = (judge) => {
+    setEditingJudgeId(judge.id);
+    setName(judge.name);
+    setRole(judge.role || "Thẩm phán");
+    setTonCuChiTiet(judge.tonCuChiTiet || {
+      "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "Cai nghiện": 0
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // Cuộn lên đầu để sửa
+  };
+
+  // Hủy chế độ sửa
+  const handleCancelEdit = () => {
+    setEditingJudgeId(null);
+    setName("");
+    setRole("Thẩm phán");
+    setTonCuChiTiet({ "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "Cai nghiện": 0 });
+  };
+
   const handleSaveJudge = async () => {
     if (!name) return showToast("Nhập tên Thẩm phán Ní ơi!", "error");
-    
-    // Tự động tính tổng án tồn cũ từ các ô chi tiết
     const tongTonCu = Object.values(tonCuChiTiet).reduce((acc, val) => acc + (parseInt(val) || 0), 0);
 
     try {
-      const { collection, addDoc } = await import('firebase/firestore');
-      await addDoc(collection(db, "judges"), {
+      const { collection, addDoc, doc, updateDoc } = await import('firebase/firestore');
+      
+      const data = {
         name,
         role,
         weight: weights[role],
-        tonCuChiTiet, // Lưu cục chi tiết để hiện lên bảng Ma trận
-        tonCu: tongTonCu, // Lưu tổng để AI tính điểm
-        createdAt: new Date().toISOString()
-      });
-      showToast("✅ Đã thêm Thẩm phán cùng số liệu tồn cũ!");
-      setName(""); 
-      setTonCuChiTiet({"Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "Cai nghiện": 0});
+        tonCuChiTiet,
+        tonCu: tongTonCu,
+        updatedAt: new Date().toISOString()
+      };
+
+      if (editingJudgeId) {
+        // CHẾ ĐỘ CẬP NHẬT
+        await updateDoc(doc(db, "judges", editingJudgeId), data);
+        showToast("✅ Đã cập nhật thông tin Thẩm phán!");
+      } else {
+        // CHẾ ĐỘ THÊM MỚI
+        await addDoc(collection(db, "judges"), { ...data, createdAt: new Date().toISOString() });
+        showToast("✅ Đã thêm Thẩm phán mới!");
+      }
+
+      handleCancelEdit(); // Reset form về ban đầu
     } catch (e) { showToast("Lỗi: " + e.message, "error"); }
   };
 
-  // Hàm xử lý khi nhập số liệu cho từng loại án
+  const handleDeleteJudge = async (id, judgeName) => {
+    if (window.confirm(`⚠️ Ní có chắc muốn xóa Thẩm phán ${judgeName} không?`)) {
+      try {
+        const { doc, deleteDoc } = await import('firebase/firestore');
+        await deleteDoc(doc(db, "judges", id));
+        showToast("🗑️ Đã xóa Thẩm phán!");
+      } catch (e) { showToast("Lỗi xóa: " + e.message, "error"); }
+    }
+  };
+
   const handleTonCuChange = (type, value) => {
     setTonCuChiTiet(prev => ({ ...prev, [type]: parseInt(value) || 0 }));
   };
 
-  // Tính tổng hiển thị realtime trên UI
   const currentTotal = Object.values(tonCuChiTiet).reduce((acc, val) => acc + (parseInt(val) || 0), 0);
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200 animate-fadeIn max-w-5xl mx-auto">
-      <h3 className="font-black text-blue-900 uppercase mb-6 flex items-center gap-2">⚖️ Cấu hình Thẩm phán & Án tồn cũ</h3>
+      <h3 className="font-black text-blue-900 uppercase mb-6 flex items-center gap-2">
+        {editingJudgeId ? "✏️ Chỉnh sửa thông tin Thẩm phán" : "⚖️ Cấu hình Thẩm phán & Án thụ lý"}
+      </h3>
       
-      <div className="mb-8 bg-blue-50 p-6 rounded-xl border border-blue-100 shadow-inner">
+      <div className={`mb-8 p-6 rounded-xl border shadow-inner transition-all ${editingJudgeId ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-100'}`}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
             <label className="block text-xs font-black uppercase text-blue-800 mb-2">Tên Thẩm phán</label>
@@ -3013,31 +3054,42 @@ function QuanLyThamPhan({ db, showToast }) {
 
         <div className="bg-white p-4 rounded-lg border border-gray-200">
           <div className="flex justify-between items-center mb-4">
-            <label className="text-xs font-black uppercase text-red-600">Nhập chi tiết án tồn cũ (năm trước chuyển sang)</label>
+            <label className="text-xs font-black uppercase text-red-600">Số lượng án đang thụ lý (Cập nhật chuẩn nhất)</label>
             <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-black">Tổng: {currentTotal} vụ</span>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Object.keys(tonCuChiTiet).map(type => (
-              <div key={type} className="flex items-center gap-2 bg-gray-50 border rounded-md px-3 py-2">
-                <span className="text-[11px] font-bold text-gray-600 w-20">{type}:</span>
-                <input type="number" min="0" value={tonCuChiTiet[type] === 0 ? '' : tonCuChiTiet[type]} onChange={e => handleTonCuChange(type, e.target.value)} className="w-full bg-transparent font-black text-blue-900 outline-none text-right" placeholder="0" />
+              <div key={type} className="flex flex-col bg-gray-50 border rounded-md px-3 py-2">
+                <span className="text-[10px] font-bold text-gray-500 uppercase mb-1">{type}</span>
+                <input type="number" min="0" value={tonCuChiTiet[type] === 0 ? '' : tonCuChiTiet[type]} onChange={e => handleTonCuChange(type, e.target.value)} className="w-full bg-transparent font-black text-blue-900 outline-none text-right text-lg" placeholder="0" />
               </div>
             ))}
           </div>
         </div>
 
-        <button onClick={handleSaveJudge} className="w-full mt-6 bg-blue-600 text-white font-black py-4 rounded-lg hover:bg-blue-700 transition-all uppercase tracking-widest shadow-lg">LƯU CẤU HÌNH THẨM PHÁN NÀY</button>
+        <div className="flex gap-4 mt-6">
+          {editingJudgeId && (
+            <button onClick={handleCancelEdit} className="flex-1 bg-gray-200 text-gray-700 font-black py-4 rounded-lg uppercase tracking-widest text-sm">Hủy bỏ</button>
+          )}
+          <button onClick={handleSaveJudge} className={`flex-[2] text-white font-black py-4 rounded-lg uppercase tracking-widest shadow-lg transition-all ${editingJudgeId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
+            {editingJudgeId ? "Cập nhật dữ liệu" : "Lưu cấu hình thẩm phán"}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {listJudges.map(j => (
-          <div key={j.id} className="p-4 border border-gray-200 rounded-xl flex justify-between items-center bg-gray-50 hover:border-blue-300 transition-all">
-            <div>
-              <p className="font-black text-blue-900 text-sm">{j.name}</p>
+          <div key={j.id} className="p-4 border border-gray-200 rounded-xl flex justify-between items-center bg-gray-50 group hover:border-blue-300 transition-all">
+            <div className="flex-1">
+              <p className="font-black text-blue-900 text-sm uppercase">{j.name}</p>
               <p className="text-[10px] uppercase font-bold text-gray-500">{j.role} - Định mức: {j.weight * 100}%</p>
+              <div className="mt-2 flex gap-2">
+                 <span className="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100 font-bold">Tổng: {j.tonCu} vụ</span>
+              </div>
             </div>
-            <div className="text-right">
-              <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-black">Tổng tồn: {j.tonCu}</span>
+            <div className="flex gap-2">
+              <button onClick={() => handleEditClick(j)} className="p-2 bg-white border border-amber-200 text-amber-600 rounded-lg hover:bg-amber-50 shadow-sm" title="Sửa thông tin">✏️</button>
+              <button onClick={() => handleDeleteJudge(j.id, j.name)} className="p-2 bg-white border border-red-200 text-red-500 rounded-lg hover:bg-red-50 shadow-sm" title="Xóa Thẩm phán">🗑️</button>
             </div>
           </div>
         ))}
