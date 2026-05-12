@@ -125,14 +125,14 @@ const handlePostNews = async () => {
   }
 };
 const goiYThamPhan = () => {
-    // 1. Lọc bỏ "Chánh án" ra khỏi danh sách tự động phân án của AI
     const danhSachChoAI = listJudges.filter(j => j.role !== "Chánh án");
     
-    // Nếu trong hệ thống chỉ có mỗi ông Chánh án (chưa có ai khác) thì chịu
     if (!danhSachChoAI || danhSachChoAI.length === 0) return null;
 
     const calculations = danhSachChoAI.map(j => {
-      const soAnDangCho = schedule.filter(a => a.judge === j.name && a.status === 'pending').length;
+      // AI CŨNG CHỈ ĐẾM NHỮNG ÁN MỚI PHÂN (Chưa có datetime)
+      const soAnDangCho = schedule.filter(a => a.judge === j.name && a.status === 'pending' && !a.datetime).length;
+      
       const tongAnThucTe = (parseInt(j.tonCu) || 0) + soAnDangCho;
       const heSo = j.weight && j.weight > 0 ? j.weight : 1; 
       const chiSoTai = tongAnThucTe / heSo;
@@ -588,22 +588,25 @@ useEffect(() => {
   // =========================================================
   // THUẬT TOÁN TÍNH MA TRẬN TẢI TRỌNG THẨM PHÁN
   // =========================================================
+  // =========================================================
+  // THUẬT TOÁN TÍNH MA TRẬN TẢI TRỌNG THẨM PHÁN
+  // =========================================================
   const bangMaTranPhanAn = useMemo(() => {
     const dsLoaiAn = ["Hình sự", "Dân sự", "Hành chính", "Hôn nhân & GĐ", "Kinh tế", "Lao động", "Cai nghiện"];
     const stats = {};
 
-    // 1. Khởi tạo bộ đếm BẰNG SỐ ÁN TỒN CŨ của mỗi Thẩm phán
+    // 1. Khởi tạo bộ đếm bằng Số án gốc cấu hình
     listJudges.forEach(judge => {
       stats[judge.name] = {};
       dsLoaiAn.forEach(type => {
-        // Nếu ông này có nhập tồn cũ chi tiết thì lấy, không thì mặc định là 0
         stats[judge.name][type] = judge.tonCuChiTiet && judge.tonCuChiTiet[type] ? parseInt(judge.tonCuChiTiet[type]) : 0;
       });
     });
 
-    // 2. Quét toàn bộ lịch, đếm CỘNG DỒN những án ĐANG CHỜ XỬ (Án mới phân công)
+    // 2. CHỈ CỘNG THÊM NHỮNG ÁN MỚI PHÂN (Chưa được Thư ký lên lịch)
+    // Thêm điều kiện !item.datetime để loại bỏ các án đã nằm trên Lịch Xét Xử
     schedule.forEach(item => {
-      if (item.status === 'pending' && item.judge && stats[item.judge]) {
+      if (item.status === 'pending' && !item.datetime && item.judge && stats[item.judge]) {
         let type = item.caseType === "cainghien" ? "Cai nghiện" : item.caseType;
         
         if (stats[item.judge][type] !== undefined) {
