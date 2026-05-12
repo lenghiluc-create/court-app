@@ -166,6 +166,7 @@ const goiYThamPhan = () => {
   };
 
   const handleLuuPhanAn = async () => {
+    if (!isChanHan && !isAdmin) return showToast("⛔ Chỉ Chánh án mới có quyền phê duyệt giao án!", "error");
     if (!phanAnForm.caseName) return showToast("Vui lòng nhập trích yếu!", "error");
     
     // Trở lại logic kết hợp: Ưu tiên chọn tay, nếu không chọn thì lấy AI
@@ -1905,6 +1906,7 @@ if (!user && !isPublicView && !isScanningQR) {
           {manualJudge ? "Chế độ: Chỉ định Thẩm phán" : "Hệ thống phân tích (AI Suggest)"}
         </h3>
 
+        {/* CÂU LỆNH ĐIỀU KIỆN 1: Kiểm tra xem có AI hoặc có chọn tay không */}
         {goiYThamPhan() || manualJudge ? (
           <div className="space-y-6 relative z-10">
             <div className="text-center">
@@ -1919,14 +1921,14 @@ if (!user && !isPublicView && !isScanningQR) {
               </span>
             </div>
 
-            {/* BẢNG THỐNG KÊ SỐ LIỆU ĐANG ÔM (Thông minh: Tự đổi theo người được chọn hoặc AI) */}
+            {/* BẢNG THỐNG KÊ SỐ LIỆU ĐANG ÔM */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white/5 p-4 rounded-xl border border-white/10 text-center">
                 <p className="text-[10px] text-gray-500 uppercase font-bold">Số án đang ôm</p>
                 <div className="flex items-end justify-center gap-1">
                   <span className={`text-2xl font-black ${manualJudge ? 'text-green-300' : 'text-indigo-300'}`}>
                     {manualJudge 
-                      ? (parseInt(manualJudge.tonCu) || 0) + schedule.filter(a => a.judge === manualJudge.name && a.status === 'pending').length 
+                      ? (parseInt(manualJudge.tonCu) || 0) + schedule.filter(a => a.judge === manualJudge.name && a.status === 'pending' && !a.datetime).length 
                       : goiYThamPhan()?.tongAnThucTe}
                   </span>
                   <span className="text-[10px] mb-1.5 text-gray-400">vụ</span>
@@ -1944,12 +1946,20 @@ if (!user && !isPublicView && !isScanningQR) {
               </div>
             </div>
 
-            <button 
-              onClick={handleLuuPhanAn} 
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-xl shadow-xl transition-all active:scale-95 uppercase tracking-widest text-sm"
-            >
-              XÁC NHẬN GIAO ÁN NÀY
-            </button>
+            {/* CÂU LỆNH ĐIỀU KIỆN 2: Kiểm tra xem có phải Chánh án/Admin không để hiện nút bấm */}
+            {(isChanHan || isAdmin) ? (
+              <button 
+                onClick={handleLuuPhanAn} 
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-xl shadow-xl transition-all active:scale-95 uppercase tracking-widest text-sm"
+              >
+                XÁC NHẬN GIAO ÁN NÀY
+              </button>
+            ) : (
+              <div className="w-full bg-gray-800 border border-gray-700 text-gray-500 font-black py-4 rounded-xl text-center uppercase tracking-widest text-sm cursor-not-allowed">
+                ⛔ CHỈ CHÁNH ÁN ĐƯỢC PHÊ DUYỆT
+              </div>
+            )}
+
           </div>
         ) : (
           <div className="text-center py-10 opacity-50 italic relative z-10">Đang tính toán hoặc chưa có Thẩm phán hợp lệ...</div>
@@ -2940,22 +2950,18 @@ function QuanLyPortal({ db, userEmail, showToast }) {
   );
 }
 // =========================================================================
-// COMPONENT: THIẾT LẬP DANH SÁCH 14 THẨM PHÁN & SỐ DƯ ĐẦU KỲ CHI TIẾT
-// =========================================================================
-// =========================================================================
-// COMPONENT: QUẢN LÝ THẨM PHÁN (HỖ TRỢ THÊM, SỬA, XÓA)
+// COMPONENT: QUẢN LÝ THẨM PHÁN (THÊM, SỬA, XÓA & TÙY CHỈNH ĐỊNH MỨC %)
 // =========================================================================
 function QuanLyThamPhan({ db, showToast }) {
   const [name, setName] = React.useState("");
   const [role, setRole] = React.useState("Thẩm phán");
+  const [weight, setWeight] = React.useState(100); // Thêm state quản lý % định mức
   const [listJudges, setListJudges] = React.useState([]);
-  const [editingJudgeId, setEditingJudgeId] = React.useState(null); // Lưu ID khi đang sửa
+  const [editingJudgeId, setEditingJudgeId] = React.useState(null); 
 
   const [tonCuChiTiet, setTonCuChiTiet] = React.useState({
     "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "Cai nghiện": 0
   });
-
-  const weights = { "Chánh án": 0.3, "Phó Chánh án": 0.6, "Thẩm phán": 1.0 };
 
   React.useEffect(() => {
     const loadJudges = async () => {
@@ -2968,27 +2974,38 @@ function QuanLyThamPhan({ db, showToast }) {
     loadJudges();
   }, [db]);
 
-  // Khi bấm nút Sửa
+  // Tự động nhảy % mặc định khi chọn chức vụ (nhưng vẫn cho phép sửa lại bằng tay)
+  const handleRoleChange = (e) => {
+    const newRole = e.target.value;
+    setRole(newRole);
+    if (newRole === "Chánh án") setWeight(30);
+    else if (newRole === "Phó Chánh án") setWeight(60);
+    else setWeight(100);
+  };
+
   const handleEditClick = (judge) => {
     setEditingJudgeId(judge.id);
     setName(judge.name);
     setRole(judge.role || "Thẩm phán");
+    setWeight(judge.weight ? Math.round(judge.weight * 100) : 100); // Phục hồi số %
     setTonCuChiTiet(judge.tonCuChiTiet || {
       "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "Cai nghiện": 0
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // Cuộn lên đầu để sửa
+    window.scrollTo({ top: 0, behavior: 'smooth' }); 
   };
 
-  // Hủy chế độ sửa
   const handleCancelEdit = () => {
     setEditingJudgeId(null);
     setName("");
     setRole("Thẩm phán");
+    setWeight(100); // Trả về mặc định
     setTonCuChiTiet({ "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "Cai nghiện": 0 });
   };
 
   const handleSaveJudge = async () => {
     if (!name) return showToast("Nhập tên Thẩm phán Ní ơi!", "error");
+    if (weight <= 0 || weight > 100) return showToast("Định mức phải từ 1 đến 100%!", "error");
+
     const tongTonCu = Object.values(tonCuChiTiet).reduce((acc, val) => acc + (parseInt(val) || 0), 0);
 
     try {
@@ -2997,23 +3014,21 @@ function QuanLyThamPhan({ db, showToast }) {
       const data = {
         name,
         role,
-        weight: weights[role],
+        weight: parseFloat(weight) / 100, // Đổi % ra số thập phân cho AI tính toán (vd: 60 -> 0.6)
         tonCuChiTiet,
         tonCu: tongTonCu,
         updatedAt: new Date().toISOString()
       };
 
       if (editingJudgeId) {
-        // CHẾ ĐỘ CẬP NHẬT
         await updateDoc(doc(db, "judges", editingJudgeId), data);
         showToast("✅ Đã cập nhật thông tin Thẩm phán!");
       } else {
-        // CHẾ ĐỘ THÊM MỚI
         await addDoc(collection(db, "judges"), { ...data, createdAt: new Date().toISOString() });
         showToast("✅ Đã thêm Thẩm phán mới!");
       }
 
-      handleCancelEdit(); // Reset form về ban đầu
+      handleCancelEdit(); 
     } catch (e) { showToast("Lỗi: " + e.message, "error"); }
   };
 
@@ -3040,18 +3055,27 @@ function QuanLyThamPhan({ db, showToast }) {
       </h3>
       
       <div className={`mb-8 p-6 rounded-xl border shadow-inner transition-all ${editingJudgeId ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-100'}`}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        
+        {/* THÊM CỘT NHẬP % ĐỊNH MỨC VÀO ĐÂY */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <label className="block text-xs font-black uppercase text-blue-800 mb-2">Tên Thẩm phán</label>
             <input type="text" placeholder="Nhập họ tên..." value={name} onChange={e => setName(e.target.value)} className="w-full border p-3 rounded-lg font-bold outline-none focus:border-blue-500" />
           </div>
           <div>
-            <label className="block text-xs font-black uppercase text-blue-800 mb-2">Chức vụ (Định mức)</label>
-            <select value={role} onChange={e => setRole(e.target.value)} className="w-full border p-3 rounded-lg font-bold outline-none focus:border-blue-500">
-              <option value="Chánh án">Chánh án (30%)</option>
-              <option value="Phó Chánh án">Phó Chánh án (60%)</option>
-              <option value="Thẩm phán">Thẩm phán (100%)</option>
+            <label className="block text-xs font-black uppercase text-blue-800 mb-2">Chức vụ</label>
+            <select value={role} onChange={handleRoleChange} className="w-full border p-3 rounded-lg font-bold outline-none focus:border-blue-500">
+              <option value="Chánh án">Chánh án</option>
+              <option value="Phó Chánh án">Phó Chánh án</option>
+              <option value="Thẩm phán">Thẩm phán</option>
             </select>
+          </div>
+          <div>
+            <label className="block text-xs font-black uppercase text-blue-800 mb-2">Định mức giải quyết (%)</label>
+            <div className="flex items-center gap-2">
+              <input type="number" min="1" max="100" value={weight} onChange={e => setWeight(e.target.value)} className="w-full border p-3 rounded-lg font-black text-blue-900 outline-none focus:border-blue-500 text-center" />
+              <span className="font-black text-blue-800">%</span>
+            </div>
           </div>
         </div>
 
@@ -3085,7 +3109,7 @@ function QuanLyThamPhan({ db, showToast }) {
           <div key={j.id} className="p-4 border border-gray-200 rounded-xl flex justify-between items-center bg-gray-50 group hover:border-blue-300 transition-all">
             <div className="flex-1">
               <p className="font-black text-blue-900 text-sm uppercase">{j.name}</p>
-              <p className="text-[10px] uppercase font-bold text-gray-500">{j.role} - Định mức: {j.weight * 100}%</p>
+              <p className="text-[10px] uppercase font-bold text-gray-500">{j.role} - Định mức: {j.weight ? Math.round(j.weight * 100) : 100}%</p>
               <div className="mt-2 flex gap-2">
                  <span className="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100 font-bold">Tổng: {j.tonCu} vụ</span>
               </div>
