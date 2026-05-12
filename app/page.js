@@ -589,7 +589,7 @@ useEffect(() => {
   // THUẬT TOÁN TÍNH MA TRẬN TẢI TRỌNG THẨM PHÁN
   // =========================================================
   const bangMaTranPhanAn = useMemo(() => {
-    const dsLoaiAn = ["Hình sự", "Dân sự", "Hành chính", "Hôn nhân & GĐ", "Kinh tế", "Cai nghiện"];
+    const dsLoaiAn = ["Hình sự", "Dân sự", "Hành chính", "Hôn nhân & GĐ", "Kinh tế", "Lao động", "Cai nghiện"];
     const stats = {};
 
     // 1. Khởi tạo bộ đếm BẰNG SỐ ÁN TỒN CŨ của mỗi Thẩm phán
@@ -1214,11 +1214,11 @@ if (!user && !isPublicView && !isScanningQR) {
       value={form.caseType} 
       onChange={e => {
        const newType = e.target.value;
-    let newDuration = 60; 
-    
-    if (newType === 'Hình sự') {
-      newDuration = 120; 
-    }
+       let newDuration = 60; 
+       
+       if (newType === 'Hình sự') {
+         newDuration = 120; 
+       }
         if (form.room === "Dự phòng") newDuration = 30;
         if (form.room === "Trực tuyến") newDuration = 240;
         
@@ -1231,6 +1231,7 @@ if (!user && !isPublicView && !isScanningQR) {
       <option value="Hành chính">Hành chính</option>
       <option value="Hôn nhân & GĐ">Hôn nhân & GĐ</option>
       <option value="Kinh tế">Kinh tế</option>
+      <option value="Lao động">Lao động</option> {/* NÍ THÊM DÒNG NÀY VÀO ĐÂY */}
       <option value="cainghien">Cai nghiện bắt buộc</option>
     </select>
   </div>
@@ -1876,7 +1877,7 @@ if (!user && !isPublicView && !isScanningQR) {
             <option value="Hình sự">Hình sự</option>
             <option value="Hành chính">Hành chính</option>
             <option value="Lao động">Lao động</option>
-            <option value="ADBPXLHC">ADBPXLHC</option>
+            <option value="Cai nghiện">Cai nghiện</option>
             <option value="Kinh tế">Kinh tế</option>
             <option value="Hôn nhân & GĐ">Hôn nhân & Gia đình</option>
           </select>
@@ -2944,7 +2945,7 @@ function QuanLyThamPhan({ db, showToast }) {
 
   // Khai báo state lưu chi tiết từng loại án
   const [tonCuChiTiet, setTonCuChiTiet] = React.useState({
-    "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Cai nghiện": 0
+    "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "Cai nghiện": 0
   });
 
   const weights = { "Chánh án": 0.3, "Phó Chánh án": 0.6, "Thẩm phán": 1.0 };
@@ -2977,7 +2978,7 @@ function QuanLyThamPhan({ db, showToast }) {
       });
       showToast("✅ Đã thêm Thẩm phán cùng số liệu tồn cũ!");
       setName(""); 
-      setTonCuChiTiet({"Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Cai nghiện": 0});
+      setTonCuChiTiet({"Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "Cai nghiện": 0});
     } catch (e) { showToast("Lỗi: " + e.message, "error"); }
   };
 
