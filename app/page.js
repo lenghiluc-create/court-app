@@ -22,6 +22,7 @@ export default function PremiumCourtApp() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState('viewer'); 
+  const [userRoles, setUserRoles] = useState([]);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
   
   // States
@@ -49,7 +50,7 @@ export default function PremiumCourtApp() {
   const [phanAnForm, setPhanAnForm] = useState({ caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự" });
   const [dsChoPhanAn, setDsChoPhanAn] = useState([]);
   const [choPhanAnId, setChoPhanAnId] = useState(null);
-  const [selectedJudge, setSelectedJudge] = React.useState(null); // Lưu Thẩm phán được hệ thống chọn // Lưu link đang đọc
+  const [manualJudge, setManualJudge] = useState(null); // Thẩm phán được chọn thủ công
   const [newsForm, setNewsForm] = useState({ title: "", content: "", date: moment().format("YYYY-MM-DD") });
   
   // Modal States
@@ -123,24 +124,31 @@ const handlePostNews = async () => {
     showToast("Lỗi khi đăng tin!", "error"); 
   }
 };
-// HÀM 1: TÍNH TOÁN NGƯỜI ÍT VIỆC NHẤT
-  const goiYThamPhan = () => {
+const goiYThamPhan = () => {
     if (!listJudges || listJudges.length === 0) return null;
 
     const calculations = listJudges.map(j => {
-      // Đếm số án ông này đã nhận trên phần mềm (trong biến schedule)
-      const soAnMoi = schedule.filter(a => a.judge === j.name).length;
-      // Công thức: (Án cũ + Án mới) / Định mức
-      const score = (parseInt(j.tonCu || 0) + soAnMoi) / (j.weight || 1);
-      return { ...j, score, total: parseInt(j.tonCu || 0) + soAnMoi };
+      // Tính số án mới đang được giao (pending)
+      const soAnDangCho = schedule.filter(a => a.judge === j.name && a.status === 'pending').length;
+      
+      // Tổng án = Tồn cũ (năm ngoái chuyển sang) + Án mới thụ lý
+      const tongAnThucTe = (parseInt(j.tonCu) || 0) + soAnDangCho;
+      
+      // Chỉ số tải (Càng thấp nghĩa là càng rảnh)
+      // Đảm bảo weight luôn lớn hơn 0 để không bị lỗi Infinity
+      const heSo = j.weight && j.weight > 0 ? j.weight : 1; 
+      const chiSoTai = tongAnThucTe / heSo;
+
+      return { ...j, chiSoTai, tongAnThucTe };
     });
 
-    // Xếp hạng: Ai điểm thấp nhất (ít việc nhất) lên đầu
-    calculations.sort((a, b) => a.score - b.score);
-    return calculations[0]; // Trả về người "top 1" rảnh rỗi
+    // Sắp xếp tăng dần theo chỉ số tải (ông nào ít điểm nhất lên đầu)
+    calculations.sort((a, b) => a.chiSoTai - b.chiSoTai);
+    
+    // Trả về ông rảnh nhất
+    return calculations[0]; 
   };
-
-  // HÀM 2A: THƯ KÝ LƯU ÁN CHỜ (CHƯA PHÂN CHO AI)
+    
   const handleLuuChoPhanAn = async () => {
     if (!phanAnForm.caseName) return showToast("Vui lòng nhập Trích yếu vụ án!", "error");
     try {
@@ -162,37 +170,37 @@ const handlePostNews = async () => {
     } catch (e) { showToast("Lỗi: " + e.message, "error"); }
   };
 
-  // HÀM 2B: CHÁNH ÁN XÁC NHẬN DUYỆT PHÂN ÁN
   const handleLuuPhanAn = async () => {
-    if (!phanAnForm.caseName) return showToast("Vui lòng nhập Số thụ lý / Trích yếu vụ án!", "error");
-    const suggestedJudge = goiYThamPhan();
-    if (!suggestedJudge) return showToast("Chưa có dữ liệu Thẩm phán. Vui lòng cấu hình trước!", "error");
+    if (!phanAnForm.caseName) return showToast("Vui lòng nhập trích yếu!", "error");
+    
+    // Nếu có chọn bằng tay thì lấy tay, không thì lấy AI gợi ý
+    const targetJudge = manualJudge || goiYThamPhan(); 
+    if (!targetJudge) return showToast("Không tìm thấy Thẩm phán phù hợp!", "error");
 
     try {
+      const data = {
+        caseName: phanAnForm.caseName,
+        plaintiff: phanAnForm.plaintiff || "",
+        defendant: phanAnForm.defendant || "",
+        caseType: phanAnForm.caseType,
+        judge: targetJudge.name, 
+        status: "pending",
+        room: "Chưa phân phòng",
+        updatedAt: moment().toISOString(),
+        updatedBy: user?.email || "Hệ thống"
+      };
+
       if (choPhanAnId) {
-        // Cập nhật lại án chờ thành án đã phân
-        await updateDoc(doc(db, "schedule", choPhanAnId), {
-           ...phanAnForm,
-           judge: suggestedJudge.name,
-           status: "pending", room: "Chưa phân phòng",
-           updatedAt: moment().toISOString(), updatedBy: user?.email || "Hệ thống"
-        });
+        await updateDoc(doc(db, "schedule", choPhanAnId), data);
       } else {
-        // Hoặc Chánh án tự tay nhập mới và phân luôn cũng được
-        await addDoc(collection(db, "schedule"), {
-          caseName: phanAnForm.caseName, plaintiff: phanAnForm.plaintiff,
-          defendant: phanAnForm.defendant, caseType: phanAnForm.caseType,
-          judge: suggestedJudge.name, room: "Chưa phân phòng", 
-          status: "pending",
-          createdAt: moment().toISOString(), createdBy: user?.email || "Hệ thống"
-        });
+        await addDoc(collection(db, "schedule"), { ...data, createdAt: moment().toISOString() });
       }
-      showToast(`✅ Đã tiếp nhận và phân công cho TP: ${suggestedJudge.name}`, "success");
-      setPhanAnForm({ caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự" }); 
+
+      showToast(`⚖️ Đã phân công thành công cho ${targetJudge.name}!`, "success");
+      setPhanAnForm({ caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự" });
       setChoPhanAnId(null);
-    } catch (error) {
-      showToast("Lỗi khi lưu: " + error.message, "error");
-    }
+      setManualJudge(null); // Giao xong thì reset cái chọn tay
+    } catch (e) { showToast("Lỗi phân án: " + e.message, "error"); }
   };
 
   const inputBase = "w-full border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[15px] font-medium text-gray-800";
@@ -206,23 +214,20 @@ const handlePostNews = async () => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3500);
   };
-  // Đảm bảo đoạn này nằm riêng biệt, không lồng trong hàm nào khác
-useEffect(() => {
+  useEffect(() => {
   const qNews = query(collection(db, "news"), orderBy("date", "desc"));
-  onSnapshot(qNews, (snap) => setNewsList(snap.docs.map(d => ({id: d.id, ...d.data()}))));
-
-  // Lấy Văn bản pháp luật
   const qDocs = query(collection(db, "legal_docs"), orderBy("createdAt", "desc"));
-  onSnapshot(qDocs, (snap) => setLegalDocs(snap.docs.map(d => ({id: d.id, ...d.data()}))));
-
-  // Lấy Liên kết nhanh
   const qLinks = query(collection(db, "quick_links"), orderBy("order", "asc"));
-  onSnapshot(qLinks, (snap) => setQuickLinks(snap.docs.map(d => ({id: d.id, ...d.data()}))));
-  const unsubscribeNews = onSnapshot(qNews, (snapshot) => {
-    setNewsList(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-  });
-  
-  return () => unsubscribeNews(); // Luôn luôn dọn dẹp listener khi component unmount
+
+  const unsubNews = onSnapshot(qNews, (snap) => setNewsList(snap.docs.map(d => ({id: d.id, ...d.data()}))));
+  const unsubDocs = onSnapshot(qDocs, (snap) => setLegalDocs(snap.docs.map(d => ({id: d.id, ...d.data()}))));
+  const unsubLinks = onSnapshot(qLinks, (snap) => setQuickLinks(snap.docs.map(d => ({id: d.id, ...d.data()}))));
+  
+  return () => {
+    unsubNews();
+    unsubDocs();
+    unsubLinks();
+  };
 }, []);
 useEffect(() => {
     const qCho = query(collection(db, "schedule"), where("status", "==", "cho_phan_an"));
@@ -261,16 +266,17 @@ useEffect(() => {
             if (!querySnapshot.empty) {
               const userData = querySnapshot.docs[0].data();
               const mangQuyen = userData.roles || [];
+              setUserRoles(mangQuyen);
               setUserFullName(userData.hoTen || "");
-              
+
               if (mangQuyen.includes("chanhan")) {
                 setUserRole("chanhan"); 
               } else if (mangQuyen.includes("admin")) {
                 setUserRole("admin"); 
-              } else if (mangQuyen.includes("thu_ky")) {
-                setUserRole("thuky"); 
               } else if (mangQuyen.includes("tham_phan")) {
                 setUserRole("thamphan"); 
+              } else if (mangQuyen.includes("thu_ky")) {
+                setUserRole("thuky"); 
               } else {
                 setUserRole("viewer"); 
               }
@@ -293,11 +299,15 @@ useEffect(() => {
   };
     }
   }, []);
-  // Lấy danh sách Thẩm phán & Định mức tồn cũ
-  const qJudges = query(collection(db, "judges"));
-  onSnapshot(qJudges, (snap) => {
-    setListJudges(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  });
+  useEffect(() => {
+    // Lấy danh sách Thẩm phán & Định mức tồn cũ
+    const qJudges = query(collection(db, "judges"));
+    const unsubscribeJudges = onSnapshot(qJudges, (snap) => {
+      setListJudges(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    return () => unsubscribeJudges();
+  }, []);
   
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -364,7 +374,7 @@ useEffect(() => {
   };
   
   const handleSubmit = async () => {
-    if (userRole === 'thamphan' || userRole === 'viewer') return showToast("Không có quyền!", "error");
+    if (!canEditSchedule) return showToast("Không có quyền!", "error");
     if (!form.datetime || !form.caseName || !form.room) return showToast("Vui lòng nhập đủ thông tin!", "error");
     if (!editingId) { 
     const duplicateCase = schedule.find(item => 
@@ -460,7 +470,7 @@ useEffect(() => {
 };
 
   const onEventDrop = async ({ event, start, end }) => {
-    if (userRole === 'thamphan' || userRole === 'viewer') return showToast("Không có quyền dời lịch!", "error");
+    if (!canEditSchedule) return showToast("Không có quyền dời lịch!", "error");
     const newDatetime = moment(start).format('YYYY-MM-DDTHH:mm');
     const isConflict = await isConflictServerSide(newDatetime, event.room, event.id, event.duration || 60);
     if (isConflict) return showToast(`⚠️ Trùng lịch phòng ${event.room}!`, "error");
@@ -579,7 +589,35 @@ useEffect(() => {
       return a.status === 'pending' ? -1 : 1;
     });
   }, [schedule, searchQuery, statusFilter, showOnlyUrgent, creatorFilter, judgeFilter, clerkFilter, startDate, endDate]);
-  
+  // =========================================================
+  // THUẬT TOÁN TÍNH MA TRẬN TẢI TRỌNG THẨM PHÁN
+  // =========================================================
+  const bangMaTranPhanAn = useMemo(() => {
+    const dsLoaiAn = ["Hình sự", "Dân sự", "Hành chính", "Hôn nhân & GĐ", "Kinh tế", "Cai nghiện"];
+    const stats = {};
+
+    // 1. Khởi tạo bộ đếm BẰNG SỐ ÁN TỒN CŨ của mỗi Thẩm phán
+    listJudges.forEach(judge => {
+      stats[judge.name] = {};
+      dsLoaiAn.forEach(type => {
+        // Nếu ông này có nhập tồn cũ chi tiết thì lấy, không thì mặc định là 0
+        stats[judge.name][type] = judge.tonCuChiTiet && judge.tonCuChiTiet[type] ? parseInt(judge.tonCuChiTiet[type]) : 0;
+      });
+    });
+
+    // 2. Quét toàn bộ lịch, đếm CỘNG DỒN những án ĐANG CHỜ XỬ (Án mới phân công)
+    schedule.forEach(item => {
+      if (item.status === 'pending' && item.judge && stats[item.judge]) {
+        let type = item.caseType === "cainghien" ? "Cai nghiện" : item.caseType;
+        
+        if (stats[item.judge][type] !== undefined) {
+          stats[item.judge][type] += 1;
+        }
+      }
+    });
+
+    return { dsLoaiAn, stats };
+  }, [schedule, listJudges]);
   const completedByMonth = useMemo(() => {
     const stats = {};
     schedule
@@ -837,8 +875,24 @@ if (!user && !isPublicView && !isScanningQR) {
       </div>
     );
   }
+  // =========================================================
+  // 🛡️ MA TRẬN PHÂN QUYỀN (ROLE-BASED ACCESS CONTROL)
+  // =========================================================
+  const isChanHan = userRoles.includes("chanhan");
+  const isAdmin = userRoles.includes("admin");
+  const isThamPhan = userRoles.includes("tham_phan");
+  const isThuKy = userRoles.includes("thu_ky");
 
-  const canEdit = userRole === 'admin' || userRole === 'chanhan' || userRole === 'thuky';
+  // Định nghĩa các nút thắt hành động (Hễ kiêm nhiệm là được cộng dồn quyền)
+  const canEditSchedule = isAdmin || isChanHan || isThuKy; // Quản lý lịch (Thêm, sửa, dời, xóa lịch)
+  const canAssignCases = isAdmin || isChanHan || isThuKy; // Phân án tự động
+  const canManagePortal = isAdmin || isChanHan; // Đăng tin tức, văn bản pháp luật
+  const canManageUsers = isAdmin; // Phân quyền cán bộ, cấu hình hệ thống
+  const canViewReports = isAdmin || isChanHan || isThamPhan || isThuKy; // Xem thống kê
+  
+  // Dùng biến canEdit này thế cho biến cũ để code bên dưới của Ní không bị lỗi
+  const canEdit = canEditSchedule; 
+  // =========================================================
 
   return (
     <div className="min-h-screen bg-gray-100 flex font-sans antialiased tracking-tight relative">
@@ -911,7 +965,7 @@ if (!user && !isPublicView && !isScanningQR) {
     <span className="font-bold text-sm">⚖️ LỊCH XÉT XỬ</span>
   </div>
   {/* 🔄 PHÂN ÁN TỰ ĐỘNG */}
-  {(userRole === 'admin' || userRole === 'chanhan' || userRole === 'thuky') && (
+  {canAssignCases && (
     <div 
       onClick={() => { setActiveTab("nhap_an"); setViewMode("app"); }} 
       className={`cursor-pointer px-3 py-3 rounded-lg flex justify-between items-center transition-all mt-2 ${activeTab === 'nhap_an' ? 'bg-indigo-600 scale-105 shadow-md border-l-4 border-yellow-400' : 'bg-white/10 hover:bg-white/20'}`}
@@ -939,13 +993,13 @@ if (!user && !isPublicView && !isScanningQR) {
     <span className="font-bold text-sm">📊 BÁO CÁO THỐNG KÊ</span>
   </div>
 )}
-{userRole === 'admin' && (
+{canManagePortal && ( 
   <div onClick={() => { setActiveTab("post_news"); setViewMode("app"); }} className={`cursor-pointer px-3 py-3 rounded-lg flex justify-between items-center transition-all ${activeTab === 'post_news' ? 'bg-purple-600 scale-105' : 'bg-white/10 hover:bg-white/20'}`}>
     <span className="font-bold text-sm">✍️ VIẾT BẢN TIN</span>
   </div>
 )}
           {/* ⚙️ NHÓM DROPDOWN: QUẢN TRỊ HỆ THỐNG (CHỈ ADMIN MỚI THẤY) */}
-          {userRole === 'admin' && !isPublicView && (
+          {canManageUsers && !isPublicView && (
             <div className="space-y-2 pt-2 border-t border-white/20 mt-4">
               
               <div 
@@ -1493,7 +1547,7 @@ if (!user && !isPublicView && !isScanningQR) {
             </button>
           </div>        
           
-          {(userRole === 'admin' || userRole === 'chanhan') && (
+          {canManagePortal && (
             <button 
               onClick={() => handleDelete(item.id, item.caseName)} 
               className="w-full bg-red-50 hover:bg-red-500 hover:text-white text-red-500 py-1.5 rounded-sm text-[9px] font-black uppercase transition-all border border-red-100"
@@ -1674,7 +1728,7 @@ if (!user && !isPublicView && !isScanningQR) {
     {activeTab === "config_judges" && (
   <QuanLyThamPhan db={db} showToast={showToast} />
 )}
-{activeTab === "nhap_an" && (
+    {activeTab === "nhap_an" && (
   <div className="bg-white p-8 rounded-2xl shadow-2xl border-t-8 border-indigo-900 animate-fadeIn max-w-6xl mx-auto">
     <div className="flex justify-between items-center mb-6">
       <h2 className="text-2xl font-black text-indigo-900 uppercase flex items-center gap-2">
@@ -1687,7 +1741,7 @@ if (!user && !isPublicView && !isScanningQR) {
       )}
     </div>
     
-    {/* KHAY CHỨA DANH SÁCH CHỜ PHÂN ÁN */}
+    {/* 1. KHAY CHỨA DANH SÁCH CHỜ PHÂN ÁN */}
     {dsChoPhanAn.length > 0 && (
       <div className="mb-8 bg-amber-50 p-4 rounded-xl border border-amber-200 shadow-inner">
         <h3 className="text-sm font-black text-amber-800 uppercase mb-3 flex items-center gap-2"><span className="text-lg">📁</span> Danh sách hồ sơ chờ duyệt phân án ({dsChoPhanAn.length})</h3>
@@ -1703,8 +1757,77 @@ if (!user && !isPublicView && !isScanningQR) {
       </div>
     )}
 
+    {/* 2. BẢNG THỐNG KÊ CHI TIẾT (DẠNG EXCEL) */}
+      <div className="mb-8 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-indigo-50 px-4 py-3 border-b border-indigo-100 flex items-center justify-between">
+          <h3 className="text-[12px] font-black text-indigo-900 uppercase flex items-center gap-2">
+            📊 Bảng theo dõi khối lượng công việc hiện tại của Thẩm phán
+          </h3>
+          <span className="text-[10px] text-indigo-500 font-bold italic">* Số liệu án đang thụ lý</span>
+        </div>
+        
+        {/* COPY TỪ ĐÂY */}
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="bg-gray-50 text-gray-500 font-black uppercase">
+                <th className="p-3 border-b border-r border-gray-200 text-left w-40">Thẩm phán</th>
+                {bangMaTranPhanAn.dsLoaiAn.map(type => (
+                  <th key={type} className="p-3 border-b border-r border-gray-200 text-center">{type}</th>
+                ))}
+                <th className="p-3 border-b border-gray-200 text-center bg-indigo-100 text-indigo-900">Tổng cộng</th>
+              </tr>
+            </thead>
+            
+            <tbody>
+              {/* Vòng lặp lấy từng ông Thẩm phán (judge) */}
+              {listJudges.map(judge => {
+                const assignedCases = schedule.filter(a => a.judge === judge.name && a.status === 'pending').length;
+                
+                return (
+                  <tr key={judge.id} className="hover:bg-gray-50 transition-colors">
+                    {/* Tên thẩm phán */}
+                    <td 
+  className={`p-3 border-b border-r border-gray-200 font-bold uppercase cursor-pointer transition-all ${manualJudge?.name === judge.name ? 'bg-indigo-600 text-white shadow-inner scale-95' : 'text-blue-900 hover:bg-indigo-50'}`}
+  onClick={() => {
+    setManualJudge(manualJudge?.name === judge.name ? null : judge);
+    showToast(manualJudge?.name === judge.name ? "Đã quay lại AI tự động" : `Đã chọn đích danh Thẩm phán: ${judge.name}`);
+  }}
+>
+  <div className="flex items-center justify-between">
+    <span>{judge.name}</span>
+    {manualJudge?.name === judge.name && <span className="text-[10px] bg-white text-indigo-700 px-1.5 py-0.5 rounded shadow-sm">📍 CHỌN</span>}
+  </div>
+  <p className={`text-[9px] font-normal mt-0.5 ${manualJudge?.name === judge.name ? 'text-indigo-200' : 'text-gray-400'}`}>{judge.role}</p>
+</td>
+                    
+                    {/* Vòng lặp đếm loại án BẮT BUỘC NẰM TRONG ĐÂY để dùng được chữ judge */}
+                    {bangMaTranPhanAn.dsLoaiAn.map(type => (
+                      <td key={type} className="p-3 border-b border-r border-gray-200 text-center font-bold text-gray-600">
+                        {bangMaTranPhanAn.stats[judge.name]?.[type] > 0 
+                          ? bangMaTranPhanAn.stats[judge.name][type] 
+                          : <span className="text-gray-300">0</span>}
+                      </td>
+                    ))}
+                    
+                    {/* Tổng cộng */}
+                    <td className="p-3 border-b border-gray-200 text-center font-black text-red-600 bg-red-50/20 text-[13px]">
+                      {assignedCases}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {/* ĐẾN ĐÂY */}
+        
+      </div>
+
+    {/* 3. KHU VỰC NHẬP LIỆU & AI PHÂN TÍCH */}
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      {/* CỘT NHẬP LIỆU */}
+      
+      {/* CỘT TRÁI: NHẬP LIỆU */}
       <div className="space-y-4">
         <div>
           <label className="block text-xs font-black text-gray-500 mb-2 uppercase">Số thụ lý / Trích yếu vụ án <span className="text-red-500">*</span></label>
@@ -1750,61 +1873,80 @@ if (!user && !isPublicView && !isScanningQR) {
             <option value="Dân sự">Dân sự</option>
             <option value="Hình sự">Hình sự</option>
             <option value="Hành chính">Hành chính</option>
+            <option value="Lao động">Lao động</option>
+            <option value="ADBPXLHC">ADBPXLHC</option>
             <option value="Kinh tế">Kinh tế</option>
             <option value="Hôn nhân & GĐ">Hôn nhân & Gia đình</option>
           </select>
         </div>
+        
+        {/* Nút lưu nháp đưa xuống đây */}
+        <button 
+          onClick={handleLuuChoPhanAn}
+          className="w-full mt-4 bg-gray-100 hover:bg-gray-200 text-gray-700 border-2 border-gray-300 font-black py-4 rounded-xl shadow-sm transition-all active:scale-95 uppercase tracking-widest text-sm"
+        >
+          LƯU VÀO DANH SÁCH CHỜ (CHƯA PHÂN)
+        </button>
       </div>
 
-      {/* CỘT KẾT QUẢ PHÂN ÁN */}
-      <div className="bg-gradient-to-br from-indigo-900 to-indigo-700 p-6 rounded-2xl text-white shadow-inner flex flex-col justify-center items-center text-center relative overflow-hidden">
-        <div className="absolute top-0 right-0 opacity-10 text-9xl font-black">⚖️</div>
+      {/* CỘT PHẢI: KẾT QUẢ PHÂN ÁN BẰNG AI */}
+      <div className="bg-slate-900 p-8 rounded-2xl text-white shadow-2xl relative overflow-hidden border-2 border-indigo-500/30">
+        <div className="absolute top-0 right-0 p-4 opacity-10 text-8xl">⚖️</div>
         
-        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-300 mb-4">Hệ thống tính toán đề xuất giao cho:</p>
-        
-        {goiYThamPhan() ? (
-          <>
-            <div className="text-3xl font-black mb-2 drop-shadow-md text-yellow-400 uppercase">
-              {goiYThamPhan().name}
+        <h3 className="text-indigo-400 font-black uppercase tracking-tighter text-sm mb-6 flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full animate-ping ${manualJudge ? 'bg-green-500' : 'bg-indigo-500'}`}></span>
+          {manualJudge ? "Chế độ: Chỉ định Thẩm phán" : "Hệ thống phân tích (AI Suggest)"}
+        </h3>
+
+        {goiYThamPhan() || manualJudge ? (
+          <div className="space-y-6 relative z-10">
+            <div className="text-center">
+              <p className="text-gray-400 text-xs uppercase font-bold mb-1">
+                {manualJudge ? "Thẩm phán được chọn:" : "Đề xuất Thẩm phán thụ lý:"}
+              </p>
+              <h4 className={`text-4xl font-black tracking-tight ${manualJudge ? 'text-green-400' : 'text-yellow-400'}`}>
+                {manualJudge ? manualJudge.name : goiYThamPhan().name}
+              </h4>
+              <span className="inline-block mt-2 px-4 py-1 bg-indigo-500/20 border border-indigo-500/40 rounded-full text-[10px] font-black uppercase">
+                {manualJudge ? manualJudge.role : goiYThamPhan().role}
+              </span>
             </div>
-            <div className="bg-white/20 border border-white/30 px-4 py-1 rounded-full text-xs font-black uppercase tracking-wider mb-6">
-              {goiYThamPhan().role}
-            </div>
-            
-            <div className="pt-4 border-t border-indigo-500/50 w-full grid grid-cols-2 gap-4">
-              <div className="bg-black/10 rounded-lg p-3">
-                <p className="text-[10px] opacity-70 uppercase font-bold mb-1">Tổng án đang giữ</p>
-                <p className="font-black text-2xl">{goiYThamPhan().total} <span className="text-sm font-normal">vụ</span></p>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                <p className="text-[10px] text-gray-500 uppercase font-bold">Chỉ số áp lực</p>
+                <div className="flex items-end gap-1">
+                  <span className="text-2xl font-black text-red-400">{Math.round(goiYThamPhan().chiSoTai)}</span>
+                  <span className="text-[10px] mb-1.5 text-gray-400">điểm</span>
+                </div>
               </div>
-              <div className="bg-black/10 rounded-lg p-3">
-                <p className="text-[10px] opacity-70 uppercase font-bold mb-1">Định mức chức vụ</p>
-                <p className="font-black text-2xl">{goiYThamPhan().weight * 100}%</p>
+              <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                <p className="text-[10px] text-gray-500 uppercase font-bold">Số án đang ôm</p>
+                <div className="flex items-end gap-1">
+                  <span className="text-2xl font-black text-indigo-300">{goiYThamPhan().tongAnThucTe}</span>
+                  <span className="text-[10px] mb-1.5 text-gray-400">vụ</span>
+                </div>
               </div>
             </div>
-          </>
-        ) : (
-          <div className="animate-pulse">
-            <p className="text-xl font-bold text-indigo-200">Đang chờ cấu hình...</p>
-            <p className="text-xs italic mt-2 opacity-70">Vui lòng vào Quản trị &gt; Cấu hình Thẩm phán</p>
+
+            <div className="p-4 bg-yellow-400/10 border border-yellow-400/20 rounded-xl">
+              <p className="text-[11px] text-yellow-200/80 italic leading-relaxed">
+                * Gợi ý dựa trên định mức chức vụ <b>{goiYThamPhan().weight * 100}%</b> và số lượng án thực tế đang quản lý.
+              </p>
+            </div>
+
+            <button 
+              onClick={handleLuuPhanAn} 
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-xl shadow-xl transition-all active:scale-95 uppercase tracking-widest text-sm"
+            >
+              XÁC NHẬN GIAO ÁN NÀY
+            </button>
           </div>
+        ) : (
+          <div className="text-center py-10 opacity-50 italic relative z-10">Đang tính toán dữ liệu thẩm phán...</div>
         )}
       </div>
-    </div>
 
-    {/* BỘ NÚT ĐIỀU KHIỂN LUỒNG */}
-    <div className="flex flex-col md:flex-row gap-4 mt-8">
-      <button 
-        onClick={handleLuuChoPhanAn}
-        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 border-2 border-gray-300 font-black py-4 rounded-xl shadow-sm transition-all active:scale-95 uppercase tracking-widest text-sm"
-      >
-        LƯU VÀO DANH SÁCH CHỜ (CHƯA PHÂN)
-      </button>
-      <button 
-        onClick={handleLuuPhanAn}
-        className="flex-[2] bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-xl shadow-xl transition-all active:scale-95 uppercase tracking-widest text-sm flex items-center justify-center gap-2"
-      >
-        <span>XÁC NHẬN PHÂN CÔNG</span> <span className="text-xs font-normal opacity-80">(Giao cho Thẩm phán)</span>
-      </button>
     </div>
   </div>
 )}
@@ -2253,8 +2395,8 @@ if (!user && !isPublicView && !isScanningQR) {
           {toast.message}
         </div>
       )}
-    </div>
-  );
+      </div> 
+  ); 
 }
 
 function QuanLyPhanQuyen() {
@@ -2789,20 +2931,23 @@ function QuanLyPortal({ db, userEmail, showToast }) {
   );
 }
 // =========================================================================
-// COMPONENT: THIẾT LẬP DANH SÁCH 14 THẨM PHÁN & SỐ DƯ ĐẦU KỲ
+// COMPONENT: THIẾT LẬP DANH SÁCH 14 THẨM PHÁN & SỐ DƯ ĐẦU KỲ CHI TIẾT
 // =========================================================================
 function QuanLyThamPhan({ db, showToast }) {
   const [name, setName] = React.useState("");
   const [role, setRole] = React.useState("Thẩm phán"); // Mặc định
-  const [tonCu, setTonCu] = React.useState(0);
   const [listJudges, setListJudges] = React.useState([]);
 
-  // Tỷ lệ định mức tương ứng với chức vụ
+  // Khai báo state lưu chi tiết từng loại án
+  const [tonCuChiTiet, setTonCuChiTiet] = React.useState({
+    "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Cai nghiện": 0
+  });
+
   const weights = { "Chánh án": 0.3, "Phó Chánh án": 0.6, "Thẩm phán": 1.0 };
 
   React.useEffect(() => {
     const loadJudges = async () => {
-      const { collection, query, onSnapshot } = await import('firebase/firestore');
+      const { collection, onSnapshot } = await import('firebase/firestore');
       onSnapshot(collection(db, "judges"), (snap) => {
         setListJudges(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       });
@@ -2812,43 +2957,81 @@ function QuanLyThamPhan({ db, showToast }) {
 
   const handleSaveJudge = async () => {
     if (!name) return showToast("Nhập tên Thẩm phán Ní ơi!", "error");
+    
+    // Tự động tính tổng án tồn cũ từ các ô chi tiết
+    const tongTonCu = Object.values(tonCuChiTiet).reduce((acc, val) => acc + (parseInt(val) || 0), 0);
+
     try {
       const { collection, addDoc } = await import('firebase/firestore');
       await addDoc(collection(db, "judges"), {
         name,
         role,
         weight: weights[role],
-        tonCu: parseInt(tonCu) || 0,
+        tonCuChiTiet, // Lưu cục chi tiết để hiện lên bảng Ma trận
+        tonCu: tongTonCu, // Lưu tổng để AI tính điểm
         createdAt: new Date().toISOString()
       });
-      showToast("✅ Đã thêm Thẩm phán vào thùng!");
-      setName(""); setTonCu(0);
+      showToast("✅ Đã thêm Thẩm phán cùng số liệu tồn cũ!");
+      setName(""); 
+      setTonCuChiTiet({"Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Cai nghiện": 0});
     } catch (e) { showToast("Lỗi: " + e.message, "error"); }
   };
 
+  // Hàm xử lý khi nhập số liệu cho từng loại án
+  const handleTonCuChange = (type, value) => {
+    setTonCuChiTiet(prev => ({ ...prev, [type]: parseInt(value) || 0 }));
+  };
+
+  // Tính tổng hiển thị realtime trên UI
+  const currentTotal = Object.values(tonCuChiTiet).reduce((acc, val) => acc + (parseInt(val) || 0), 0);
+
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200 animate-fadeIn">
-      <h3 className="font-black text-blue-900 uppercase mb-6 flex items-center gap-2">⚖️ Cấu hình định mức 14 Thẩm phán</h3>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 bg-blue-50 p-4 rounded-xl">
-        <input type="text" placeholder="Tên Thẩm phán..." value={name} onChange={e => setName(e.target.value)} className="border p-3 rounded-lg font-bold" />
-        <select value={role} onChange={e => setRole(e.target.value)} className="border p-3 rounded-lg font-bold">
-          <option value="Chánh án">Chánh án (30%)</option>
-          <option value="Phó Chánh án">Phó Chánh án (60%)</option>
-          <option value="Thẩm phán">Thẩm phán (100%)</option>
-        </select>
-        <input type="number" placeholder="Số án tồn cũ..." value={tonCu} onChange={e => setTonCu(e.target.value)} className="border p-3 rounded-lg font-bold" />
-        <button onClick={handleSaveJudge} className="bg-blue-600 text-white font-black rounded-lg hover:bg-blue-700 transition-all">LƯU CẤU HÌNH</button>
+    <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200 animate-fadeIn max-w-5xl mx-auto">
+      <h3 className="font-black text-blue-900 uppercase mb-6 flex items-center gap-2">⚖️ Cấu hình Thẩm phán & Án tồn cũ</h3>
+      
+      <div className="mb-8 bg-blue-50 p-6 rounded-xl border border-blue-100 shadow-inner">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <label className="block text-xs font-black uppercase text-blue-800 mb-2">Tên Thẩm phán</label>
+            <input type="text" placeholder="Nhập họ tên..." value={name} onChange={e => setName(e.target.value)} className="w-full border p-3 rounded-lg font-bold outline-none focus:border-blue-500" />
+          </div>
+          <div>
+            <label className="block text-xs font-black uppercase text-blue-800 mb-2">Chức vụ (Định mức)</label>
+            <select value={role} onChange={e => setRole(e.target.value)} className="w-full border p-3 rounded-lg font-bold outline-none focus:border-blue-500">
+              <option value="Chánh án">Chánh án (30%)</option>
+              <option value="Phó Chánh án">Phó Chánh án (60%)</option>
+              <option value="Thẩm phán">Thẩm phán (100%)</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg border border-gray-200">
+          <div className="flex justify-between items-center mb-4">
+            <label className="text-xs font-black uppercase text-red-600">Nhập chi tiết án tồn cũ (năm trước chuyển sang)</label>
+            <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-black">Tổng: {currentTotal} vụ</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {Object.keys(tonCuChiTiet).map(type => (
+              <div key={type} className="flex items-center gap-2 bg-gray-50 border rounded-md px-3 py-2">
+                <span className="text-[11px] font-bold text-gray-600 w-20">{type}:</span>
+                <input type="number" min="0" value={tonCuChiTiet[type] === 0 ? '' : tonCuChiTiet[type]} onChange={e => handleTonCuChange(type, e.target.value)} className="w-full bg-transparent font-black text-blue-900 outline-none text-right" placeholder="0" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <button onClick={handleSaveJudge} className="w-full mt-6 bg-blue-600 text-white font-black py-4 rounded-lg hover:bg-blue-700 transition-all uppercase tracking-widest shadow-lg">LƯU CẤU HÌNH THẨM PHÁN NÀY</button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {listJudges.map(j => (
-          <div key={j.id} className="p-4 border rounded-xl flex justify-between items-center bg-gray-50">
+          <div key={j.id} className="p-4 border border-gray-200 rounded-xl flex justify-between items-center bg-gray-50 hover:border-blue-300 transition-all">
             <div>
-              <p className="font-black text-blue-900">{j.name}</p>
+              <p className="font-black text-blue-900 text-sm">{j.name}</p>
               <p className="text-[10px] uppercase font-bold text-gray-500">{j.role} - Định mức: {j.weight * 100}%</p>
             </div>
             <div className="text-right">
-              <p className="text-xs font-black text-red-600">Tồn cũ: {j.tonCu}</p>
+              <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-black">Tổng tồn: {j.tonCu}</span>
             </div>
           </div>
         ))}
