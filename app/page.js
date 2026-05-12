@@ -1783,44 +1783,45 @@ if (!user && !isPublicView && !isScanningQR) {
             </thead>
             
             <tbody>
-              {/* Vòng lặp lấy từng ông Thẩm phán (judge) */}
-              {listJudges.map(judge => {
-                const assignedCases = schedule.filter(a => a.judge === judge.name && a.status === 'pending').length;
-                
-                return (
-                  <tr key={judge.id} className="hover:bg-gray-50 transition-colors">
-                    {/* Tên thẩm phán */}
-                    <td 
-  className={`p-3 border-b border-r border-gray-200 font-bold uppercase cursor-pointer transition-all ${manualJudge?.name === judge.name ? 'bg-indigo-600 text-white shadow-inner scale-95' : 'text-blue-900 hover:bg-indigo-50'}`}
-  onClick={() => {
-    setManualJudge(manualJudge?.name === judge.name ? null : judge);
-    showToast(manualJudge?.name === judge.name ? "Đã quay lại AI tự động" : `Đã chọn đích danh Thẩm phán: ${judge.name}`);
-  }}
->
-  <div className="flex items-center justify-between">
-    <span>{judge.name}</span>
-    {manualJudge?.name === judge.name && <span className="text-[10px] bg-white text-indigo-700 px-1.5 py-0.5 rounded shadow-sm">📍 CHỌN</span>}
-  </div>
-  <p className={`text-[9px] font-normal mt-0.5 ${manualJudge?.name === judge.name ? 'text-indigo-200' : 'text-gray-400'}`}>{judge.role}</p>
-</td>
-                    
-                    {/* Vòng lặp đếm loại án BẮT BUỘC NẰM TRONG ĐÂY để dùng được chữ judge */}
-                    {bangMaTranPhanAn.dsLoaiAn.map(type => (
-                      <td key={type} className="p-3 border-b border-r border-gray-200 text-center font-bold text-gray-600">
-                        {bangMaTranPhanAn.stats[judge.name]?.[type] > 0 
-                          ? bangMaTranPhanAn.stats[judge.name][type] 
-                          : <span className="text-gray-300">0</span>}
-                      </td>
-                    ))}
-                    
-                    {/* Tổng cộng */}
-                    <td className="p-3 border-b border-gray-200 text-center font-black text-red-600 bg-red-50/20 text-[13px]">
-                      {assignedCases}
+            {listJudges.map(judge => {
+              // HỆ THỐNG LẤY SỐ TỔNG (ĐÃ BAO GỒM GỐC CẤU HÌNH + ÁN MỚI PHÂN)
+              const statsCuaJudge = bangMaTranPhanAn.stats[judge.name] || {};
+              const tongTatCa = Object.values(statsCuaJudge).reduce((acc, val) => acc + (val || 0), 0);
+              
+              return (
+                <tr key={judge.id} className="hover:bg-gray-50 transition-colors">
+                  {/* CỘT TÊN THẨM PHÁN VÀ CHỌN THỦ CÔNG */}
+                  <td 
+                    className={`p-3 border-b border-r border-gray-200 font-bold uppercase cursor-pointer transition-all ${manualJudge?.name === judge.name ? 'bg-indigo-600 text-white shadow-inner scale-95' : 'text-blue-900 hover:bg-indigo-50'}`}
+                    onClick={() => {
+                      setManualJudge(manualJudge?.name === judge.name ? null : judge);
+                      showToast(manualJudge?.name === judge.name ? "Đã quay lại AI tự động" : `Đã chọn đích danh Thẩm phán: ${judge.name}`);
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>{judge.name}</span>
+                      {manualJudge?.name === judge.name && <span className="text-[10px] bg-white text-indigo-700 px-1.5 py-0.5 rounded shadow-sm">📍 CHỌN</span>}
+                    </div>
+                    <p className={`text-[9px] font-normal mt-0.5 ${manualJudge?.name === judge.name ? 'text-indigo-200' : 'text-gray-400'}`}>{judge.role}</p>
+                  </td>
+                  
+                  {/* CÁC CỘT CHI TIẾT LOẠI ÁN (Số cấu hình + Số án mới) */}
+                  {bangMaTranPhanAn.dsLoaiAn.map(type => (
+                    <td key={type} className="p-3 border-b border-r border-gray-200 text-center font-bold text-gray-600">
+                      {statsCuaJudge[type] > 0 
+                        ? statsCuaJudge[type] 
+                        : <span className="text-gray-300">0</span>}
                     </td>
-                  </tr>
-                );
-              })}
-            </tbody>
+                  ))}
+                  
+                  {/* CỘT TỔNG CỘNG ĐÃ ĐƯỢC FIX LỖI: HIỆN CHÍNH XÁC SỐ CỘNG NGANG (GỐC + MỚI) */}
+                  <td className="p-3 border-b border-gray-200 text-center font-black text-red-600 bg-red-50/20 text-[13px]">
+                    {tongTatCa}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
           </table>
         </div>
         {/* ĐẾN ĐÂY */}
