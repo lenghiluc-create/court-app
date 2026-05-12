@@ -125,27 +125,22 @@ const handlePostNews = async () => {
   }
 };
 const goiYThamPhan = () => {
-    if (!listJudges || listJudges.length === 0) return null;
+    // 1. Lọc bỏ "Chánh án" ra khỏi danh sách tự động phân án của AI
+    const danhSachChoAI = listJudges.filter(j => j.role !== "Chánh án");
+    
+    // Nếu trong hệ thống chỉ có mỗi ông Chánh án (chưa có ai khác) thì chịu
+    if (!danhSachChoAI || danhSachChoAI.length === 0) return null;
 
-    const calculations = listJudges.map(j => {
-      // Tính số án mới đang được giao (pending)
+    const calculations = danhSachChoAI.map(j => {
       const soAnDangCho = schedule.filter(a => a.judge === j.name && a.status === 'pending').length;
-      
-      // Tổng án = Tồn cũ (năm ngoái chuyển sang) + Án mới thụ lý
       const tongAnThucTe = (parseInt(j.tonCu) || 0) + soAnDangCho;
-      
-      // Chỉ số tải (Càng thấp nghĩa là càng rảnh)
-      // Đảm bảo weight luôn lớn hơn 0 để không bị lỗi Infinity
       const heSo = j.weight && j.weight > 0 ? j.weight : 1; 
       const chiSoTai = tongAnThucTe / heSo;
 
       return { ...j, chiSoTai, tongAnThucTe };
     });
 
-    // Sắp xếp tăng dần theo chỉ số tải (ông nào ít điểm nhất lên đầu)
     calculations.sort((a, b) => a.chiSoTai - b.chiSoTai);
-    
-    // Trả về ông rảnh nhất
     return calculations[0]; 
   };
     
@@ -173,9 +168,10 @@ const goiYThamPhan = () => {
   const handleLuuPhanAn = async () => {
     if (!phanAnForm.caseName) return showToast("Vui lòng nhập trích yếu!", "error");
     
-    // Nếu có chọn bằng tay thì lấy tay, không thì lấy AI gợi ý
+    // Trở lại logic kết hợp: Ưu tiên chọn tay, nếu không chọn thì lấy AI
     const targetJudge = manualJudge || goiYThamPhan(); 
-    if (!targetJudge) return showToast("Không tìm thấy Thẩm phán phù hợp!", "error");
+    
+    if (!targetJudge) return showToast("Không tìm thấy Thẩm phán phù hợp (hoặc chưa có ai ngoài Chánh án)!", "error");
 
     try {
       const data = {
@@ -196,7 +192,7 @@ const goiYThamPhan = () => {
         await addDoc(collection(db, "schedule"), { ...data, createdAt: moment().toISOString() });
       }
 
-      showToast(`⚖️ Đã phân công thành công cho ${targetJudge.name}!`, "success");
+      showToast(`⚖️ Đã giao án thành công cho ${targetJudge.name}!`, "success");
       setPhanAnForm({ caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự" });
       setChoPhanAnId(null);
       setManualJudge(null); // Giao xong thì reset cái chọn tay
@@ -1592,7 +1588,13 @@ if (!user && !isPublicView && !isScanningQR) {
                                  {effective && <div className="mb-2 text-[9px] font-black text-teal-700 bg-teal-50 p-2 rounded border border-teal-100">ÁN ĐÃ CÓ HIỆU LỰC</div>}
 
                                  <div className="space-y-1.5 text-[10px] font-bold text-gray-700 bg-gray-50 p-2 rounded-md border border-gray-100">
-                                   <div className="flex items-center gap-2"><span className="text-lg">🕒</span> {item.status === 'suspended' ? <span className="text-purple-600 italic">Chờ báo sau</span> : moment(item.datetime).format("HH:mm | DD/MM/YY")}</div>
+                                   <div className="flex items-center gap-2"><span className="text-lg">🕒</span> {item.status === 'suspended' 
+? <span className="text-purple-600 italic">Chờ báo sau</span> 
+    : item.datetime 
+      ? moment(item.datetime).format("HH:mm | DD/MM/YY") 
+      : <span className="text-red-500 font-black italic">CHƯA LÊN LỊCH</span>
+  }
+</div>
                                    <div className="flex items-center gap-2"><span className="text-lg">👨‍⚖️</span> TP: {item.judge || "---"}</div>
                                    <div className="flex items-center gap-2"><span className="text-lg">🛡️</span> KSV: <span className="text-red-600">{item.prosecutor || "---"}</span></div>
                                  </div>
@@ -1889,7 +1891,7 @@ if (!user && !isPublicView && !isScanningQR) {
         </button>
       </div>
 
-      {/* CỘT PHẢI: KẾT QUẢ PHÂN ÁN BẰNG AI */}
+      {/* CỘT PHẢI: KẾT QUẢ PHÂN ÁN BẰNG AI HOẶC CHỌN TAY */}
       <div className="bg-slate-900 p-8 rounded-2xl text-white shadow-2xl relative overflow-hidden border-2 border-indigo-500/30">
         <div className="absolute top-0 right-0 p-4 opacity-10 text-8xl">⚖️</div>
         
@@ -1905,34 +1907,36 @@ if (!user && !isPublicView && !isScanningQR) {
                 {manualJudge ? "Thẩm phán được chọn:" : "Đề xuất Thẩm phán thụ lý:"}
               </p>
               <h4 className={`text-4xl font-black tracking-tight ${manualJudge ? 'text-green-400' : 'text-yellow-400'}`}>
-                {manualJudge ? manualJudge.name : goiYThamPhan().name}
+                {manualJudge ? manualJudge.name : goiYThamPhan()?.name}
               </h4>
               <span className="inline-block mt-2 px-4 py-1 bg-indigo-500/20 border border-indigo-500/40 rounded-full text-[10px] font-black uppercase">
-                {manualJudge ? manualJudge.role : goiYThamPhan().role}
+                {manualJudge ? manualJudge.role : goiYThamPhan()?.role}
               </span>
             </div>
 
+            {/* BẢNG THỐNG KÊ SỐ LIỆU ĐANG ÔM (Thông minh: Tự đổi theo người được chọn hoặc AI) */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                <p className="text-[10px] text-gray-500 uppercase font-bold">Chỉ số áp lực</p>
-                <div className="flex items-end gap-1">
-                  <span className="text-2xl font-black text-red-400">{Math.round(goiYThamPhan().chiSoTai)}</span>
-                  <span className="text-[10px] mb-1.5 text-gray-400">điểm</span>
-                </div>
-              </div>
-              <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+              <div className="bg-white/5 p-4 rounded-xl border border-white/10 text-center">
                 <p className="text-[10px] text-gray-500 uppercase font-bold">Số án đang ôm</p>
-                <div className="flex items-end gap-1">
-                  <span className="text-2xl font-black text-indigo-300">{goiYThamPhan().tongAnThucTe}</span>
+                <div className="flex items-end justify-center gap-1">
+                  <span className={`text-2xl font-black ${manualJudge ? 'text-green-300' : 'text-indigo-300'}`}>
+                    {manualJudge 
+                      ? (parseInt(manualJudge.tonCu) || 0) + schedule.filter(a => a.judge === manualJudge.name && a.status === 'pending').length 
+                      : goiYThamPhan()?.tongAnThucTe}
+                  </span>
                   <span className="text-[10px] mb-1.5 text-gray-400">vụ</span>
                 </div>
               </div>
-            </div>
 
-            <div className="p-4 bg-yellow-400/10 border border-yellow-400/20 rounded-xl">
-              <p className="text-[11px] text-yellow-200/80 italic leading-relaxed">
-                * Gợi ý dựa trên định mức chức vụ <b>{goiYThamPhan().weight * 100}%</b> và số lượng án thực tế đang quản lý.
-              </p>
+              <div className="bg-white/5 p-4 rounded-xl border border-white/10 text-center">
+                <p className="text-[10px] text-gray-500 uppercase font-bold">Định mức</p>
+                <div className="flex items-end justify-center gap-1">
+                  <span className="text-2xl font-black text-gray-300">
+                    {manualJudge ? (manualJudge.weight || 1) * 100 : (goiYThamPhan()?.weight || 1) * 100}
+                  </span>
+                  <span className="text-[10px] mb-1.5 text-gray-400">%</span>
+                </div>
+              </div>
             </div>
 
             <button 
@@ -1943,7 +1947,7 @@ if (!user && !isPublicView && !isScanningQR) {
             </button>
           </div>
         ) : (
-          <div className="text-center py-10 opacity-50 italic relative z-10">Đang tính toán dữ liệu thẩm phán...</div>
+          <div className="text-center py-10 opacity-50 italic relative z-10">Đang tính toán hoặc chưa có Thẩm phán hợp lệ...</div>
         )}
       </div>
 
