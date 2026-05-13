@@ -36,6 +36,7 @@ export default function PremiumCourtApp() {
   const [editingId, setEditingId] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [displayMode, setDisplayMode] = useState("table"); 
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [showTVMode, setShowTVMode] = useState(false);
   const [isPublicView, setIsPublicView] = useState(false);
   const [userFullName, setUserFullName] = useState("");
@@ -793,7 +794,7 @@ useEffect(() => {
             onClick={() => setViewMode("app")}
             className="w-full bg-yellow-400 hover:bg-yellow-500 text-blue-950 font-black py-4 rounded-xl shadow-lg transition-all active:scale-95 text-lg uppercase"
           >
-            Vào Trang Quản Lý ⚖️
+            {user ? "Vào Trang Quản Lý ⚖️" : "Xem Lịch Xét Xử ⚖️"}
           </button>
         </div>
 
@@ -856,25 +857,6 @@ useEffect(() => {
   );
 
   const isScanningQR = typeof window !== 'undefined' && window.location.search.includes('mode=tv');
-
-if (!user && !isPublicView && !isScanningQR) {
-    return (
-      <div className="min-h-screen flex items-center justify-center relative bg-cover bg-center font-sans" style={{ backgroundImage: "url('/toaan.jpg')" }}>
-        <div className="absolute inset-0 bg-black/30"></div> 
-        <div className="relative z-10 w-full max-w-[480px] p-8 md:p-10 text-center" style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '12px', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)' }}>
-          <img src="/lgtoaan1.png" alt="Logo" className="mx-auto mb-4 drop-shadow-2xl" style={{ width: '100px', height: '100px', objectFit: 'contain' }} />
-          <p className="text-[16px] md:text-lg font-black uppercase mb-2 tracking-tight text-red-600 drop-shadow-md">TOÀ ÁN NHÂN DÂN THÀNH PHỐ CẦN THƠ</p>
-          <h1 className="text-[20px] md:text-2xl font-black uppercase mb-8 tracking-tight text-red-600 drop-shadow-md">TAND KHU VỰC 9 - CẦN THƠ</h1>
-          <form onSubmit={handleLogin} className="space-y-5 flex flex-col items-center">
-            <input type="email" placeholder="Email..." value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="w-[85%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center transition-all focus:border-white focus:bg-white/20" style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.4)', borderRadius: '6px' }} required />
-            <input type="password" placeholder="Mật khẩu..." value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-[85%] px-5 py-3 outline-none text-lg font-bold placeholder-gray-200 text-center transition-all focus:border-white focus:bg-white/20" style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: '2px solid rgba(255, 255, 255, 0.4)', borderRadius: '6px' }} required />
-            {loginError && (<p className="text-red-400 text-sm font-bold mt-2 bg-red-900/20 py-2 px-4 rounded border border-red-500/30 animate-shake">{loginError}</p>)}
-            <button type="submit" className="py-3 mt-4 font-black uppercase text-lg transition-all hover:bg-blue-700 active:scale-95" style={{ width: '60%', backgroundColor: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '6px', boxShadow: '0 4px 15px rgba(37, 99, 235, 0.5)' }}>{loading ? "ĐANG KIỂM TRA..." : "ĐĂNG NHẬP"}</button>
-          </form>
-        </div>
-      </div>
-    );
-  }
   // =========================================================
   // 🛡️ MA TRẬN PHÂN QUYỀN (ROLE-BASED ACCESS CONTROL)
   // =========================================================
@@ -883,17 +865,17 @@ if (!user && !isPublicView && !isScanningQR) {
   const isThamPhan = userRoles.includes("tham_phan");
   const isThuKy = userRoles.includes("thu_ky");
 
-  // Định nghĩa các nút thắt hành động (Hễ kiêm nhiệm là được cộng dồn quyền)
-  const canEditSchedule = isAdmin || isChanHan || isThuKy; // Quản lý lịch (Thêm, sửa, dời, xóa lịch)
-  const canAssignCases = isAdmin || isChanHan || isThuKy; // Phân án tự động
+  // Định nghĩa các nút thắt hành động
+  const canEditSchedule = isAdmin || isChanHan || isThuKy; // Quản lý lịch
+  const canAssignCases = isAdmin || isChanHan || isThuKy; // Cho phép Thư ký, Chánh án, Admin thấy tab Phân án
   const canManagePortal = isAdmin || isChanHan; // Đăng tin tức, văn bản pháp luật
   const canManageUsers = isAdmin; // Phân quyền cán bộ, cấu hình hệ thống
   const canViewReports = isAdmin || isChanHan || isThamPhan || isThuKy; // Xem thống kê
   
-  // Dùng biến canEdit này thế cho biến cũ để code bên dưới của Ní không bị lỗi
-  const canEdit = canEditSchedule; 
+  const canEdit = canEditSchedule; // Khai báo thêm dòng này để tránh lỗi canEdit is not defined
   // =========================================================
 
+    // ... Khối giao diện của Ní ở bên dưới ...
   return (
     <div className="min-h-screen bg-gray-100 flex font-sans antialiased tracking-tight relative">
       <div className="absolute inset-0 bg-black/30 z-0"></div>
@@ -935,8 +917,7 @@ if (!user && !isPublicView && !isScanningQR) {
   }
       `}} />
 
-      <aside 
-        className="w-64 text-white hidden xl:flex flex-col fixed h-screen z-20 overflow-y-auto"
+      <aside className={`w-64 text-white hidden ${user ? 'xl:flex' : 'hidden'} flex-col fixed h-screen z-20 overflow-y-auto`}
         style={{ 
           fontFamily: "'Be Vietnam Pro', sans-serif",
           background: 'rgba(220, 38, 38, 0.75)',
@@ -1083,14 +1064,26 @@ if (!user && !isPublicView && !isScanningQR) {
         </div>
       </aside>
 
-      <main className="xl:ml-64 flex flex-col min-h-screen relative z-10 flex-1 w-full overflow-x-hidden">
+      <main className={`${user ? 'xl:ml-64' : ''} flex flex-col min-h-screen relative z-10 flex-1 w-full overflow-x-hidden`}>
         <header className="bg-red-700 h-24 shadow-md flex items-center justify-between px-4 md:px-8 xl:px-12 sticky top-0 z-30 border-b border-red-800 w-full">
   
   <div className="flex-1 flex justify-start items-center gap-2">
-    <div className="flex xl:hidden gap-2">
-      <button onClick={() => setShowPwdModal(true)} className="bg-white/20 hover:bg-white/30 text-white px-3 py-2 text-[10px] font-black uppercase shadow-sm border border-white/30 rounded-md backdrop-blur-sm transition-all">🔑 MK</button>
-      <button onClick={handleLogout} className="bg-black/20 hover:bg-black/30 text-white border border-black/30 px-3 py-2 text-[10px] font-black uppercase shadow-sm rounded-md backdrop-blur-sm transition-all">🚪 THOÁT</button>
-    </div>
+    {!user ? (
+      <button onClick={() => setShowLoginModal(true)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 text-[10px] md:text-xs font-black uppercase shadow-md rounded-lg transition-all">
+        🔑 Đăng nhập Cán bộ
+      </button>
+    ) : (
+      <div className="flex xl:hidden gap-2">
+        <button onClick={() => setShowPwdModal(true)} className="bg-white/20 hover:bg-white/30 text-white px-3 py-2 text-[10px] font-black uppercase shadow-sm border border-white/30 rounded-md backdrop-blur-sm transition-all">🔑 MK</button>
+        <button onClick={handleLogout} className="bg-black/20 hover:bg-black/30 text-white border border-black/30 px-3 py-2 text-[10px] font-black uppercase shadow-sm rounded-md backdrop-blur-sm transition-all">🚪 THOÁT</button>
+      </div>
+    )}
+    {/* Nút quay lại Trang chủ cho người dân khi đang xem lịch */}
+    {!user && viewMode !== 'portal' && (
+       <button onClick={() => setViewMode('portal')} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 text-[10px] md:text-xs font-black uppercase shadow-md rounded-lg transition-all ml-1">
+         🏠 TRANG CHỦ
+       </button>
+    )}
   </div>
 
   <div className="flex-[2] text-center px-2 flex justify-center">
@@ -2166,7 +2159,7 @@ if (!user && !isPublicView && !isScanningQR) {
       {activeTab === "logs" && (
         <NhatKyThaoTac />
       )}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center h-[70px] z-[100] shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)] pb-safe">
+      {user && ( <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center h-[70px] z-[100] shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)] pb-safe">
         
         <button 
           onClick={() => {
@@ -2208,8 +2201,8 @@ if (!user && !isPublicView && !isScanningQR) {
   <span className="text-[10px] font-black uppercase tracking-wider">Tin tức</span>
 </button>
 
-      </div> {/* Đây là thẻ đóng của thanh điều hướng Mobile (md:hidden) */}
-      
+      </div> 
+      )}
     </> /* Đóng thẻ Fragment của nhánh App */
   )} 
 </div>
@@ -2274,7 +2267,24 @@ if (!user && !isPublicView && !isScanningQR) {
            </div>
         </div>
       )}
-      
+
+      {showLoginModal && !user && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="relative z-10 w-full max-w-[480px] p-8 md:p-10 text-center animate-popIn" style={{ background: 'rgba(20, 30, 70, 0.95)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '16px', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)' }}>
+            <button onClick={() => setShowLoginModal(false)} className="absolute top-4 right-5 text-white/50 hover:text-red-500 text-2xl font-black transition-colors">✕</button>
+            <img src="/lgtoaan1.png" alt="Logo" className="mx-auto mb-4 drop-shadow-2xl w-24 h-24 object-contain" />
+            <p className="text-[14px] md:text-base font-black uppercase mb-1 tracking-tight text-red-500 drop-shadow-md">HỆ THỐNG NỘI BỘ</p>
+            <h1 className="text-[18px] md:text-xl font-black uppercase mb-8 tracking-tight text-yellow-400 drop-shadow-md">ĐĂNG NHẬP CÁN BỘ</h1>
+            <form onSubmit={handleLogin} className="space-y-5 flex flex-col items-center">
+              <input type="email" placeholder="Email cán bộ..." value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className="w-[90%] px-5 py-3 outline-none text-sm font-bold placeholder-gray-400 text-center transition-all focus:border-blue-400 bg-white text-blue-900 rounded-lg shadow-inner" required />
+              <input type="password" placeholder="Mật khẩu..." value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-[90%] px-5 py-3 outline-none text-sm font-bold placeholder-gray-400 text-center transition-all focus:border-blue-400 bg-white text-blue-900 rounded-lg shadow-inner" required />
+              {loginError && (<p className="text-red-400 text-xs font-bold mt-2 bg-red-900/20 py-2 px-4 rounded border border-red-500/30 animate-shake">{loginError}</p>)}
+              <button type="submit" onClick={() => setTimeout(() => setShowLoginModal(false), 1500)} className="w-[90%] py-3 mt-4 font-black uppercase text-sm transition-all bg-blue-600 hover:bg-blue-500 text-white rounded-lg shadow-lg active:scale-95">{loading ? "ĐANG KIỂM TRA..." : "ĐĂNG NHẬP"}</button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {showPwdModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onClick={() => setShowPwdModal(false)}>
            <div className="w-full max-md bg-white rounded-[28px] shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -2784,6 +2794,7 @@ function QuanLyPortal({ db, userEmail, showToast }) {
   const [docUrl, setDocUrl] = React.useState("");
   const [linkTitle, setLinkTitle] = React.useState("");
   const [linkUrl, setLinkUrl] = React.useState("");
+  
 
   // State Dữ liệu để hiển thị list xóa
   const [listNews, setListNews] = React.useState([]);
@@ -2859,7 +2870,31 @@ function QuanLyPortal({ db, userEmail, showToast }) {
       setLinkTitle(""); setLinkUrl(""); 
     } catch (e) { showToast("Lỗi tạo liên kết: " + e.message, "error"); }
   };
+const [uploadingImg, setUploadingImg] = React.useState(false);
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingImg(true);
+    try {
+      const { getStorage, ref, uploadUpload, getDownloadURL, uploadBytes } = await import('firebase/storage');
+      const storage = getStorage(db.app); 
+      const imageRef = ref(storage, `tintuc/${Date.now()}_${file.name}`);
+
+      await uploadBytes(imageRef, file);
+      const url = await getDownloadURL(imageRef);
+
+      // Lưu URL thẳng vào biến newsImage của Ní
+      setNewsImage(url); 
+
+      showToast("📸 Tải ảnh lên thành công!", "success");
+    } catch (error) {
+      showToast("❌ Lỗi tải ảnh: " + error.message, "error");
+    } finally {
+      setUploadingImg(false);
+    }
+  };
   return (
     <div className="animate-fadeIn space-y-8 max-w-6xl mx-auto pb-10">
       <div className="bg-blue-900 p-6 rounded-2xl text-white shadow-lg flex justify-between items-center">
@@ -2881,9 +2916,31 @@ function QuanLyPortal({ db, userEmail, showToast }) {
               <input type="text" value={newsTitle} onChange={e => setNewsTitle(e.target.value)} className={inputStyle} placeholder="VD: Hội nghị sơ kết công tác..." />
             </div>
             <div>
-  <label className={labelStyle}>Link Hình Ảnh Đại Diện (Nếu có)</label>
-  <input type="url" value={newsImage} onChange={e => setNewsImage(e.target.value)} className={inputStyle} placeholder="https://..." />
-</div>
+              <label className={labelStyle}>Tải Hình Ảnh Đại Diện</label>
+              <div className="flex gap-4 items-center mt-1">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 cursor-pointer transition-all border border-gray-200 rounded-xl"
+                />
+                {uploadingImg && <span className="text-xs text-red-500 font-bold animate-pulse whitespace-nowrap">⏳ Đang tải...</span>}
+              </div>
+              
+              {/* Khung hiển thị ảnh xem trước khi đã tải xong */}
+              {newsImage && (
+                 <div className="mt-3 relative inline-block">
+                   <img src={newsImage} alt="Preview" className="h-32 object-cover rounded-lg border-2 border-red-200 shadow-sm" />
+                   <span className="absolute -top-2 -right-2 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black shadow-sm border border-white">✅ Xong</span>
+                   <button 
+                     onClick={() => setNewsImage("")} 
+                     className="absolute -bottom-2 -right-2 bg-red-500 hover:bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black shadow-sm border border-white"
+                   >
+                     Xóa đổi ảnh khác
+                   </button>
+                 </div>
+              )}
+            </div>
             <div>
               <label className={labelStyle}>Link bài viết gốc (Nếu có)</label>
               <input type="url" value={newsLink} onChange={e => setNewsLink(e.target.value)} className={inputStyle} placeholder="https://..." />
