@@ -2881,21 +2881,33 @@ const [uploadingImg, setUploadingImg] = React.useState(false);
     if (!file) return;
 
     setUploadingImg(true);
+    console.log("BƯỚC 1: Bắt đầu tải ảnh - ", file.name);
+
     try {
-      const { getStorage, ref, uploadUpload, getDownloadURL, uploadBytes } = await import('firebase/storage');
+      // Sửa lại đoạn import cho thật chuẩn xác
+      const { getStorage, ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+      console.log("BƯỚC 2: Đã gọi được thư viện Firebase Storage");
+      
       const storage = getStorage(db.app); 
       const imageRef = ref(storage, `tintuc/${Date.now()}_${file.name}`);
+      console.log("BƯỚC 3: Chuẩn bị bơm file lên mây...");
 
+      // Lệnh đẩy file
       await uploadBytes(imageRef, file);
+      console.log("BƯỚC 4: Đẩy file thành công, đang lấy đường dẫn...");
+
+      // Lệnh lấy link ảnh
       const url = await getDownloadURL(imageRef);
+      console.log("BƯỚC 5: Lấy link thành công -> ", url);
 
-      // Lưu URL thẳng vào biến newsImage của Ní
       setNewsImage(url); 
-
       showToast("📸 Tải ảnh lên thành công!", "success");
+      
     } catch (error) {
+      console.error("⛔ LỖI RỒI NÍ ƠI:", error);
       showToast("❌ Lỗi tải ảnh: " + error.message, "error");
     } finally {
+      // Dù thành công hay thất bại cũng phải tắt chữ "Đang tải..."
       setUploadingImg(false);
     }
   };
