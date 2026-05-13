@@ -2955,33 +2955,34 @@ const [uploadingImg, setUploadingImg] = React.useState(false);
     if (!file) return;
 
     setUploadingImg(true);
-    console.log("BƯỚC 1: Bắt đầu tải ảnh - ", file.name);
 
     try {
-      // Sửa lại đoạn import cho thật chuẩn xác
-      const { getStorage, ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
-      console.log("BƯỚC 2: Đã gọi được thư viện Firebase Storage");
+      // Dùng FormData để gói tấm hình lại
+      const formData = new FormData();
+      formData.append('image', file);
+
+      // Bơm ảnh thẳng lên ImgBB (Không cần Firebase Storage nữa)
+      const apiKey = "0956f5825cd2b4a632cfa010fa2daf71"; 
       
-      const storage = getStorage(db.app); 
-      const imageRef = ref(storage, `tintuc/${Date.now()}_${file.name}`);
-      console.log("BƯỚC 3: Chuẩn bị bơm file lên mây...");
-
-      // Lệnh đẩy file
-      await uploadBytes(imageRef, file);
-      console.log("BƯỚC 4: Đẩy file thành công, đang lấy đường dẫn...");
-
-      // Lệnh lấy link ảnh
-      const url = await getDownloadURL(imageRef);
-      console.log("BƯỚC 5: Lấy link thành công -> ", url);
-
-      setNewsImage(url); 
-      showToast("📸 Tải ảnh lên thành công!", "success");
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+        method: 'POST',
+        body: formData
+      });
       
+      const data = await response.json();
+
+      if (data.success) {
+        // Lấy link ảnh trả về ném vào giao diện
+        setNewsImage(data.data.url);
+        alert("📸 Tuyệt vời! Tải ảnh lên thành công (qua ImgBB)!");
+      } else {
+        alert("❌ ImgBB báo lỗi, thử lại tấm khác nha.");
+      }
+
     } catch (error) {
-      console.error("⛔ LỖI RỒI NÍ ƠI:", error);
-      showToast("❌ Lỗi tải ảnh: " + error.message, "error");
+      console.error("⛔ LỖI:", error);
+      alert("❌ Lỗi mạng, không tải được ảnh.");
     } finally {
-      // Dù thành công hay thất bại cũng phải tắt chữ "Đang tải..."
       setUploadingImg(false);
     }
   };
