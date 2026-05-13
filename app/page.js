@@ -1162,9 +1162,13 @@ useEffect(() => {
                     </div>
                   </div>
 
-          {canEdit && (
-            <div className="bg-white p-6 md:p-10 border shadow-xl rounded-xl mb-12">
-              <h2 className="font-black text-xl text-blue-950 uppercase mb-10 flex items-center justify-center gap-4"><span className="w-1.5 h-8 bg-blue-600 rounded-full"></span>{editingId ? "Cập nhật hồ sơ" : "Đăng ký lịch xét xử"}<span className="w-1.5 h-8 bg-blue-600 rounded-full"></span></h2>
+          {user && (
+        <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200 animate-fadeIn relative z-10 mb-8">
+          <div className="flex items-center justify-center mb-8">
+            <h2 className="text-xl md:text-2xl font-black text-blue-900 uppercase tracking-widest border-l-8 border-red-600 pl-4">
+               ĐĂNG KÝ LỊCH XÉT XỬ
+            </h2>
+          </div>
               <div className="max-w-5xl mx-auto space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
