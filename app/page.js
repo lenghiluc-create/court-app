@@ -733,11 +733,14 @@ useEffect(() => {
             onClick={() => { if(newsList[0].link) setReadingLink(newsList[0].link); }}
           >
             <img 
-              /* Tự động lấy biến image hoặc imageUrl, nếu lỗi tự nhảy sang ảnh Toà án dự phòng */
-              src={newsList[0].image || newsList[0].imageUrl || "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=1000"} 
+              /* Tự động lấy biến image hoặc imageUrl. Nếu không có sẽ lấy ảnh toaan_logo.png trong máy */
+              src={newsList[0].image || newsList[0].imageUrl || "/toaan_logo.png"} 
               alt="Tin nổi bật" 
-              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 opacity-90 group-hover:opacity-100"
-              onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=1000" }}
+              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 opacity-90 group-hover:opacity-100 bg-white"
+              onError={(e) => { 
+                e.target.onerror = null; // Chống lặp vô hạn
+                e.target.src = "/toaan_logo.png"; // Rớt mạng hay link die thì cũng lôi logo Tòa án ra đỡ đạn
+              }}
             />
             {/* Lớp Gradient tối làm nổi chữ */}
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
@@ -813,22 +816,33 @@ useEffect(() => {
           ========================================== */}
       <div className="lg:col-span-4 space-y-8">
         
-        {/* Banner TANDTC (Đổi link xịn Trụ sở TANDTC không bao giờ die) */}
-        <div className="rounded-xl overflow-hidden shadow-xl border border-gray-200 group cursor-pointer bg-white">
+       {/* Banner TANDTC (Đã gắn link trỏ thẳng về trang chủ TAND Tối Cao) */}
+        <a 
+          href="https://www.toaan.gov.vn/webcenter/portal/tatc/home" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="block rounded-xl overflow-hidden shadow-xl border border-gray-200 group cursor-pointer bg-white"
+        >
+           {/* Ảnh bìa dự phòng tự động load logo Tòa án từ thư mục public */}
            <img 
-            src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/TANDTC_VN_2020.jpg/800px-TANDTC_VN_2020.jpg" 
-            alt="Cổng TTĐT TANDTC" 
+            src="/toaannhandan3-jons.png" 
+            alt="Cổng TTĐT TAND Tối Cao" 
             className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-500"
             onError={(e) => {
-              e.target.onerror = null; 
-              e.target.src = "https://media.quocmai.com/images/2026/04/24/hoi-nghi-toa-an.jpg";
+                e.target.onerror = null; 
+                e.target.style.display = 'none';
+                e.target.parentElement.innerHTML = `
+                    <div class="w-full h-44 bg-gray-100 flex items-center justify-center text-gray-400 font-bold border-b border-gray-200">
+                        CỔNG THÔNG TIN ĐIỆN TỬ
+                    </div>
+                `;
             }}
           />
           <div className="bg-red-700 p-3 text-center border-t-4 border-yellow-400">
               <p className="text-white font-black uppercase text-sm tracking-widest drop-shadow-md">Cổng Thông Tin Điện Tử</p>
               <p className="text-yellow-300 font-bold text-xs uppercase mt-0.5 drop-shadow-md">Tòa án nhân dân tối cao</p>
           </div>
-        </div>
+        </a>
 
         {/* Menu Liên kết nhanh */}
         <div className="bg-[#fdf7e3] rounded-xl shadow-xl overflow-hidden border border-[#e8d5a1] relative">
