@@ -1,30 +1,31 @@
 'use client';
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-export default function TrangXemAn() {
+// 1. TÁCH PHẦN XỬ LÝ LOGIC RA MỘT COMPONENT RIÊNG
+function BoMayXuLyXemAn() {
   const searchParams = useSearchParams();
-  const id = searchParams.get('id');       // Lấy mã hồ sơ Firebase
-  const file = searchParams.get('file');   // Lấy mã Drive
+  const id = searchParams.get('id');       
+  const file = searchParams.get('file');   
 
   React.useEffect(() => {
     if (id && file) {
       const batQuaTang = async () => {
         try {
           const { doc, updateDoc } = await import('firebase/firestore');
-          // Ní nhớ lùi 2 bậc '../' để chỉ đúng đường dẫn file firebase.js nha
+          // Nhớ kiểm tra lại đường dẫn tới file firebase.js cho chuẩn nha Ní
           const { db } = await import('../../firebase'); 
 
-          // 1. Ghi vô sổ: Đương sự đã bấm xem! Cập nhật trạng thái màu xanh lá!
+          // Ghi vô sổ: Đã xem!
           await updateDoc(doc(db, "tong_dat", id), { 
             trangThai: 'Đã xem 👀',
-            thoiGianXem: new Date().toLocaleString('vi-VN') // Ghi lại luôn giờ giấc cho chắc ăn
+            thoiGianXem: new Date().toLocaleString('vi-VN') 
           });
         } catch (error) {
           console.error("Lỗi ghi nhận:", error);
         }
         
-        // 2. Lập tức đá đương sự sang trang Google Drive xem file (Không hề hay biết)
+        // Đá sang Drive
         window.location.href = `https://drive.google.com/file/d/${file}/view`;
       };
       
@@ -32,7 +33,6 @@ export default function TrangXemAn() {
     }
   }, [id, file]);
 
-  // Giao diện ngụy trang trong 0.5 giây trước khi chuyển hướng
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
       <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
@@ -41,5 +41,14 @@ export default function TrangXemAn() {
       </h2>
       <p className="text-gray-500 mt-2">Vui lòng đợi trong giây lát.</p>
     </div>
+  );
+}
+
+// 2. BỌC COMPONENT CHÍNH BẰNG SUSPENSE LÀ VERCEL HẾT LA LÀNG
+export default function TrangXemAn() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center font-bold text-gray-500">Đang tải dữ liệu...</div>}>
+      <BoMayXuLyXemAn />
+    </Suspense>
   );
 }
