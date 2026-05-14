@@ -4,7 +4,7 @@ import { google } from 'googleapis';
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { phone, ten_duong_su, so_thu_ly, drive_file_id, tham_phan } = body;
+    const { id, phone, ten_duong_su, so_thu_ly, drive_file_id, tham_phan } = body;
 
     console.log("📨 Đang xử lý tống đạt cho:", ten_duong_su, "- SĐT:", phone);
 
