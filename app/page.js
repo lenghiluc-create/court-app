@@ -587,9 +587,7 @@ useEffect(() => {
       return a.status === 'pending' ? -1 : 1;
     });
   }, [schedule, searchQuery, statusFilter, showOnlyUrgent, creatorFilter, judgeFilter, clerkFilter, startDate, endDate]);
-  // =========================================================
-  // THUẬT TOÁN TÍNH MA TRẬN TẢI TRỌNG THẨM PHÁN
-  // =========================================================
+  
   // =========================================================
   // THUẬT TOÁN TÍNH MA TRẬN TẢI TRỌNG THẨM PHÁN
   // =========================================================
@@ -702,196 +700,233 @@ useEffect(() => {
       ...i, title: `${i.status === 'completed' ? '✅ ' : ''}[${i.room}] ${i.caseName || 'Chưa có tên'}`, start: new Date(i.datetime), end: new Date(new Date(i.datetime).getTime() + (i.duration || 60) * 60000) 
     }));
   }, [schedule]);
-  const CourtPortal = () => (
-  <div className="animate-fadeIn pb-20">
-    {/* Banner Chính */}
-    <div className="relative h-64 md:h-80 w-full overflow-hidden rounded-2xl shadow-2xl mb-10">
-      <div className="absolute inset-0 bg-gradient-to-r from-red-800 to-transparent z-10"></div>
-      <img src="/toaan.jpg" className="absolute inset-0 w-full h-full object-cover" alt="Banner" />
-      <div className="relative z-20 p-8 md:p-12 h-full flex flex-col justify-center">
-        <h2 className="text-white text-3xl md:text-5xl font-black uppercase mb-4 drop-shadow-lg">
-          Cổng Thông Tin Điện Tử
-        </h2>
-        <p className="text-yellow-400 text-lg md:text-xl font-bold uppercase tracking-widest drop-shadow-md">
-          Tòa án nhân dân khu vực 9 - TP. Cần Thơ
-        </p>
+  const CourtPortal = () => {
+  // =========================================================
+  // 1. PHẦN NÃO: BỘ ĐIỀU KHIỂN SLIDER TIN TỨC
+  // =========================================================
+  const [currentSlide, setCurrentSlide] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!newsList || newsList.length <= 1) return; 
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev === newsList.length - 1 ? 0 : prev + 1));
+    }, 5000); 
+    return () => clearInterval(timer);
+  }, [newsList]);
+
+  const nextSlide = (e) => {
+    e.stopPropagation(); 
+    setCurrentSlide((prev) => (prev === newsList.length - 1 ? 0 : prev + 1));
+  };
+  const prevSlide = (e) => {
+    e.stopPropagation();
+    setCurrentSlide((prev) => (prev === 0 ? newsList.length - 1 : prev - 1));
+  };
+
+  // =========================================================
+  // 2. PHẦN MẶT TIỀN: GIAO DIỆN (Dùng return để xuất ra)
+  // =========================================================
+  return (
+    <div className="animate-fadeIn pb-20">
+      {/* Banner Chính */}
+      <div className="relative h-64 md:h-80 w-full overflow-hidden rounded-2xl shadow-2xl mb-10">
+        <div className="absolute inset-0 bg-gradient-to-r from-red-800 to-transparent z-10"></div>
+        <img src="/toaan.jpg" className="absolute inset-0 w-full h-full object-cover" alt="Banner" />
+        <div className="relative z-20 p-8 md:p-12 h-full flex flex-col justify-center">
+          <h2 className="text-white text-3xl md:text-5xl font-black uppercase mb-4 drop-shadow-lg">
+            Cổng Thông Tin Điện Tử
+          </h2>
+          <p className="text-yellow-400 text-lg md:text-xl font-bold uppercase tracking-widest drop-shadow-md">
+            Tòa án nhân dân khu vực 9 - TP. Cần Thơ
+          </p>
+        </div>
       </div>
-    </div>
 
-    <div className="max-w-7xl mx-auto px-4 py-8 animate-fadeIn bg-transparent">
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-      
-      {/* ==========================================
-          CỘT TRÁI (Nội dung chính - Chiếm 8/12)
-          ========================================== */}
-      <div className="lg:col-span-8 space-y-8">
-
-        {/* 1. SLIDER TIN TỨC NỔI BẬT */}
-        {newsList.length > 0 && (
-          <div 
-            className="relative w-full h-[350px] md:h-[450px] bg-gray-900 overflow-hidden group cursor-pointer rounded-xl shadow-xl border border-gray-200"
-            onClick={() => { if(newsList[0].link) setReadingLink(newsList[0].link); }}
-          >
-            <img 
-              /* Tự động lấy biến image hoặc imageUrl. Nếu không có sẽ lấy ảnh toaan_logo.png trong máy */
-              src={newsList[0].image || newsList[0].imageUrl || "/toaan_logo.png"} 
-              alt="Tin nổi bật" 
-              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 opacity-90 group-hover:opacity-100 bg-white"
-              onError={(e) => { 
-                e.target.onerror = null; // Chống lặp vô hạn
-                e.target.src = "/toaan_logo.png"; // Rớt mạng hay link die thì cũng lôi logo Tòa án ra đỡ đạn
-              }}
-            />
-            {/* Lớp Gradient tối làm nổi chữ */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
-            
-            <div className="absolute bottom-0 left-0 w-full pt-20 pb-6 px-8 text-white z-10">
-              <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-widest mb-3">
-                <span className="bg-red-700 px-3 py-1 rounded-sm shadow">TIN TỨC HOẠT ĐỘNG</span>
-                <span className="bg-black/50 backdrop-blur-md px-3 py-1 rounded-sm border border-white/20">
-                  {moment(newsList[0].date).format("DD/MM/YYYY")}
-                </span>
-              </div>
-              <h2 className="text-2xl md:text-3xl font-black leading-tight drop-shadow-lg hover:text-yellow-400 transition-colors">
-                {newsList[0].title}
-              </h2>
-            </div>
-          </div>
-        )}
-
-        {/* 2. KHỐI THÔNG BÁO & TIN TỨC KHÁC */}
-        <div className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
-          {/* Tiêu đề khối */}
-          <div className="bg-red-700 px-6 py-4 border-b-4 border-yellow-400">
-            <h3 className="text-white font-black uppercase text-xl tracking-wide flex items-center gap-2 drop-shadow-md">
-              <span className="text-2xl">📢</span> THÔNG BÁO VÀ TIN TỨC
-            </h3>
-          </div>
+      <div className="max-w-7xl mx-auto px-4 py-8 animate-fadeIn bg-transparent">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200">
-            
-            {/* Cột Văn bản pháp luật */}
-            <div className="bg-gray-50/50 hover:bg-white transition-colors">
-              <div className="bg-gray-100/80 py-3 text-center font-black text-blue-900 uppercase text-sm border-b border-gray-200 tracking-widest shadow-inner">
-                VĂN BẢN PHÁP LUẬT MỚI
+          {/* ==========================================
+              CỘT TRÁI (Nội dung chính - Chiếm 8/12)
+              ========================================== */}
+          <div className="lg:col-span-8 space-y-8">
+
+            {/* 1. SLIDER TIN TỨC NỔI BẬT (ĐÃ NÂNG CẤP) */}
+            {newsList && newsList.length > 0 && (
+              <div 
+                className="relative w-full h-[350px] md:h-[450px] bg-gray-900 overflow-hidden group cursor-pointer rounded-xl shadow-xl border border-gray-200"
+                onClick={() => { if(newsList[currentSlide]?.link) setReadingLink(newsList[currentSlide].link); }}
+              >
+                {/* Vòng lặp xuất các tin ra */}
+                {newsList.map((item, index) => (
+                  <div 
+                    key={item.id || index} 
+                    className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+                  >
+                    <img 
+                      src={item.image || item.imageUrl || "/toaan_logo.png"} 
+                      alt={item.title} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000 bg-white"
+                      onError={(e) => { e.target.onerror = null; e.target.src = "/toaan_logo.png"; }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
+                    
+                    <div className="absolute bottom-0 left-0 w-full pt-20 pb-6 px-8 text-white">
+                      <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-widest mb-3">
+                        <span className="bg-red-700 px-3 py-1 rounded-sm shadow">TIN TỨC HOẠT ĐỘNG</span>
+                        <span className="bg-black/50 backdrop-blur-md px-3 py-1 rounded-sm border border-white/20">
+                          {item.date ? new Date(item.date).toLocaleDateString('vi-VN') : 'Mới nhất'}
+                        </span>
+                      </div>
+                      <h2 className="text-2xl md:text-3xl font-black leading-tight drop-shadow-lg hover:text-yellow-400 transition-colors">
+                        {item.title}
+                      </h2>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Nút bấm Trái/Phải và Dấu chấm */}
+                {newsList.length > 1 && (
+                  <>
+                    <button onClick={prevSlide} className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-red-600 text-white w-10 h-10 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-all z-20 shadow-lg backdrop-blur-sm">❮</button>
+                    <button onClick={nextSlide} className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-red-600 text-white w-10 h-10 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-all z-20 shadow-lg backdrop-blur-sm">❯</button>
+                    <div className="absolute bottom-6 right-6 flex gap-2 z-20">
+                      {newsList.map((_, index) => (
+                        <span key={index} onClick={(e) => { e.stopPropagation(); setCurrentSlide(index); }} className={`h-2.5 rounded-full cursor-pointer transition-all duration-300 shadow-md ${index === currentSlide ? 'bg-yellow-400 w-8' : 'bg-white/60 hover:bg-white w-2.5'}`}></span>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
-              <ul className="p-5 space-y-5">
-                {legalDocs.length > 0 ? legalDocs.map((doc) => (
-                  <li key={doc.id} className="group">
-                    <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3">
-                      <span className="text-red-600 bg-red-100 p-1.5 rounded shadow-sm group-hover:bg-red-600 group-hover:text-white transition-all">⚖️</span>
-                      <span className="text-sm font-bold text-gray-700 group-hover:text-red-700 transition-colors line-clamp-2 mt-0.5 leading-relaxed">{doc.title}</span>
+            )}
+
+            {/* 2. KHỐI THÔNG BÁO & TIN TỨC KHÁC */}
+            <div className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
+              <div className="bg-red-700 px-6 py-4 border-b-4 border-yellow-400">
+                <h3 className="text-white font-black uppercase text-xl tracking-wide flex items-center gap-2 drop-shadow-md">
+                  <span className="text-2xl">📢</span> THÔNG BÁO VÀ TIN TỨC
+                </h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200">
+                {/* Cột Văn bản pháp luật */}
+                <div className="bg-gray-50/50 hover:bg-white transition-colors">
+                  <div className="bg-gray-100/80 py-3 text-center font-black text-blue-900 uppercase text-sm border-b border-gray-200 tracking-widest shadow-inner">
+                    VĂN BẢN PHÁP LUẬT MỚI
+                  </div>
+                  <ul className="p-5 space-y-5">
+                    {legalDocs.length > 0 ? legalDocs.map((doc) => (
+                      <li key={doc.id} className="group">
+                        <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3">
+                          <span className="text-red-600 bg-red-100 p-1.5 rounded shadow-sm group-hover:bg-red-600 group-hover:text-white transition-all">⚖️</span>
+                          <span className="text-sm font-bold text-gray-700 group-hover:text-red-700 transition-colors line-clamp-2 mt-0.5 leading-relaxed">{doc.title}</span>
+                        </a>
+                      </li>
+                    )) : <p className="text-sm italic text-gray-400 text-center py-4">Chưa có văn bản.</p>}
+                  </ul>
+                </div>
+
+                {/* Cột Tin tức khác */}
+                <div className="bg-white">
+                  <div className="bg-gray-100/80 py-3 text-center font-black text-gray-800 uppercase text-sm border-b border-gray-200 tracking-widest shadow-inner">
+                    CÁC TIN TỨC KHÁC
+                  </div>
+                  <ul className="p-5 space-y-5">
+                    {newsList.length > 1 ? newsList.slice(1, 6).map((item) => (
+                      <li 
+                        key={item.id} 
+                        onClick={() => { if(item.link) setReadingLink(item.link); }}
+                        className="flex items-start gap-3 group cursor-pointer"
+                      >
+                        <span className="text-blue-600 bg-blue-50 p-1.5 rounded shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-all">📰</span>
+                        <span className="text-sm font-bold text-gray-700 group-hover:text-blue-700 transition-colors line-clamp-2 mt-0.5 leading-relaxed">{item.title}</span>
+                      </li>
+                    )) : <p className="text-sm italic text-gray-400 text-center py-4">Đang cập nhật thêm...</p>}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* ==========================================
+              CỘT PHẢI (Menu & Banner - Chiếm 4/12)
+              ========================================== */}
+          <div className="lg:col-span-4 space-y-8">
+            
+            {/* Banner TANDTC */}
+            <a 
+              href="https://www.toaan.gov.vn/webcenter/portal/tatc/home" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="block rounded-xl overflow-hidden shadow-xl border border-gray-200 group cursor-pointer bg-white"
+            >
+               <img 
+                src="/toaannhandan3-jons.png" 
+                alt="Cổng TTĐT TAND Tối Cao" 
+                className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-500"
+                onError={(e) => {
+                    e.target.onerror = null; 
+                    e.target.style.display = 'none';
+                    e.target.parentElement.innerHTML = `
+                        <div class="w-full h-44 bg-gray-100 flex items-center justify-center text-gray-400 font-bold border-b border-gray-200">
+                            CỔNG THÔNG TIN ĐIỆN TỬ
+                        </div>
+                    `;
+                }}
+              />
+              <div className="bg-red-700 p-3 text-center border-t-4 border-yellow-400">
+                  <p className="text-white font-black uppercase text-sm tracking-widest drop-shadow-md">Cổng Thông Tin Điện Tử</p>
+                  <p className="text-yellow-300 font-bold text-xs uppercase mt-0.5 drop-shadow-md">Tòa án nhân dân tối cao</p>
+              </div>
+            </a>
+
+            {/* Menu Liên kết nhanh */}
+            <div className="bg-[#fdf7e3] rounded-xl shadow-xl overflow-hidden border border-[#e8d5a1] relative">
+              <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-red-700 z-10"></div>
+              
+              <ul className="flex flex-col text-[#8a3319] font-bold text-[14px] relative z-0">
+                {/* NÚT LỊCH XÉT XỬ NỔI BẬT */}
+                <li 
+                  onClick={() => setViewMode("app")}
+                  className="flex items-center gap-4 p-5 border-b border-[#e8d5a1] bg-yellow-100 hover:bg-yellow-200 cursor-pointer transition-colors group"
+                >
+                  <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center text-white shadow-md group-hover:scale-110 group-hover:rotate-12 transition-all">
+                     <span className="text-xl">⚖️</span>
+                  </div>
+                  <div className="flex flex-col">
+                     <span className="text-red-700 font-black uppercase text-lg tracking-wide">{user ? "VÀO TRANG QUẢN LÝ" : "XEM LỊCH XÉT XỬ"}</span>
+                     <span className="text-[11px] text-red-600/80 font-bold uppercase mt-0.5">Tra cứu lịch trực tuyến</span>
+                  </div>
+                </li>
+
+                {/* Liên kết từ Firebase */}
+                {quickLinks.map(link => (
+                  <li key={link.id} className="flex items-center gap-3 p-4 border-b border-[#e8d5a1] hover:bg-[#faeed0] cursor-pointer transition-colors group pl-6">
+                    <span className="text-red-600 bg-white p-1.5 rounded shadow-sm border border-[#e8d5a1] group-hover:scale-110 transition-transform">🌐</span>
+                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="block w-full hover:text-red-700 transition-colors">
+                      {link.title}
                     </a>
                   </li>
-                )) : <p className="text-sm italic text-gray-400 text-center py-4">Chưa có văn bản.</p>}
+                ))}
+                
+                <li className="flex items-center gap-3 p-4 border-b border-[#e8d5a1] hover:bg-[#faeed0] cursor-pointer transition-colors group pl-6">
+                  <span className="text-red-600 bg-white p-1.5 rounded shadow-sm border border-[#e8d5a1] group-hover:scale-110 transition-transform">👥</span>
+                  <span className="hover:text-red-700 transition-colors">Chỉ dẫn người dân</span>
+                </li>
+                <li className="flex items-center gap-3 p-4 hover:bg-[#faeed0] cursor-pointer transition-colors group pl-6">
+                  <span className="text-red-600 bg-white p-1.5 rounded shadow-sm border border-[#e8d5a1] group-hover:scale-110 transition-transform">📅</span>
+                  <span className="hover:text-red-700 transition-colors">Lịch tiếp công dân</span>
+                </li>
               </ul>
             </div>
-
-            {/* Cột Tin tức khác */}
-            <div className="bg-white">
-              <div className="bg-gray-100/80 py-3 text-center font-black text-gray-800 uppercase text-sm border-b border-gray-200 tracking-widest shadow-inner">
-                CÁC TIN TỨC KHÁC
-              </div>
-              <ul className="p-5 space-y-5">
-                {newsList.length > 1 ? newsList.slice(1, 6).map((item) => (
-                  <li 
-                    key={item.id} 
-                    onClick={() => { if(item.link) setReadingLink(item.link); }}
-                    className="flex items-start gap-3 group cursor-pointer"
-                  >
-                    <span className="text-blue-600 bg-blue-50 p-1.5 rounded shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-all">📰</span>
-                    <span className="text-sm font-bold text-gray-700 group-hover:text-blue-700 transition-colors line-clamp-2 mt-0.5 leading-relaxed">{item.title}</span>
-                  </li>
-                )) : <p className="text-sm italic text-gray-400 text-center py-4">Đang cập nhật thêm...</p>}
-              </ul>
-            </div>
-
-          </div>
-        </div>
-
-      </div>
-
-      {/* ==========================================
-          CỘT PHẢI (Menu & Banner - Chiếm 4/12)
-          ========================================== */}
-      <div className="lg:col-span-4 space-y-8">
-        
-       {/* Banner TANDTC (Đã gắn link trỏ thẳng về trang chủ TAND Tối Cao) */}
-        <a 
-          href="https://www.toaan.gov.vn/webcenter/portal/tatc/home" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="block rounded-xl overflow-hidden shadow-xl border border-gray-200 group cursor-pointer bg-white"
-        >
-           {/* Ảnh bìa dự phòng tự động load logo Tòa án từ thư mục public */}
-           <img 
-            src="/toaannhandan3-jons.png" 
-            alt="Cổng TTĐT TAND Tối Cao" 
-            className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-500"
-            onError={(e) => {
-                e.target.onerror = null; 
-                e.target.style.display = 'none';
-                e.target.parentElement.innerHTML = `
-                    <div class="w-full h-44 bg-gray-100 flex items-center justify-center text-gray-400 font-bold border-b border-gray-200">
-                        CỔNG THÔNG TIN ĐIỆN TỬ
-                    </div>
-                `;
-            }}
-          />
-          <div className="bg-red-700 p-3 text-center border-t-4 border-yellow-400">
-              <p className="text-white font-black uppercase text-sm tracking-widest drop-shadow-md">Cổng Thông Tin Điện Tử</p>
-              <p className="text-yellow-300 font-bold text-xs uppercase mt-0.5 drop-shadow-md">Tòa án nhân dân tối cao</p>
-          </div>
-        </a>
-
-        {/* Menu Liên kết nhanh */}
-        <div className="bg-[#fdf7e3] rounded-xl shadow-xl overflow-hidden border border-[#e8d5a1] relative">
-          {/* Vệt đỏ trang trí */}
-          <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-red-700 z-10"></div>
-          
-          <ul className="flex flex-col text-[#8a3319] font-bold text-[14px] relative z-0">
             
-            {/* NÚT LỊCH XÉT XỬ NỔI BẬT */}
-            <li 
-              onClick={() => setViewMode("app")}
-              className="flex items-center gap-4 p-5 border-b border-[#e8d5a1] bg-yellow-100 hover:bg-yellow-200 cursor-pointer transition-colors group"
-            >
-              <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center text-white shadow-md group-hover:scale-110 group-hover:rotate-12 transition-all">
-                 <span className="text-xl">⚖️</span>
-              </div>
-              <div className="flex flex-col">
-                 <span className="text-red-700 font-black uppercase text-lg tracking-wide">{user ? "VÀO TRANG QUẢN LÝ" : "XEM LỊCH XÉT XỬ"}</span>
-                 <span className="text-[11px] text-red-600/80 font-bold uppercase mt-0.5">Tra cứu lịch trực tuyến</span>
-              </div>
-            </li>
+          </div>
 
-            {/* Liên kết từ Firebase */}
-            {quickLinks.map(link => (
-              <li key={link.id} className="flex items-center gap-3 p-4 border-b border-[#e8d5a1] hover:bg-[#faeed0] cursor-pointer transition-colors group pl-6">
-                <span className="text-red-600 bg-white p-1.5 rounded shadow-sm border border-[#e8d5a1] group-hover:scale-110 transition-transform">🌐</span>
-                <a href={link.url} target="_blank" rel="noopener noreferrer" className="block w-full hover:text-red-700 transition-colors">
-                  {link.title}
-                </a>
-              </li>
-            ))}
-            
-            <li className="flex items-center gap-3 p-4 border-b border-[#e8d5a1] hover:bg-[#faeed0] cursor-pointer transition-colors group pl-6">
-              <span className="text-red-600 bg-white p-1.5 rounded shadow-sm border border-[#e8d5a1] group-hover:scale-110 transition-transform">👥</span>
-              <span className="hover:text-red-700 transition-colors">Chỉ dẫn người dân</span>
-            </li>
-            <li className="flex items-center gap-3 p-4 hover:bg-[#faeed0] cursor-pointer transition-colors group pl-6">
-              <span className="text-red-600 bg-white p-1.5 rounded shadow-sm border border-[#e8d5a1] group-hover:scale-110 transition-transform">📅</span>
-              <span className="hover:text-red-700 transition-colors">Lịch tiếp công dân</span>
-            </li>
-          </ul>
         </div>
-        
       </div>
-
     </div>
-  </div>
-  </div>
-);
+  );
+};
 
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-blue-950 font-sans">
