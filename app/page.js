@@ -2716,14 +2716,48 @@ const handleResetUserPassword = async (emailCanBo) => {
     </div>
   );
 }
-// =========================================================================
-// COMPONENT: QUẢN LÝ TIN TỨC
-// =========================================================================
+
 function QuanLyTinTuc() {
   const [title, setTitle] = React.useState("");
   const [summary, setSummary] = React.useState("");
   const [imageUrl, setImageUrl] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  const [uploadingImg, setUploadingImg] = React.useState(false); // Thêm biến để báo đang tải ảnh
+
+  // 🚀 HÀM TẢI ẢNH LÊN IMGBB
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingImg(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      // 🛑 NÍ DÁN CÁI CHÌA KHÓA API CỦA NÍ VÀO GIỮA 2 DẤU NGOẶC KÉP NÀY NHA:
+      const apiKey = "0956f5825cd2b4a632cfa010fa2daf71"; 
+      
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      const data = await response.json();
+
+      if (data.success) {
+        setImageUrl(data.data.url); // Tự động điền link ảnh mây vào ô input
+        alert("📸 Tải ảnh lên thành công!");
+      } else {
+        alert("❌ ImgBB báo lỗi, thử lại tấm khác nha.");
+      }
+    } catch (error) {
+      console.error("⛔ LỖI:", error);
+      alert("❌ Lỗi mạng, không tải được ảnh.");
+    } finally {
+      setUploadingImg(false);
+    }
+  };
 
   const handleAddNews = async (e) => {
     e.preventDefault();
@@ -2737,7 +2771,7 @@ function QuanLyTinTuc() {
       await addDoc(collection(db, "news"), {
         title,
         summary,
-        imageUrl: imageUrl || "/lgtoaan1.png", // Ảnh mặc định nếu không có
+        imageUrl: imageUrl || "/toaan_logo.png", // Ảnh mặc định xịn xò
         date: moment().toISOString(),
       });
 
@@ -2770,13 +2804,37 @@ function QuanLyTinTuc() {
             <label className="block text-[11px] font-black uppercase text-gray-600 mb-2">Tóm tắt nội dung <span className="text-red-500">*</span></label>
             <textarea value={summary} onChange={e => setSummary(e.target.value)} className="w-full border-2 border-gray-100 p-3 rounded-xl outline-none focus:border-blue-500 font-medium text-sm" rows="3" placeholder="Nhập nội dung tóm tắt..." required />
           </div>
-          <div>
-            <label className="block text-[11px] font-black uppercase text-gray-600 mb-2">Link ảnh minh họa (Tùy chọn)</label>
-            <input type="text" value={imageUrl} onChange={e => setImageUrl(e.target.value)} className="w-full border-2 border-gray-100 p-3 rounded-xl outline-none focus:border-blue-500 font-medium text-sm" placeholder="https://..." />
+          
+          {/* KHU VỰC TẢI ẢNH ĐÃ NÂNG CẤP */}
+          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+            <label className="block text-[11px] font-black uppercase text-gray-600 mb-3">Hình ảnh minh họa</label>
+            
+            <div className="flex flex-col md:flex-row gap-4 items-start">
+              {/* Nút chọn file */}
+              <div className="w-full md:w-auto">
+                <label className="cursor-pointer bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-black py-3 px-6 rounded-xl uppercase shadow-md transition-all text-xs inline-flex items-center gap-2">
+                  <span>{uploadingImg ? "⏳ Đang tải..." : "📁 Chọn ảnh từ máy"}</span>
+                  <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={uploadingImg} />
+                </label>
+              </div>
+              
+              {/* Ô chứa link tự động */}
+              <div className="flex-1 w-full">
+                 <input type="text" value={imageUrl} onChange={e => setImageUrl(e.target.value)} className="w-full border-2 border-gray-100 p-2.5 rounded-xl outline-none focus:border-blue-500 font-medium text-xs text-gray-500 bg-white" placeholder="Link ảnh sẽ tự động hiện ở đây, hoặc Ní có thể dán link trực tiếp..." />
+              </div>
+            </div>
+
+            {/* Hiển thị ảnh xem trước nếu đã có link */}
+            {imageUrl && (
+              <div className="mt-4 border-2 border-dashed border-gray-300 rounded-lg p-2 bg-white inline-block">
+                <img src={imageUrl} alt="Xem trước" className="h-32 w-auto object-cover rounded shadow-sm" />
+              </div>
+            )}
           </div>
+
           <div className="pt-4 border-t border-gray-100">
-            <button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-black py-3 px-8 rounded-xl uppercase shadow-lg transition-all text-sm">
-              {loading ? "ĐANG ĐĂNG..." : "ĐĂNG TIN MỚI"}
+            <button type="submit" disabled={loading || uploadingImg} className="bg-blue-600 hover:bg-blue-700 text-white font-black py-3 px-8 rounded-xl uppercase shadow-lg transition-all text-sm w-full md:w-auto">
+              {loading ? "ĐANG LƯU DỮ LIỆU..." : "ĐĂNG TIN MỚI"}
             </button>
           </div>
         </form>
