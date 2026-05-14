@@ -1130,8 +1130,16 @@ useEffect(() => {
     Quản Trị Portal
   </span>
 </div>
-
+<div 
+    onClick={() => setActiveTab("tongDat")} 
+    className={`p-3 rounded-lg cursor-pointer font-bold transition-all flex items-center gap-2 ${
+      activeTab === "tongDat" ? "bg-white text-red-700 shadow" : "text-white hover:bg-red-800"
+    }`}
+  >
+    <span className="text-lg">📨</span> Quản lý Tống đạt
+  </div>
                 </div>
+                
               )}
             </div>
           )}
@@ -2216,6 +2224,7 @@ useEffect(() => {
     </div>
   </div>
 )}
+
 {activeTab === "manage_portal" && (
   <div className="space-y-10 max-w-5xl mx-auto animate-fadeIn">
     {/* FORM ĐĂNG VĂN BẢN */}
@@ -2265,6 +2274,9 @@ useEffect(() => {
 )}
       {activeTab === "roles" && (
         <QuanLyPhanQuyen />
+      )}
+      {activeTab === "tongDat" && (
+        <QuanLyTongDat />
       )}
       {activeTab === "manage_portal" && (
   <QuanLyPortal db={db} userEmail={user?.email} showToast={showToast} />
@@ -2947,6 +2959,106 @@ function NhatKyThaoTac() {
           </tbody>
         </table>
         {logs.length === 0 && <div className="p-10 text-center text-gray-400 font-bold uppercase italic">Hệ thống chưa ghi nhận thao tác nào</div>}
+      </div>
+    </div>
+  );
+}
+// DÁN ĐOẠN NÀY DƯỚI CÙNG FILE (Ngang hàng với QuanLyTinTuc)
+function QuanLyTongDat() {
+  const [danhSachDuongSu, setDanhSachDuongSu] = React.useState([]);
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    setDanhSachDuongSu([
+      {
+        id: 1,
+        soThuLy: '15/2026/TLST-HNGĐ',
+        tenDuongSu: 'Nguyễn Văn A',
+        phone: '0901234567',
+        driveFileId: '1A0GOeSjqXHH3KOsciZmD6FoRhfdB3sY8',
+        thamPhan: 'Lê Hoàng Bảo',
+        trangThai: 'Chưa gửi'
+      }
+    ]);
+  }, []);
+
+  const handleTongDat = async (duongSu) => {
+    setDanhSachDuongSu(prev => prev.map(item => 
+      item.id === duongSu.id ? { ...item, trangThai: 'Đang gửi...' } : item
+    ));
+
+    try {
+      const response = await fetch('/api/tong-dat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: duongSu.phone,
+          ten_duong_su: duongSu.tenDuongSu,
+          so_thu_ly: duongSu.soThuLy,
+          drive_file_id: duongSu.driveFileId,
+          tham_phan: duongSu.thamPhan
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setDanhSachDuongSu(prev => prev.map(item => 
+          item.id === duongSu.id ? { ...item, trangThai: 'Đã gửi Zalo' } : item
+        ));
+        alert(`Đã tống đạt thành công đến: ${duongSu.tenDuongSu}`);
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      alert('Lỗi tống đạt (Hoặc do chưa có API): ' + error.message);
+      setDanhSachDuongSu(prev => prev.map(item => 
+        item.id === duongSu.id ? { ...item, trangThai: 'Lỗi gửi' } : item
+      ));
+    }
+  };
+
+  return (
+    <div className="animate-fadeIn space-y-6">
+      <div className="bg-blue-900 p-6 rounded-2xl text-white shadow-lg flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-black uppercase">Quản Lý Tống Đạt</h2>
+          <p className="opacity-70 text-[10px] font-bold uppercase tracking-widest">Gửi thông báo Zalo</p>
+        </div>
+        <div className="text-3xl">📨</div>
+      </div>
+
+      <div className="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-200 p-6">
+        <table className="min-w-full leading-normal">
+          <thead>
+            <tr>
+              <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Số thụ lý</th>
+              <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Đương sự</th>
+              <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Số điện thoại</th>
+              <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Trạng thái</th>
+              <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Hành động</th>
+            </tr>
+          </thead>
+          <tbody>
+            {danhSachDuongSu.map((item) => (
+              <tr key={item.id}>
+                <td className="px-5 py-4 border-b border-gray-200 text-sm font-bold">{item.soThuLy}</td>
+                <td className="px-5 py-4 border-b border-gray-200 text-sm">{item.tenDuongSu}</td>
+                <td className="px-5 py-4 border-b border-gray-200 text-sm">{item.phone}</td>
+                <td className="px-5 py-4 border-b border-gray-200 text-sm">
+                  <span className={`px-3 py-1 font-bold text-xs rounded-full ${item.trangThai === 'Đã gửi Zalo' ? 'bg-green-100 text-green-700' : item.trangThai === 'Chưa gửi' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                    {item.trangThai}
+                  </span>
+                </td>
+                <td className="px-5 py-4 border-b border-gray-200 text-sm">
+                  <button onClick={() => handleTongDat(item)} className="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 text-xs">
+                    Tống đạt Zalo
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
