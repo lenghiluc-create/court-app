@@ -1130,16 +1130,7 @@ useEffect(() => {
     Quản Trị Portal
   </span>
 </div>
-<div 
-    onClick={() => setActiveTab("tongDat")} 
-    className={`p-3 rounded-lg cursor-pointer font-bold transition-all flex items-center gap-2 ${
-      activeTab === "tongDat" ? "bg-white text-red-700 shadow" : "text-white hover:bg-red-800"
-    }`}
-  >
-    <span className="text-lg">📨</span> Quản lý Tống đạt
-  </div>
-                </div>
-                
+                </div> 
               )}
             </div>
           )}
@@ -2275,9 +2266,7 @@ useEffect(() => {
       {activeTab === "roles" && (
         <QuanLyPhanQuyen />
       )}
-      {activeTab === "tongDat" && (
-        <QuanLyTongDat />
-      )}
+      
       {activeTab === "manage_portal" && (
   <QuanLyPortal db={db} userEmail={user?.email} showToast={showToast} />
 )}
@@ -2963,208 +2952,7 @@ function NhatKyThaoTac() {
     </div>
   );
 }
-// DÁN ĐOẠN NÀY DƯỚI CÙNG FILE (Ngang hàng với QuanLyTinTuc)
-// DÁN ĐOẠN NÀY ĐỂ NÂNG CẤP TÍNH NĂNG NHẬP LIỆU
-function QuanLyTongDat() {
-  const [danhSachDuongSu, setDanhSachDuongSu] = React.useState([]);
-  const [showForm, setShowForm] = React.useState(false);
-  const [formData, setFormData] = React.useState({
-    soThuLy: '', tenDuongSu: '', phone: '', driveFileId: '', thamPhan: ''
-  });
 
-  // 1. KÉO DỮ LIỆU TỪ FIREBASE VỀ KHI MỞ TRANG
-  React.useEffect(() => {
-    const taiDuLieu = async () => {
-      try {
-        const { collection, getDocs, orderBy, query } = await import('firebase/firestore');
-        const { db } = await import('./firebase'); // Đảm bảo đường dẫn tới file firebase.js đúng nha Ní
-        
-        const q = query(collection(db, "tong_dat"));
-        const snapshot = await getDocs(q);
-        const danhSach = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
-        // Sắp xếp vụ mới nhất lên đầu
-        danhSach.sort((a, b) => b.timestamp - a.timestamp);
-        setDanhSachDuongSu(danhSach);
-      } catch (error) {
-        console.error("Lỗi tải dữ liệu:", error);
-      }
-    };
-    taiDuLieu();
-  }, []);
-
-  // 2. LƯU VỤ VIỆC MỚI LÊN FIREBASE
-  const handleAddNew = async (e) => {
-    e.preventDefault();
-    if (!formData.phone || !formData.driveFileId) return alert("Thiếu SĐT hoặc ID Drive!");
-    
-    try {
-      const { collection, addDoc } = await import('firebase/firestore');
-      const { db } = await import('./firebase');
-      
-      const newCase = {
-        soThuLy: formData.soThuLy,
-        tenDuongSu: formData.tenDuongSu,
-        phone: formData.phone,
-        driveFileId: formData.driveFileId,
-        thamPhan: formData.thamPhan,
-        trangThai: 'Chưa gửi',
-        timestamp: Date.now()
-      };
-
-      // Đẩy lên mây
-      const docRef = await addDoc(collection(db, "tong_dat"), newCase);
-      
-      // Cập nhật giao diện liền tay
-      setDanhSachDuongSu([{ id: docRef.id, ...newCase }, ...danhSachDuongSu]);
-      setShowForm(false);
-      setFormData({ soThuLy: '', tenDuongSu: '', phone: '', driveFileId: '', thamPhan: '' });
-      alert("✅ Đã lưu vụ việc vào hệ thống!");
-    } catch (error) {
-      alert("Lỗi lưu dữ liệu: " + error.message);
-    }
-  };
-
-  // 3. TỐNG ĐẠT VÀ CẬP NHẬT TRẠNG THÁI LÊN FIREBASE
-  const handleTongDat = async (duongSu) => {
-    // Đổi trạng thái tạm trên màn hình
-    setDanhSachDuongSu(prev => prev.map(item => item.id === duongSu.id ? { ...item, trangThai: 'Đang gửi...' } : item));
-
-    try {
-      const { doc, updateDoc } = await import('firebase/firestore');
-      const { db } = await import('./firebase');
-
-      // Gọi API gửi Zalo
-      const response = await fetch('/api/tong-dat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: duongSu.id, // TRUYỀN ID CỦA FIREBASE LÊN API ĐỂ LÀM LINK BẪY
-          phone: duongSu.phone,
-          ten_duong_su: duongSu.tenDuongSu,
-          so_thu_ly: duongSu.soThuLy,
-          drive_file_id: duongSu.driveFileId,
-          tham_phan: duongSu.thamPhan
-        }),
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        // Cập nhật trạng thái "Đã gửi" lên Firebase
-        await updateDoc(doc(db, "tong_dat", duongSu.id), { trangThai: 'Đã gửi Zalo' });
-        
-        // Cập nhật trên màn hình
-        setDanhSachDuongSu(prev => prev.map(item => item.id === duongSu.id ? { ...item, trangThai: 'Đã gửi Zalo' } : item));
-        alert(`Đã tống đạt thành công đến: ${duongSu.tenDuongSu}`);
-      } else {
-        throw new Error(result.error);
-      }
-    } catch (error) {
-      setDanhSachDuongSu(prev => prev.map(item => item.id === duongSu.id ? { ...item, trangThai: 'Lỗi gửi' } : item));
-      alert('Lỗi: ' + error.message);
-    }
-  };
-
-  return (
-    <div className="animate-fadeIn space-y-6 relative">
-      {/* Tiêu đề & Nút Thêm Mới */}
-      <div className="bg-blue-900 p-6 rounded-2xl text-white shadow-lg flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-black uppercase">Quản Lý Tống Đạt</h2>
-          <p className="opacity-70 text-[10px] font-bold uppercase tracking-widest">Gửi thông báo Zalo</p>
-        </div>
-        <button 
-          onClick={() => setShowForm(true)}
-          className="bg-yellow-400 text-blue-900 font-black px-4 py-2 rounded-lg shadow hover:bg-yellow-500 transition-colors"
-        >
-          + THÊM VỤ VIỆC MỚI
-        </button>
-      </div>
-
-      {/* POPUP FORM NHẬP LIỆU (Chỉ hiện khi bấm nút Thêm Mới) */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg">
-            <div className="flex justify-between items-center mb-4 border-b pb-2">
-              <h3 className="text-xl font-bold text-gray-800">Nhập thông tin Đương sự</h3>
-              <button onClick={() => setShowForm(false)} className="text-red-500 font-bold hover:bg-red-50 p-2 rounded-full">✕</button>
-            </div>
-            
-            <form onSubmit={handleAddNew} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Số thụ lý</label>
-                  <input type="text" value={formData.soThuLy} onChange={e => setFormData({...formData, soThuLy: e.target.value})} className="w-full border-2 p-2 rounded-lg text-sm" placeholder="VD: 15/2026/TLST..." required/>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Thẩm phán</label>
-                  <input type="text" value={formData.thamPhan} onChange={e => setFormData({...formData, thamPhan: e.target.value})} className="w-full border-2 p-2 rounded-lg text-sm" placeholder="VD: Lê Hoàng Bảo" required/>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tên Đương sự (Người nhận)</label>
-                <input type="text" value={formData.tenDuongSu} onChange={e => setFormData({...formData, tenDuongSu: e.target.value})} className="w-full border-2 p-2 rounded-lg text-sm" placeholder="VD: Nguyễn Văn A" required/>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Số điện thoại Zalo</label>
-                <input type="text" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full border-2 p-2 rounded-lg text-sm" placeholder="VD: 0901234567" required/>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Mã ID File Google Drive</label>
-                <input type="text" value={formData.driveFileId} onChange={e => setFormData({...formData, driveFileId: e.target.value})} className="w-full border-2 border-blue-200 bg-blue-50 p-2 rounded-lg text-sm" placeholder="Copy mã ID file Drive dán vào đây..." required/>
-              </div>
-
-              <div className="pt-4">
-                <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 uppercase tracking-widest transition-all">
-                  💾 Lưu vào danh sách
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* BẢNG HIỂN THỊ DANH SÁCH (Đã thêm cột Số điện thoại) */}
-      <div className="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-200 p-6">
-        <table className="min-w-full leading-normal">
-          <thead>
-            <tr>
-              <th className="px-5 py-3 border-b-2 bg-gray-50 text-left text-xs font-bold text-gray-600 uppercase">Số thụ lý</th>
-              <th className="px-5 py-3 border-b-2 bg-gray-50 text-left text-xs font-bold text-gray-600 uppercase">Đương sự</th>
-              <th className="px-5 py-3 border-b-2 bg-gray-50 text-left text-xs font-bold text-gray-600 uppercase">Số điện thoại</th>
-              <th className="px-5 py-3 border-b-2 bg-gray-50 text-left text-xs font-bold text-gray-600 uppercase">Trạng thái</th>
-              <th className="px-5 py-3 border-b-2 bg-gray-50 text-left text-xs font-bold text-gray-600 uppercase">Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {danhSachDuongSu.length === 0 ? (
-              <tr><td colSpan="5" className="text-center py-6 text-gray-400 italic">Chưa có dữ liệu. Hãy bấm "Thêm vụ việc mới"</td></tr>
-            ) : danhSachDuongSu.map((item) => (
-              <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-5 py-4 border-b text-sm font-bold">{item.soThuLy}</td>
-                <td className="px-5 py-4 border-b text-sm">{item.tenDuongSu}</td>
-                <td className="px-5 py-4 border-b text-sm">{item.phone}</td>
-                <td className="px-5 py-4 border-b text-sm">
-                  <span className={`px-3 py-1 font-bold text-xs rounded-full ${item.trangThai === 'Đã gửi Zalo' ? 'bg-green-100 text-green-700' : item.trangThai === 'Chưa gửi' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                    {item.trangThai}
-                  </span>
-                </td>
-                <td className="px-5 py-4 border-b text-sm">
-                  <button onClick={() => handleTongDat(item)} disabled={item.trangThai === 'Đã gửi Zalo' || item.trangThai === 'Đang gửi...'} className="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 text-xs disabled:bg-gray-400">
-                    Tống đạt Zalo
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
 // =========================================================================
 // COMPONENT: QUẢN TRỊ TRANG CHỦ PORTAL (ĐĂNG & XÓA)
 // =========================================================================
