@@ -700,234 +700,120 @@ useEffect(() => {
       ...i, title: `${i.status === 'completed' ? '✅ ' : ''}[${i.room}] ${i.caseName || 'Chưa có tên'}`, start: new Date(i.datetime), end: new Date(new Date(i.datetime).getTime() + (i.duration || 60) * 60000) 
     }));
   }, [schedule]);
-  const CourtPortal = () => {
+ const CourtPortal = () => {
   // =========================================================
-  // 1. PHẦN NÃO: BỘ ĐIỀU KHIỂN SLIDER TIN TỨC
-  // =========================================================
-  const [currentSlide, setCurrentSlide] = React.useState(0);
-
-  React.useEffect(() => {
-    if (!newsList || newsList.length <= 1) return; 
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev === newsList.length - 1 ? 0 : prev + 1));
-    }, 5000); 
-    return () => clearInterval(timer);
-  }, [newsList]);
-
-  const nextSlide = (e) => {
-    e.stopPropagation(); 
-    setCurrentSlide((prev) => (prev === newsList.length - 1 ? 0 : prev + 1));
-  };
-  const prevSlide = (e) => {
-    e.stopPropagation();
-    setCurrentSlide((prev) => (prev === 0 ? newsList.length - 1 : prev - 1));
-  };
-
-  // =========================================================
-  // 2. PHẦN MẶT TIỀN: GIAO DIỆN (Dùng return để xuất ra)
+  // 1. PHẦN MẶT TIỀN: CHUYÊN TRANG LỊCH XÉT XỬ TRỰC TUYẾN
   // =========================================================
   return (
-    <div className="animate-fadeIn pb-20">
-      {/* Banner Chính */}
-      <div className="relative h-64 md:h-80 w-full overflow-hidden rounded-2xl shadow-2xl mb-10">
-        <div className="absolute inset-0 bg-gradient-to-r from-red-800 to-transparent z-10"></div>
-        <img src="/toaan.jpg" className="absolute inset-0 w-full h-full object-cover" alt="Banner" />
-        <div className="relative z-20 p-8 md:p-12 h-full flex flex-col justify-center">
-          <h2 className="text-white text-3xl md:text-5xl font-black uppercase mb-4 drop-shadow-lg">
-            Cổng Thông Tin Điện Tử
-          </h2>
-          <p className="text-yellow-400 text-lg md:text-xl font-bold uppercase tracking-widest drop-shadow-md">
-            Tòa án nhân dân khu vực 9 - TP. Cần Thơ
-          </p>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 py-8 animate-fadeIn bg-transparent">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* ==========================================
-              CỘT TRÁI (Nội dung chính - Chiếm 8/12)
-              ========================================== */}
-          <div className="lg:col-span-8 space-y-8">
-
-            {/* 1. SLIDER TIN TỨC NỔI BẬT (ĐÃ NÂNG CẤP) */}
-            {newsList && newsList.length > 0 && (
-              <div 
-                className="relative w-full h-[350px] md:h-[450px] bg-gray-900 overflow-hidden group cursor-pointer rounded-xl shadow-xl border border-gray-200"
-                onClick={() => { if(newsList[currentSlide]?.link) setReadingLink(newsList[currentSlide].link); }}
+    <div className="animate-fadeIn pb-20 max-w-7xl mx-auto px-4 py-2 bg-transparent">
+      <div className="space-y-6">
+        
+        {/* THANH HIỂN THỊ LIÊN KẾT NHANH */}
+        {quickLinks && quickLinks.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex flex-wrap gap-3 items-center shadow-sm">
+            <span className="text-xs font-black text-amber-800 uppercase tracking-wider mr-2">🔗 Liên kết nhanh:</span>
+            {quickLinks.map(link => (
+              <a 
+                key={link.id} 
+                href={link.url} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-colors"
               >
-                {/* Vòng lặp xuất các tin ra */}
-                {newsList.map((item, index) => (
-                  <div 
-                    key={item.id || index} 
-                    className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
-                  >
-                    <img 
-                      src={item.image || item.imageUrl || "/toaan_logo.png"} 
-                      alt={item.title} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000 bg-white"
-                      onError={(e) => { e.target.onerror = null; e.target.src = "/toaan_logo.png"; }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
-                    
-                    <div className="absolute bottom-0 left-0 w-full pt-20 pb-6 px-8 text-white">
-                      <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-widest mb-3">
-                        <span className="bg-red-700 px-3 py-1 rounded-sm shadow">TIN TỨC HOẠT ĐỘNG</span>
-                        <span className="bg-black/50 backdrop-blur-md px-3 py-1 rounded-sm border border-white/20">
-                          {item.date ? new Date(item.date).toLocaleDateString('vi-VN') : 'Mới nhất'}
-                        </span>
-                      </div>
-                      <h2 className="text-2xl md:text-3xl font-black leading-tight drop-shadow-lg hover:text-yellow-400 transition-colors">
-                        {item.title}
-                      </h2>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Nút bấm Trái/Phải và Dấu chấm */}
-                {newsList.length > 1 && (
-                  <>
-                    <button onClick={prevSlide} className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-red-600 text-white w-10 h-10 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-all z-20 shadow-lg backdrop-blur-sm">❮</button>
-                    <button onClick={nextSlide} className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-red-600 text-white w-10 h-10 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-all z-20 shadow-lg backdrop-blur-sm">❯</button>
-                    <div className="absolute bottom-6 right-6 flex gap-2 z-20">
-                      {newsList.map((_, index) => (
-                        <span key={index} onClick={(e) => { e.stopPropagation(); setCurrentSlide(index); }} className={`h-2.5 rounded-full cursor-pointer transition-all duration-300 shadow-md ${index === currentSlide ? 'bg-yellow-400 w-8' : 'bg-white/60 hover:bg-white w-2.5'}`}></span>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* 2. KHỐI THÔNG BÁO & TIN TỨC KHÁC */}
-            <div className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
-              <div className="bg-red-700 px-6 py-4 border-b-4 border-yellow-400">
-                <h3 className="text-white font-black uppercase text-xl tracking-wide flex items-center gap-2 drop-shadow-md">
-                  <span className="text-2xl">📢</span> THÔNG BÁO VÀ TIN TỨC
-                </h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200">
-                {/* Cột Văn bản pháp luật */}
-                <div className="bg-gray-50/50 hover:bg-white transition-colors">
-                  <div className="bg-gray-100/80 py-3 text-center font-black text-blue-900 uppercase text-sm border-b border-gray-200 tracking-widest shadow-inner">
-                    VĂN BẢN PHÁP LUẬT MỚI
-                  </div>
-                  <ul className="p-5 space-y-5">
-                    {legalDocs.length > 0 ? legalDocs.map((doc) => (
-                      <li key={doc.id} className="group">
-                        <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3">
-                          <span className="text-red-600 bg-red-100 p-1.5 rounded shadow-sm group-hover:bg-red-600 group-hover:text-white transition-all">⚖️</span>
-                          <span className="text-sm font-bold text-gray-700 group-hover:text-red-700 transition-colors line-clamp-2 mt-0.5 leading-relaxed">{doc.title}</span>
-                        </a>
-                      </li>
-                    )) : <p className="text-sm italic text-gray-400 text-center py-4">Chưa có văn bản.</p>}
-                  </ul>
-                </div>
-
-                {/* Cột Tin tức khác */}
-                <div className="bg-white">
-                  <div className="bg-gray-100/80 py-3 text-center font-black text-gray-800 uppercase text-sm border-b border-gray-200 tracking-widest shadow-inner">
-                    CÁC TIN TỨC KHÁC
-                  </div>
-                  <ul className="p-5 space-y-5">
-                    {newsList.length > 1 ? newsList.slice(1, 6).map((item) => (
-                      <li 
-                        key={item.id} 
-                        onClick={() => { if(item.link) setReadingLink(item.link); }}
-                        className="flex items-start gap-3 group cursor-pointer"
-                      >
-                        <span className="text-blue-600 bg-blue-50 p-1.5 rounded shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-all">📰</span>
-                        <span className="text-sm font-bold text-gray-700 group-hover:text-blue-700 transition-colors line-clamp-2 mt-0.5 leading-relaxed">{item.title}</span>
-                      </li>
-                    )) : <p className="text-sm italic text-gray-400 text-center py-4">Đang cập nhật thêm...</p>}
-                  </ul>
-                </div>
-              </div>
-            </div>
-
+                {link.title}
+              </a>
+            ))}
           </div>
+        )}
 
-          {/* ==========================================
-              CỘT PHẢI (Menu & Banner - Chiếm 4/12)
-              ========================================== */}
-          <div className="lg:col-span-4 space-y-8">
-            
-            {/* Banner TANDTC */}
-            <a 
-              href="https://www.toaan.gov.vn/webcenter/portal/tatc/home" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="block rounded-xl overflow-hidden shadow-xl border border-gray-200 group cursor-pointer bg-white"
-            >
-               <img 
-                src="/toaannhandan3-jons.png" 
-                alt="Cổng TTĐT TAND Tối Cao" 
-                className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-500"
-                onError={(e) => {
-                    e.target.onerror = null; 
-                    e.target.style.display = 'none';
-                    e.target.parentElement.innerHTML = `
-                        <div class="w-full h-44 bg-gray-100 flex items-center justify-center text-gray-400 font-bold border-b border-gray-200">
-                            CỔNG THÔNG TIN ĐIỆN TỬ
-                        </div>
-                    `;
-                }}
-              />
-              <div className="bg-red-700 p-3 text-center border-t-4 border-yellow-400">
-                  <p className="text-white font-black uppercase text-sm tracking-widest drop-shadow-md">Cổng Thông Tin Điện Tử</p>
-                  <p className="text-yellow-300 font-bold text-xs uppercase mt-0.5 drop-shadow-md">Tòa án nhân dân tối cao</p>
-              </div>
-            </a>
+        {/* BẢNG LỊCH XÉT XỬ MẶC ĐỊNH CHO NGƯỜI DÂN */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 overflow-hidden">
+           <div className="flex justify-between items-center mb-4 pb-2 border-b">
+             <h2 className="font-black text-blue-900 text-lg uppercase flex items-center gap-2">
+               <span className="text-2xl">📅</span> Danh sách vụ án xét xử
+             </h2>
+             
+             {/* BỘ LỌC TÌM KIẾM CHO NGƯỜI DÂN */}
+             <div className="flex gap-2">
+                <input type="text" placeholder="Tìm tên đương sự..." onChange={e => setSearchQuery(e.target.value)} className="border border-gray-300 rounded-md px-3 py-1.5 text-xs outline-none focus:border-blue-500 min-w-[150px]" />
+             </div>
+           </div>
 
-            {/* Menu Liên kết nhanh */}
-            <div className="bg-[#fdf7e3] rounded-xl shadow-xl overflow-hidden border border-[#e8d5a1] relative">
-              <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-red-700 z-10"></div>
+           {/* BẢNG HIỂN THỊ DỮ LIỆU ÁN */}
+           <div className="overflow-x-auto bg-gray-50/50 rounded-lg custom-scrollbar">
+              <table className="w-full border-collapse table-fixed min-w-[900px] border border-gray-300 text-[11px]">
+                <thead className="bg-gray-100 text-[11px] font-black uppercase text-gray-500 border-b border-gray-200">
+                  <tr>
+                    <th className="px-2 py-2 border border-gray-300 w-[15%] text-center">Thời gian</th>
+                    <th className="px-2 py-2 border border-gray-300 w-[45%] text-left">Nội dung Vụ án</th>
+                    <th className="px-2 py-2 border border-gray-300 w-[20%] text-left">Hội đồng Xét xử</th>
+                    <th className="px-2 py-2 border border-gray-300 w-[20%] text-center">Phòng / Tình trạng</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {processedSchedule
+                     .filter(i => i.status !== 'completed' && i.status !== 'suspended') // Chỉ hiện án đang chờ xử
+                     .map((item, index) => {
+                      const isRowUrgent = isUrgent(item.datetime);
+                      return (
+                        <tr key={item.id} className="hover:bg-blue-50/30 transition-all">
+                          {/* CỘT 1: THỜI GIAN */}
+                          <td className="px-2 py-2 border border-gray-300 text-center">
+                            <div className="font-bold text-[12px] text-gray-900">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
+                            <div className={`font-black mt-0.5 text-[11px] ${isRowUrgent ? 'text-red-600 animate-pulse' : 'text-blue-600'}`}>
+                               🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}
+                            </div>
+                          </td>
+
+                          {/* CỘT 2: NỘI DUNG VỤ ÁN */}
+                          <td className="px-2 py-2 border border-gray-300 text-left">
+                            <div className="font-bold uppercase text-blue-900 text-[12px] mb-1.5 leading-tight line-clamp-2">
+                              {item.caseName || "Vụ án chưa có tên"}
+                            </div>
+                            <div className="text-gray-500 font-bold text-[11px]">
+                               {item.caseType?.includes("Hình sự") ? (
+                                  <p><span className="text-red-600 uppercase text-[9px]">Bị cáo:</span> {item.plaintiff || item.defendant || "---"}</p>
+                               ) : (
+                                  <div className="flex gap-4">
+                                    <p><span className="text-gray-500 uppercase text-[9px]">NĐ:</span> {item.plaintiff || "---"}</p>
+                                    <p><span className="text-gray-500 uppercase text-[9px]">BĐ:</span> {item.defendant || "---"}</p>
+                                  </div>
+                               )}
+                            </div>
+                          </td>
+
+                          {/* CỘT 3: HỘI ĐỒNG XÉT XỬ */}
+                          <td className="px-2 py-2 border border-gray-300 text-left space-y-1">
+                            <div className="flex items-center gap-1"><span className="text-red-600 font-bold text-[10px]">TP:</span> <span className="text-[11px] font-bold text-gray-800 uppercase">{item.judge || "---"}</span></div>
+                            <div className="flex items-center gap-1"><span className="text-gray-500 font-bold text-[10px]">TK:</span> <span className="text-[11px] font-bold text-gray-800">{item.clerk || "---"}</span></div>
+                            <div className="flex items-center gap-1"><span className="text-red-400 font-bold text-[10px]">KSV:</span> <span className="text-[11px] font-bold text-red-700">{item.prosecutor || "---"}</span></div>
+                          </td>
+
+                          {/* CỘT 4: PHÒNG / TÌNH TRẠNG */}
+                          <td className="px-2 py-2 border border-gray-300 text-center">
+                            <div className="font-black text-gray-800 uppercase text-[11px] mb-1.5">{item.room || "---"}</div>
+                            {isRowUrgent ? (
+                              <span className="bg-red-600 text-white text-[9px] px-2 py-1 rounded font-black uppercase animate-pulse shadow-sm">SẮP XỬ</span>
+                            ) : (
+                              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-black text-[9px] uppercase">Đã lên lịch</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                  })}
+                </tbody>
+              </table>
               
-              <ul className="flex flex-col text-[#8a3319] font-bold text-[14px] relative z-0">
-                {/* NÚT LỊCH XÉT XỬ NỔI BẬT */}
-                <li 
-                  onClick={() => setViewMode("app")}
-                  className="flex items-center gap-4 p-5 border-b border-[#e8d5a1] bg-yellow-100 hover:bg-yellow-200 cursor-pointer transition-colors group"
-                >
-                  <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center text-white shadow-md group-hover:scale-110 group-hover:rotate-12 transition-all">
-                     <span className="text-xl">⚖️</span>
-                  </div>
-                  <div className="flex flex-col">
-                     <span className="text-red-700 font-black uppercase text-lg tracking-wide">{user ? "VÀO TRANG QUẢN LÝ" : "XEM LỊCH XÉT XỬ"}</span>
-                     <span className="text-[11px] text-red-600/80 font-bold uppercase mt-0.5">Tra cứu lịch trực tuyến</span>
-                  </div>
-                </li>
-
-                {/* Liên kết từ Firebase */}
-                {quickLinks.map(link => (
-                  <li key={link.id} className="flex items-center gap-3 p-4 border-b border-[#e8d5a1] hover:bg-[#faeed0] cursor-pointer transition-colors group pl-6">
-                    <span className="text-red-600 bg-white p-1.5 rounded shadow-sm border border-[#e8d5a1] group-hover:scale-110 transition-transform">🌐</span>
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="block w-full hover:text-red-700 transition-colors">
-                      {link.title}
-                    </a>
-                  </li>
-                ))}
-                
-                <li className="flex items-center gap-3 p-4 border-b border-[#e8d5a1] hover:bg-[#faeed0] cursor-pointer transition-colors group pl-6">
-                  <span className="text-red-600 bg-white p-1.5 rounded shadow-sm border border-[#e8d5a1] group-hover:scale-110 transition-transform">👥</span>
-                  <span className="hover:text-red-700 transition-colors">Chỉ dẫn người dân</span>
-                </li>
-                <li className="flex items-center gap-3 p-4 hover:bg-[#faeed0] cursor-pointer transition-colors group pl-6">
-                  <span className="text-red-600 bg-white p-1.5 rounded shadow-sm border border-[#e8d5a1] group-hover:scale-110 transition-transform">📅</span>
-                  <span className="hover:text-red-700 transition-colors">Lịch tiếp công dân</span>
-                </li>
-              </ul>
-            </div>
-            
-          </div>
-
+              {processedSchedule.filter(i => i.status !== 'completed' && i.status !== 'suspended').length === 0 && (
+                 <div className="text-center py-10 text-gray-400 font-bold italic">Hiện chưa có lịch xét xử nào sắp diễn ra</div>
+              )}
+           </div>
         </div>
       </div>
     </div>
   );
-};
-
+  }
+  
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-blue-950 font-sans">
       <div className="relative mb-8">
@@ -2752,132 +2638,6 @@ const handleResetUserPassword = async (emailCanBo) => {
     </div>
   );
 }
-
-function QuanLyTinTuc() {
-  const [title, setTitle] = React.useState("");
-  const [summary, setSummary] = React.useState("");
-  const [imageUrl, setImageUrl] = React.useState("");
-  const [loading, setLoading] = React.useState(false);
-  const [uploadingImg, setUploadingImg] = React.useState(false); // Thêm biến để báo đang tải ảnh
-
-  // 🚀 HÀM TẢI ẢNH LÊN IMGBB
-  const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setUploadingImg(true);
-
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-
-      // 🛑 NÍ DÁN CÁI CHÌA KHÓA API CỦA NÍ VÀO GIỮA 2 DẤU NGOẶC KÉP NÀY NHA:
-      const apiKey = "0956f5825cd2b4a632cfa010fa2daf71"; 
-      
-      const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
-        method: 'POST',
-        body: formData
-      });
-      
-      const data = await response.json();
-
-      if (data.success) {
-        setImageUrl(data.data.url); // Tự động điền link ảnh mây vào ô input
-        alert("📸 Tải ảnh lên thành công!");
-      } else {
-        alert("❌ ImgBB báo lỗi, thử lại tấm khác nha.");
-      }
-    } catch (error) {
-      console.error("⛔ LỖI:", error);
-      alert("❌ Lỗi mạng, không tải được ảnh.");
-    } finally {
-      setUploadingImg(false);
-    }
-  };
-
-  const handleAddNews = async (e) => {
-    e.preventDefault();
-    if (!title || !summary) return alert("Vui lòng nhập đủ tiêu đề và nội dung nhé Ní!");
-    setLoading(true);
-    try {
-      const { collection, addDoc } = await import('firebase/firestore');
-      const { db } = await import('./firebase');
-      const moment = (await import('moment')).default;
-
-      await addDoc(collection(db, "news"), {
-        title,
-        summary,
-        imageUrl: imageUrl || "/toaan_logo.png", // Ảnh mặc định xịn xò
-        date: moment().toISOString(),
-      });
-
-      alert("✅ Đăng tin tức thành công!");
-      setTitle(""); setSummary(""); setImageUrl("");
-    } catch (error) {
-      alert("❌ Lỗi khi đăng tin: " + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="animate-fadeIn space-y-6">
-      <div className="bg-blue-900 p-6 rounded-2xl text-white shadow-lg flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-black uppercase">Quản Lý Tin Tức</h2>
-          <p className="opacity-70 text-[10px] font-bold uppercase tracking-widest">Đăng thông báo & sự kiện</p>
-        </div>
-        <div className="text-3xl">📰</div>
-      </div>
-
-      <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
-        <form onSubmit={handleAddNews} className="space-y-5">
-          <div>
-            <label className="block text-[11px] font-black uppercase text-gray-600 mb-2">Tiêu đề tin tức <span className="text-red-500">*</span></label>
-            <input type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full border-2 border-gray-100 p-3 rounded-xl outline-none focus:border-blue-500 font-bold text-sm" placeholder="Nhập tiêu đề..." required />
-          </div>
-          <div>
-            <label className="block text-[11px] font-black uppercase text-gray-600 mb-2">Tóm tắt nội dung <span className="text-red-500">*</span></label>
-            <textarea value={summary} onChange={e => setSummary(e.target.value)} className="w-full border-2 border-gray-100 p-3 rounded-xl outline-none focus:border-blue-500 font-medium text-sm" rows="3" placeholder="Nhập nội dung tóm tắt..." required />
-          </div>
-          
-          {/* KHU VỰC TẢI ẢNH ĐÃ NÂNG CẤP */}
-          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-            <label className="block text-[11px] font-black uppercase text-gray-600 mb-3">Hình ảnh minh họa</label>
-            
-            <div className="flex flex-col md:flex-row gap-4 items-start">
-              {/* Nút chọn file */}
-              <div className="w-full md:w-auto">
-                <label className="cursor-pointer bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-black py-3 px-6 rounded-xl uppercase shadow-md transition-all text-xs inline-flex items-center gap-2">
-                  <span>{uploadingImg ? "⏳ Đang tải..." : "📁 Chọn ảnh từ máy"}</span>
-                  <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={uploadingImg} />
-                </label>
-              </div>
-              
-              {/* Ô chứa link tự động */}
-              <div className="flex-1 w-full">
-                 <input type="text" value={imageUrl} onChange={e => setImageUrl(e.target.value)} className="w-full border-2 border-gray-100 p-2.5 rounded-xl outline-none focus:border-blue-500 font-medium text-xs text-gray-500 bg-white" placeholder="Link ảnh sẽ tự động hiện ở đây, hoặc Ní có thể dán link trực tiếp..." />
-              </div>
-            </div>
-
-            {/* Hiển thị ảnh xem trước nếu đã có link */}
-            {imageUrl && (
-              <div className="mt-4 border-2 border-dashed border-gray-300 rounded-lg p-2 bg-white inline-block">
-                <img src={imageUrl} alt="Xem trước" className="h-32 w-auto object-cover rounded shadow-sm" />
-              </div>
-            )}
-          </div>
-
-          <div className="pt-4 border-t border-gray-100">
-            <button type="submit" disabled={loading || uploadingImg} className="bg-blue-600 hover:bg-blue-700 text-white font-black py-3 px-8 rounded-xl uppercase shadow-lg transition-all text-sm w-full md:w-auto">
-              {loading ? "ĐANG LƯU DỮ LIỆU..." : "ĐĂNG TIN MỚI"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
 // =========================================================================
 // COMPONENT: NHẬT KÝ THAO TÁC HỆ THỐNG
 // =========================================================================
@@ -2957,50 +2717,38 @@ function NhatKyThaoTac() {
 // COMPONENT: QUẢN TRỊ TRANG CHỦ PORTAL (ĐĂNG & XÓA)
 // =========================================================================
 function QuanLyPortal({ db, userEmail, showToast }) {
-  // State Form
-  const [newsTitle, setNewsTitle] = React.useState("");
-  const [newsContent, setNewsContent] = React.useState("");
-  const [newsLink, setNewsLink] = React.useState("");
-  const [newsImage, setNewsImage] = React.useState("");
-  const [newsDate, setNewsDate] = React.useState(moment().format("YYYY-MM-DD"));
+  // State Form Văn Bản & Liên Kết Nhanh
   const [docTitle, setDocTitle] = React.useState("");
   const [docUrl, setDocUrl] = React.useState("");
   const [linkTitle, setLinkTitle] = React.useState("");
   const [linkUrl, setLinkUrl] = React.useState("");
   
-
-  // State Dữ liệu để hiển thị list xóa
-  const [listNews, setListNews] = React.useState([]);
+  // State Danh sách hiển thị để xóa
   const [listDocs, setListDocs] = React.useState([]);
   const [listLinks, setListLinks] = React.useState([]);
 
   const inputStyle = "w-full border border-gray-300 rounded-md px-4 py-3 bg-gray-50 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm font-bold text-gray-800";
-  const labelStyle = "block text-xs font-black uppercase text-gray-600 mb-2";
 
-  // Lấy dữ liệu real-time để hiện danh sách xóa
+  // Tải dữ liệu Real-time hệ thống văn bản và liên kết ngoài
   React.useEffect(() => {
-    let unsubNews, unsubDocs, unsubLinks;
+    let unsubDocs, unsubLinks;
     const loadData = async () => {
       const { collection, query, orderBy, onSnapshot } = await import('firebase/firestore');
       
-      // Kéo Tin tức
-      unsubNews = onSnapshot(query(collection(db, "news"), orderBy("createdAt", "desc")), (snap) => {
-        setListNews(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      });
-      // Kéo Văn bản
+      // Tải danh sách văn bản tố tụng
       unsubDocs = onSnapshot(query(collection(db, "legal_docs"), orderBy("createdAt", "desc")), (snap) => {
         setListDocs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       });
-      // Kéo Liên kết
+      // Tải danh sách liên kết nhanh
       unsubLinks = onSnapshot(query(collection(db, "quick_links"), orderBy("order", "asc")), (snap) => {
         setListLinks(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       });
     };
     loadData();
-    return () => { if(unsubNews) unsubNews(); if(unsubDocs) unsubDocs(); if(unsubLinks) unsubLinks(); }
+    return () => { if(unsubDocs) unsubDocs(); if(unsubLinks) unsubLinks(); }
   }, [db]);
 
-  // HÀM XÓA CHUNG
+  // HÀM XÓA DỮ LIỆU CHUNG
   const handleDelete = async (collectionName, id) => {
     if (window.confirm("⚠️ Ní có chắc chắn muốn xóa mục này không? Xóa xong không lấy lại được đâu nhé!")) {
       try {
@@ -3013,17 +2761,7 @@ function QuanLyPortal({ db, userEmail, showToast }) {
     }
   };
 
-  // Các hàm Thêm (Giữ nguyên)
-  const handleAddNews = async () => {
-    if (!newsTitle || !newsContent) return showToast("Vui lòng nhập đủ Tiêu đề và Nội dung tin!", "error");
-    try {
-      const { collection, addDoc } = await import('firebase/firestore');
-      await addDoc(collection(db, "news"), { title: newsTitle, content: newsContent, link: newsLink, imageUrl: newsImage, date: newsDate, createdAt: moment().toISOString(), createdBy: userEmail });
-      showToast("✅ Đã đăng bản tin thành công!");
-     setNewsTitle(""); setNewsContent(""); setNewsLink(""); setNewsImage(""); 
-  } catch (e) { showToast("Lỗi đăng tin: " + e.message, "error"); }
-};
-
+  // HÀM THÊM VĂN BẢN MỚI
   const handleAddDoc = async () => {
     if (!docTitle || !docUrl) return showToast("Vui lòng nhập Tên văn bản và Link tải!", "error");
     try {
@@ -3034,6 +2772,7 @@ function QuanLyPortal({ db, userEmail, showToast }) {
     } catch (e) { showToast("Lỗi thêm văn bản: " + e.message, "error"); }
   };
 
+  // HÀM THÊM NÚT LIÊN KẾT NHANH
   const handleAddLink = async () => {
     if (!linkTitle || !linkUrl) return showToast("Vui lòng nhập Tên nút và Link web!", "error");
     try {
@@ -3043,125 +2782,29 @@ function QuanLyPortal({ db, userEmail, showToast }) {
       setLinkTitle(""); setLinkUrl(""); 
     } catch (e) { showToast("Lỗi tạo liên kết: " + e.message, "error"); }
   };
-const [uploadingImg, setUploadingImg] = React.useState(false);
 
-  const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setUploadingImg(true);
-
-    try {
-      // Dùng FormData để gói tấm hình lại
-      const formData = new FormData();
-      formData.append('image', file);
-
-      // Bơm ảnh thẳng lên ImgBB (Không cần Firebase Storage nữa)
-      const apiKey = "0956f5825cd2b4a632cfa010fa2daf71"; 
-      
-      const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
-        method: 'POST',
-        body: formData
-      });
-      
-      const data = await response.json();
-
-      if (data.success) {
-        // Lấy link ảnh trả về ném vào giao diện
-        setNewsImage(data.data.url);
-        alert("📸 Tuyệt vời! Tải ảnh lên thành công (qua ImgBB)!");
-      } else {
-        alert("❌ ImgBB báo lỗi, thử lại tấm khác nha.");
-      }
-
-    } catch (error) {
-      console.error("⛔ LỖI:", error);
-      alert("❌ Lỗi mạng, không tải được ảnh.");
-    } finally {
-      setUploadingImg(false);
-    }
-  };
   return (
     <div className="animate-fadeIn space-y-8 max-w-6xl mx-auto pb-10">
-      <div className="bg-blue-900 p-6 rounded-2xl text-white shadow-lg flex justify-between items-center">
+      {/* THANH TIÊU ĐỀ KHU VỰC QUẢN TRỊ NỘI BỘ */}
+      <div className="bg-red-800 p-6 rounded-2xl text-white shadow-lg flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-black uppercase">Quản Trị Cổng Thông Tin</h2>
-          <p className="opacity-70 text-[10px] font-bold uppercase tracking-widest">Đăng bài & Dọn dẹp dữ liệu</p>
+          <h2 className="text-2xl font-black uppercase">Hệ Thống Quản Trị Nội Bộ</h2>
+          <p className="opacity-70 text-[10px] font-bold uppercase tracking-widest">Thiết lập văn bản & Tiện ích liên kết nhanh cho cán bộ</p>
         </div>
-        <div className="text-3xl">⚙️</div>
-      </div>
-
-      {/* 1. QUẢN LÝ TIN TỨC */}
-      <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
-        <h3 className="font-black text-red-700 uppercase mb-6 flex items-center gap-2 border-b pb-3"><span className="text-2xl">📰</span> Quản Lý Tin Tức Hoạt Động</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Cột nhập liệu */}
-          <div className="space-y-4">
-            <div>
-              <label className={labelStyle}>Tiêu đề bản tin <span className="text-red-500">*</span></label>
-              <input type="text" value={newsTitle} onChange={e => setNewsTitle(e.target.value)} className={inputStyle} placeholder="VD: Hội nghị sơ kết công tác..." />
-            </div>
-            <div>
-              <label className={labelStyle}>Tải Hình Ảnh Đại Diện</label>
-              <div className="flex gap-4 items-center mt-1">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 cursor-pointer transition-all border border-gray-200 rounded-xl"
-                />
-                {uploadingImg && <span className="text-xs text-red-500 font-bold animate-pulse whitespace-nowrap">⏳ Đang tải...</span>}
-              </div>
-              
-              {/* Khung hiển thị ảnh xem trước khi đã tải xong */}
-              {newsImage && (
-                 <div className="mt-3 relative inline-block">
-                   <img src={newsImage} alt="Preview" className="h-32 object-cover rounded-lg border-2 border-red-200 shadow-sm" />
-                   <span className="absolute -top-2 -right-2 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black shadow-sm border border-white">✅ Xong</span>
-                   <button 
-                     onClick={() => setNewsImage("")} 
-                     className="absolute -bottom-2 -right-2 bg-red-500 hover:bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black shadow-sm border border-white"
-                   >
-                     Xóa đổi ảnh khác
-                   </button>
-                 </div>
-              )}
-            </div>
-            <div>
-              <label className={labelStyle}>Link bài viết gốc (Nếu có)</label>
-              <input type="url" value={newsLink} onChange={e => setNewsLink(e.target.value)} className={inputStyle} placeholder="https://..." />
-            </div>
-            <div>
-              <label className={labelStyle}>Nội dung tóm tắt <span className="text-red-500">*</span></label>
-              <textarea rows="3" value={newsContent} onChange={e => setNewsContent(e.target.value)} className={inputStyle} placeholder="Nhập nội dung tóm tắt..." />
-            </div>
-            <button onClick={handleAddNews} className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-3 rounded-xl uppercase shadow-md transition-all active:scale-95">Đăng Bản Tin</button>
-          </div>
-          {/* Cột Danh sách xóa */}
-          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 h-96 overflow-y-auto">
-            <p className="text-xs font-bold text-gray-500 uppercase mb-3 sticky top-0 bg-gray-50 py-1">Tin đã đăng ({listNews.length})</p>
-            <div className="space-y-2">
-              {listNews.map(item => (
-                <div key={item.id} className="flex justify-between items-center p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:border-red-300">
-                  <div className="truncate pr-2"><p className="text-sm font-bold text-gray-800 truncate">{item.title}</p><p className="text-[10px] text-gray-400">{moment(item.date).format("DD/MM/YYYY")}</p></div>
-                  <button onClick={() => handleDelete("news", item.id)} className="text-red-500 hover:text-white hover:bg-red-500 p-2 rounded-md transition-all">🗑️</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <div className="text-3xl">🛡️</div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        {/* 2. QUẢN LÝ VĂN BẢN */}
+        {/* 1. QUẢN LÝ VĂN BẢN PHÁP LUẬT */}
         <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200 flex flex-col">
-          <h3 className="font-black text-blue-900 uppercase mb-6 flex items-center gap-2 border-b pb-3"><span className="text-2xl">⚖️</span> Quản Lý Văn Bản</h3>
+          <h3 className="font-black text-blue-900 uppercase mb-6 flex items-center gap-2 border-b pb-3"><span className="text-2xl">⚖️</span> Quản Lý Văn Bản Ngành</h3>
           <div className="space-y-4 mb-6">
-            <input type="text" value={docTitle} onChange={e => setDocTitle(e.target.value)} className={inputStyle} placeholder="Tên văn bản (VD: NQ 01/2026...)" />
-            <input type="url" value={docUrl} onChange={e => setDocUrl(e.target.value)} className={inputStyle} placeholder="Link tải file..." />
-            <button onClick={handleAddDoc} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3 rounded-xl uppercase shadow-md active:scale-95">Thêm Văn Bản</button>
+            <input type="text" value={docTitle} onChange={e => setDocTitle(e.target.value)} className={inputStyle} placeholder="Tên văn bản (VD: Nghị quyết 04/2016...)" />
+            <input type="url" value={docUrl} onChange={e => setDocUrl(e.target.value)} className={inputStyle} placeholder="Link liên kết hoặc link tải file..." />
+            <button onClick={handleAddDoc} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3 rounded-xl uppercase shadow-md active:scale-95 transition-all">Thêm Văn Bản</button>
           </div>
           <div className="flex-1 bg-gray-50 p-4 rounded-xl border border-gray-200 max-h-60 overflow-y-auto">
+            <p className="text-xs font-bold text-gray-500 uppercase mb-2">Văn bản hiện có ({listDocs.length})</p>
             {listDocs.map(item => (
               <div key={item.id} className="flex justify-between items-center p-2 mb-2 bg-white border border-gray-200 rounded-lg shadow-sm">
                 <p className="text-xs font-bold text-gray-800 truncate pr-2">{item.title}</p>
@@ -3171,15 +2814,16 @@ const [uploadingImg, setUploadingImg] = React.useState(false);
           </div>
         </div>
 
-        {/* 3. QUẢN LÝ LIÊN KẾT NHANH */}
+        {/* 2. QUẢN LÝ LIÊN KẾT NHANH */}
         <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200 flex flex-col">
-          <h3 className="font-black text-gray-700 uppercase mb-6 flex items-center gap-2 border-b pb-3"><span className="text-2xl">🔗</span> Liên Kết Nhanh</h3>
+          <h3 className="font-black text-gray-700 uppercase mb-6 flex items-center gap-2 border-b pb-3"><span className="text-2xl">🔗</span> Liên Kết Nhanh Hệ Thống</h3>
           <div className="space-y-4 mb-6">
             <input type="text" value={linkTitle} onChange={e => setLinkTitle(e.target.value)} className={inputStyle} placeholder="Tên nút (VD: Án lệ điện tử...)" />
-            <input type="url" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} className={inputStyle} placeholder="Đường dẫn web..." />
-            <button onClick={handleAddLink} className="w-full bg-gray-800 hover:bg-black text-white font-black py-3 rounded-xl uppercase shadow-md active:scale-95">Tạo Nút Liên Kết</button>
+            <input type="url" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} className={inputStyle} placeholder="Đường dẫn trang web..." />
+            <button onClick={handleAddLink} className="w-full bg-gray-800 hover:bg-black text-white font-black py-3 rounded-xl uppercase shadow-md active:scale-95 transition-all">Tạo Nút Liên Kết</button>
           </div>
           <div className="flex-1 bg-gray-50 p-4 rounded-xl border border-gray-200 max-h-60 overflow-y-auto">
+            <p className="text-xs font-bold text-gray-500 uppercase mb-2">Nút liên kết hiện có ({listLinks.length})</p>
              {listLinks.map(item => (
               <div key={item.id} className="flex justify-between items-center p-2 mb-2 bg-white border border-gray-200 rounded-lg shadow-sm">
                 <p className="text-xs font-bold text-gray-800 truncate pr-2">{item.title}</p>
