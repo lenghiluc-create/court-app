@@ -649,38 +649,49 @@ useEffect(() => {
   };
 
   const executeExport = () => {
-    let dataToExport = schedule.filter(i => i.datetime && i.status !== 'suspended'); 
+    // 1. SỬA LỖI 1: Cho phép lấy toàn bộ hồ sơ (kể cả án mới nhập hoặc án hoãn chưa có ngày xét xử)
+    let dataToExport = [...schedule]; 
     
     if (exportStart || exportEnd) {
       dataToExport = dataToExport.filter(i => {
+        // Lấy đúng trường ngày cần lọc theo lựa chọn của cán bộ
         const targetDate = exportFilterType === 'createdAt' ? i.createdAt : i.datetime;
         
         if (!targetDate) return false;
-        const itemTime = moment(i.datetime.split('T')[0]).startOf('day').valueOf();
+        
+        // 2. SỬA LỖI 2: Trích xuất chính xác ngày từ targetDate chứ không viết cứng i.datetime nữa
+        const dateStr = targetDate.includes('T') ? targetDate.split('T')[0] : targetDate;
+        const itemTime = moment(dateStr).startOf('day').valueOf();
+        
         const start = exportStart ? moment(exportStart).startOf('day').valueOf() : 0;
         const end = exportEnd ? moment(exportEnd).startOf('day').valueOf() : Infinity;
         return itemTime >= start && itemTime <= end;
       });
     }
     
-   dataToExport.sort((a, b) => {
-       const dateA = exportFilterType === 'createdAt' ? a.createdAt : a.datetime;
-       const dateB = exportFilterType === 'createdAt' ? b.createdAt : b.datetime;
-       return new Date(dateA || 0).getTime() - new Date(dateB || 0).getTime();
+    // Sắp xếp thứ tự hiển thị theo ngày được chọn lọc
+    dataToExport.sort((a, b) => {
+      const dateA = exportFilterType === 'createdAt' ? a.createdAt : a.datetime;
+      const dateB = exportFilterType === 'createdAt' ? b.createdAt : b.datetime;
+      return new Date(dateA || 0).getTime() - new Date(dateB || 0).getTime();
     });
 
     if (dataToExport.length === 0) {
       return showToast("Không có vụ án nào trong khoảng thời gian này!", "error");
     }
 
-    let tableHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8" /><style>table { border-collapse: collapse; width: 100%; font-family: 'Times New Roman', Times, serif; font-size: 13pt; } td, th { border: 1px solid #000000; padding: 8px; vertical-align: top; } .no-border { border: none !important; } .text-center { text-align: center; vertical-align: middle; } .font-bold { font-weight: bold; }</style></head><body><table><tr><td colspan="2" class="no-border text-center font-bold">TÒA ÁN NHÂN DÂN<br/>KHU VỰC 9 - CẦN THƠ</td><td colspan="5" class="no-border text-center font-bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/>Độc lập - Tự do - Hạnh Phúc</td></tr><tr><td colspan="7" class="no-border text-center"><i>Cần Thơ, ngày ${moment().format("DD")} tháng ${moment().format("MM")} năm ${moment().format("YYYY")}</i></td></tr><tr><td colspan="7" class="no-border"></td></tr><tr><td colspan="7" class="no-border text-center font-bold" style="font-size: 16pt;">LỊCH XÉT XỬ</td></tr><tr><td colspan="7" class="no-border text-center font-bold" style="font-size: 12pt; color: #666;">(Từ ngày: ${exportStart ? moment(exportStart).format("DD/MM/YYYY") : "..."} - Đến ngày: ${exportEnd ? moment(exportEnd).format("DD/MM/YYYY") : "..."})</td></tr><tr><td colspan="7" class="no-border"></td></tr><tr><th class="text-center font-bold" style="background-color: #f2f2f2;">STT</th><th class="text-center font-bold" style="background-color: #f2f2f2;">NỘI DUNG VỤ ÁN</th><th class="text-center font-bold" style="background-color: #f2f2f2;">NGÀY XÉT XỬ</th><th class="text-center font-bold" style="background-color: #f2f2f2;">CHỦ TỌA, THƯ KÝ, KSV</th><th class="text-center font-bold" style="background-color: #f2f2f2;">HỘI THẨM NHÂN DÂN</th><th class="text-center font-bold" style="background-color: #f2f2f2;">PHÒNG XÉT XỬ</th><th class="text-center font-bold" style="background-color: #f2f2f2;">NGƯỜI NHẬP</th></tr>`;
+    // Thiết lập bảng Excel HTML tiêu chuẩn Times New Roman của Tòa án
+    let tableHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8" /><style>table { border-collapse: collapse; width: 100%; font-family: 'Times New Roman', Times, serif; font-size: 13pt; } td, th { border: 1px solid #000000; padding: 8px; vertical-align: top; } .no-border { border: none !important; } .text-center { text-align: center; vertical-align: middle; } .font-bold { font-weight: bold; }</style></head><body><table><tr><td colspan="2" class="no-border text-center font-bold">TÒA ÁN NHÂN DÂN<br/>KHU VỰC 9 - CẦN THƠ</td><td colspan="5" class="no-border text-center font-bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/>Độc lập - Tự do - Hạnh Phúc</td></tr><tr><td colspan="7" class="no-border text-center"><i>Cần Thơ, ngày ${moment().format("DD")} tháng ${moment().format("MM")} năm ${moment().format("YYYY")}</i></td></tr><tr><td colspan="7" class="no-border"></td></tr><tr><td colspan="7" class="no-border text-center font-bold" style="font-size: 16pt;">DANH SÁCH LỊCH XẾT XỬ</td></tr><tr><td colspan="7" class="no-border text-center font-bold" style="font-size: 12pt; color: #666;">(${exportFilterType === 'createdAt' ? 'Tiêu chí: Trích xuất theo ngày nhập hệ thống' : 'Tiêu chí: Trích xuất theo ngày xét xử'}<br/>Từ ngày: ${exportStart ? moment(exportStart).format("DD/MM/YYYY") : "..."} - Đến ngày: ${exportEnd ? moment(exportEnd).format("DD/MM/YYYY") : "..."})</td></tr><tr><td colspan="7" class="no-border"></td></tr><tr><th class="text-center font-bold" style="background-color: #f2f2f2; width: 50px;">STT</th><th class="text-center font-bold" style="background-color: #f2f2f2; width: 350px;">NỘI DUNG VỤ ÁN</th><th class="text-center font-bold" style="background-color: #f2f2f2; width: 150px;">NGÀY XẾT XỬ</th><th class="text-center font-bold" style="background-color: #f2f2f2; width: 220px;">CHỦ TỌA, THƯ KÝ, KSV</th><th class="text-center font-bold" style="background-color: #f2f2f2; width: 220px;">HỘI THẨM NHÂN DÂN</th><th class="text-center font-bold" style="background-color: #f2f2f2; width: 120px;">PHÒNG XỬ</th><th class="text-center font-bold" style="background-color: #f2f2f2; width: 120px;">NGƯỜI NHẬP</th></tr>`;
     
     dataToExport.forEach((item, index) => {
       const noidung = item.caseType?.includes("Hình sự") 
         ? `<b>${item.caseName || ""}</b><br/>Bị cáo: ${item.plaintiff || item.defendant || ""}`
         : `<b>${item.caseName || ""}</b><br/>NĐ: ${item.plaintiff || ""}<br/>BĐ: ${item.defendant || ""}`;
         
-      const thoigian = `${moment(item.datetime).format("HH")} giờ ${moment(item.datetime).format("mm")} phút<br/>Ngày ${moment(item.datetime).format("DD/MM/YYYY")}`;
+      // 3. XỬ LÝ ĐẸP: Nếu án hoãn hoặc án mới nhập chưa lên lịch cụ thể thì hiện chữ thông báo rõ ràng
+      const thoigian = item.datetime 
+        ? `${moment(item.datetime).format("HH")} giờ ${moment(item.datetime).format("mm")} phút<br/>Ngày ${moment(item.datetime).format("DD/MM/YYYY")}`
+        : `<span style="color: #b45309; font-weight: bold; font-style: italic;">Chờ xếp lịch lại (Án hoãn/Mới)</span>`;
       
       tableHtml += `<tr><td class="text-center">${index + 1}</td><td>${noidung}</td><td class="text-center">${thoigian}</td><td>TP: ${item.judge || ""}<br/>TK: ${item.clerk || ""}<br/>KSV: ${item.prosecutor || ""}</td><td>${item.juror1 || ""}<br/>${item.juror2 || ""}</td><td class="text-center font-bold">${item.room || ""}</td><td class="text-center">${item.createdBy ? item.createdBy.split('@')[0] : ""}</td></tr>`;
     });
@@ -688,7 +699,7 @@ useEffect(() => {
     tableHtml += `</table></body></html>`;
     const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
     const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
-    link.download = `Lich_Xet_Xu_${exportStart ? moment(exportStart).format("MM_YYYY") : "ToanBo"}.xls`;
+    link.download = `Bao_Cao_Lich_Xet_Xu_${exportStart ? moment(exportStart).format("DD_MM_YYYY") : "ToanBo"}.xls`;
     link.click();
     
     setShowExportModal(false); 
