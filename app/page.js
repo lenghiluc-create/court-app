@@ -969,11 +969,16 @@ useEffect(() => {
     <span className="font-bold text-sm">📊 BÁO CÁO THỐNG KÊ</span>
   </div>
 )}
-{canManagePortal && ( 
-  <div onClick={() => { setActiveTab("post_news"); setViewMode("app"); }} className={`cursor-pointer px-3 py-3 rounded-lg flex justify-between items-center transition-all ${activeTab === 'post_news' ? 'bg-purple-600 scale-105' : 'bg-white/10 hover:bg-white/20'}`}>
-    <span className="font-bold text-sm">✍️ VIẾT BẢN TIN</span>
-  </div>
-)}
+{/* 📝 QUẢN LÝ CÔNG VIỆC (TASK MANGER) */}
+  {!isPublicView && (
+    <div 
+      onClick={() => { setActiveTab("tasks"); setViewMode("app"); }} 
+      className={`cursor-pointer px-3 py-3 rounded-lg flex justify-between items-center transition-all mt-2 ${activeTab === 'tasks' ? 'bg-orange-600 scale-105 shadow-md border-l-4 border-yellow-400' : 'bg-white/10 hover:bg-white/20'}`}
+    >
+      <span className="font-bold text-sm">📝 QUẢN LÝ CÔNG VIỆC</span>
+    </div>
+  )}
+
           {/* ⚙️ NHÓM DROPDOWN: QUẢN TRỊ HỆ THỐNG (CHỈ ADMIN MỚI THẤY) */}
           {canManageUsers && !isPublicView && (
             <div className="space-y-2 pt-2 border-t border-white/20 mt-4">
@@ -1650,9 +1655,17 @@ useEffect(() => {
 
   <div className="md:col-span-2">
     <label className="block text-[11px] font-black uppercase text-teal-700">Địa bàn</label>
-    <select value={insForm.commune} onChange={e => setInsForm({...insForm, commune: e.target.value})} className={inputBase}>
-      {communes.map(c => <option key={c} value={c}>{c}</option>)}
-    </select>
+    <input 
+      list="communes-list" 
+      value={insForm.commune} 
+      onChange={e => setInsForm({...insForm, commune: e.target.value})} 
+      className={inputBase} 
+      placeholder="Chọn hoặc gõ xã khác..."
+    />
+    {/* Datalist chứa các xã mặc định để gợi ý */}
+    <datalist id="communes-list">
+      {communes.map(c => <option key={c} value={c} />)}
+    </datalist>
   </div>
 
   <div className="md:col-span-2">
@@ -2152,6 +2165,16 @@ useEffect(() => {
       {activeTab === "roles" && (
         <QuanLyPhanQuyen />
       )}
+      {/* QUẢN LÝ CÔNG VIỆC THƯ KÝ */}
+{activeTab === "tasks" && (
+  <QuanLyCongViec 
+     db={db} 
+     userEmail={user?.email} 
+     userRole={userRole} 
+     clerksList={clerksList} 
+     showToast={showToast} 
+  />
+)}
       
       {activeTab === "manage_portal" && (
   <QuanLyPortal db={db} userEmail={user?.email} showToast={showToast} />
@@ -3004,6 +3027,179 @@ function QuanLyThamPhan({ db, showToast }) {
             <div className="flex gap-2">
               <button onClick={() => handleEditClick(j)} className="p-2 bg-white border border-amber-200 text-amber-600 rounded-lg hover:bg-amber-50 shadow-sm" title="Sửa thông tin">✏️</button>
               <button onClick={() => handleDeleteJudge(j.id, j.name)} className="p-2 bg-white border border-red-200 text-red-500 rounded-lg hover:bg-red-50 shadow-sm" title="Xóa Thẩm phán">🗑️</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+// =========================================================================
+// COMPONENT: QUẢN LÝ CÔNG VIỆC THƯ KÝ (TASK MANAGER)
+// =========================================================================
+function QuanLyCongViec({ db, userEmail, userRole, clerksList, showToast }) {
+  const [tasks, setTasks] = React.useState([]);
+  const [taskForm, setTaskForm] = React.useState({ title: "", assignee: "", deadline: moment().format("YYYY-MM-DD"), priority: "Bình thường", note: "" });
+  const [filterAssignee, setFilterAssignee] = React.useState("all");
+
+  const inputBase = "w-full border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all text-sm font-medium text-gray-800";
+
+  React.useEffect(() => {
+    const loadTasks = async () => {
+      const { collection, query, orderBy, onSnapshot } = await import('firebase/firestore');
+      const q = query(collection(db, "tasks"), orderBy("createdAt", "desc"));
+      onSnapshot(q, (snap) => {
+        setTasks(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+    };
+    loadTasks();
+  }, [db]);
+
+  const handleAddTask = async () => {
+    if (!taskForm.title || !taskForm.assignee) return showToast("Vui lòng nhập Tên công việc và Chọn thư ký!", "error");
+    try {
+      const { collection, addDoc } = await import('firebase/firestore');
+      await addDoc(collection(db, "tasks"), {
+        ...taskForm,
+        status: "todo", // Mặc định là Chưa làm
+        createdAt: moment().toISOString(),
+        createdBy: userEmail
+      });
+      showToast("✅ Đã giao việc thành công!");
+      setTaskForm({ ...taskForm, title: "", note: "" });
+    } catch (e) { showToast("Lỗi giao việc: " + e.message, "error"); }
+  };
+
+  const updateTaskStatus = async (id, newStatus) => {
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      await updateDoc(doc(db, "tasks", id), { status: newStatus, updatedAt: moment().toISOString() });
+      showToast("🔄 Đã chuyển trạng thái công việc!");
+    } catch (e) { showToast("Lỗi: " + e.message, "error"); }
+  };
+
+  const deleteTask = async (id) => {
+    if (window.confirm("Xóa công việc này?")) {
+      try {
+        const { doc, deleteDoc } = await import('firebase/firestore');
+        await deleteDoc(doc(db, "tasks", id));
+        showToast("🗑️ Đã xóa công việc!");
+      } catch (e) { showToast("Lỗi: " + e.message, "error"); }
+    }
+  };
+
+  // Nếu là Thư ký, chỉ thấy việc của mình. Nếu là Admin/Chánh án/Thẩm phán, thấy hết.
+  const isManager = ["chanhan", "admin", "thamphan"].includes(userRole);
+  
+  const displayedTasks = tasks.filter(t => {
+    if (!isManager && t.assignee !== userEmail && !t.assignee.includes(userEmail.split('@')[0])) return false;
+    if (filterAssignee !== "all" && t.assignee !== filterAssignee) return false;
+    return true;
+  });
+
+  const COLUMNS = [
+    { id: "todo", title: "📝 CHƯA LÀM", color: "border-gray-300 bg-gray-50", textColor: "text-gray-700" },
+    { id: "doing", title: "⏳ ĐANG LÀM", color: "border-blue-300 bg-blue-50", textColor: "text-blue-700" },
+    { id: "done", title: "✅ ĐÃ XONG", color: "border-green-300 bg-green-50", textColor: "text-green-700" }
+  ];
+
+  return (
+    <div className="animate-fadeIn space-y-8 max-w-7xl mx-auto">
+      {/* HEADER QUẢN LÝ */}
+      <div className="bg-orange-800 p-8 rounded-2xl text-white shadow-xl flex justify-between items-center bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
+        <div>
+          <h2 className="text-3xl font-black uppercase tracking-widest text-orange-100">Sổ Giao Việc Điện Tử</h2>
+          <p className="opacity-80 font-bold uppercase text-[11px] mt-1 tracking-[0.2em]">Theo dõi tiến độ hàng ngày / tuần</p>
+        </div>
+        <div className="text-5xl">📋</div>
+      </div>
+
+      {/* FORM GIAO VIỆC (CHỈ QUẢN LÝ HOẶC TỰ MÌNH LÊN LỊCH) */}
+      <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
+        <h3 className="font-black text-orange-900 uppercase mb-4 border-b pb-2 flex items-center gap-2">✍️ Giao việc mới</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <input type="text" placeholder="Tên công việc (VD: Tống đạt bản án số 12)..." value={taskForm.title} onChange={e => setTaskForm({...taskForm, title: e.target.value})} className={`md:col-span-2 ${inputBase}`} />
+          
+          <select value={taskForm.assignee} onChange={e => setTaskForm({...taskForm, assignee: e.target.value})} className={inputBase}>
+            <option value="">-- Giao cho Thư ký --</option>
+            <option value={userEmail}>Tự giao cho mình</option>
+            {clerksList && clerksList.map(name => <option key={name} value={name}>{name}</option>)}
+          </select>
+
+          <select value={taskForm.priority} onChange={e => setTaskForm({...taskForm, priority: e.target.value})} className={inputBase}>
+            <option value="Bình thường">🔵 Bình thường</option>
+            <option value="Khẩn cấp">🔴 Khẩn cấp</option>
+          </select>
+
+          <input type="date" value={taskForm.deadline} onChange={e => setTaskForm({...taskForm, deadline: e.target.value})} className={inputBase} title="Hạn chót" />
+          
+          <input type="text" placeholder="Ghi chú thêm..." value={taskForm.note} onChange={e => setTaskForm({...taskForm, note: e.target.value})} className={`md:col-span-2 ${inputBase}`} />
+
+          <button onClick={handleAddTask} className="bg-orange-600 hover:bg-orange-700 text-white font-black py-3 rounded-md uppercase shadow-md active:scale-95 transition-all">
+            LÊN LỊCH
+          </button>
+        </div>
+      </div>
+
+      {/* BỘ LỌC DÀNH CHO LÃNH ĐẠO */}
+      {isManager && (
+        <div className="flex items-center gap-3 bg-white p-4 rounded-xl border shadow-sm">
+          <span className="text-xs font-bold text-gray-500 uppercase">Lọc theo Thư ký:</span>
+          <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)} className="border border-gray-300 rounded px-3 py-1.5 text-sm font-bold text-orange-900 outline-none">
+            <option value="all">Tất cả Thư ký</option>
+            {clerksList && clerksList.map(name => <option key={name} value={name}>{name}</option>)}
+          </select>
+        </div>
+      )}
+
+      {/* KANBAN BOARD - BẢNG KÉO THẢ TRẠNG THÁI */}
+      <div className="flex flex-col md:flex-row gap-6 min-h-[600px]">
+        {COLUMNS.map(col => (
+          <div key={col.id} className={`flex-1 rounded-2xl border-2 ${col.color} flex flex-col overflow-hidden shadow-sm`}>
+            <div className={`p-4 font-black text-center border-b-2 bg-white ${col.textColor}`}>
+              {col.title} <span className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full ml-1 text-xs">{displayedTasks.filter(t => t.status === col.id).length}</span>
+            </div>
+            
+            <div className="p-4 flex-1 overflow-y-auto space-y-4">
+              {displayedTasks.filter(t => t.status === col.id).map(task => {
+                const isOverdue = moment().isAfter(moment(task.deadline)) && task.status !== "done";
+                
+                return (
+                  <div key={task.id} className={`bg-white p-4 rounded-xl border-l-4 shadow-sm hover:shadow-md transition-all relative group ${task.priority === 'Khẩn cấp' ? 'border-red-500' : 'border-blue-500'}`}>
+                    {/* Badge Khẩn / Trễ */}
+                    <div className="flex gap-1 mb-2">
+                      {task.priority === 'Khẩn cấp' && <span className="bg-red-100 text-red-700 text-[9px] font-black px-2 py-0.5 rounded uppercase">Khẩn</span>}
+                      {isOverdue && <span className="bg-orange-600 text-white text-[9px] font-black px-2 py-0.5 rounded uppercase animate-pulse">Trễ Hạn</span>}
+                    </div>
+
+                    <h4 className="font-bold text-sm text-gray-800 mb-1 leading-tight">{task.title}</h4>
+                    {task.note && <p className="text-[11px] text-gray-500 italic mb-3 line-clamp-2">{task.note}</p>}
+                    
+                    <div className="flex flex-col gap-1 text-[11px] font-bold text-gray-600 bg-gray-50 p-2 rounded-lg border border-gray-100 mt-2">
+                      <p>👤 Giao cho: <span className="text-orange-700">{task.assignee}</span></p>
+                      <p className={isOverdue ? "text-red-600" : ""}>🕒 Hạn chót: {moment(task.deadline).format("DD/MM/YYYY")}</p>
+                    </div>
+
+                    {/* Nút thao tác chuyển cột */}
+                    <div className="mt-3 pt-3 border-t border-gray-100 flex gap-2">
+                      {col.id !== "todo" && <button onClick={() => updateTaskStatus(task.id, "todo")} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 py-1.5 rounded text-[10px] font-bold uppercase transition-colors">Về Chưa làm</button>}
+                      {col.id !== "doing" && <button onClick={() => updateTaskStatus(task.id, "doing")} className="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-700 py-1.5 rounded text-[10px] font-bold uppercase transition-colors">Đang làm</button>}
+                      {col.id !== "done" && <button onClick={() => updateTaskStatus(task.id, "done")} className="flex-1 bg-green-100 hover:bg-green-200 text-green-700 py-1.5 rounded text-[10px] font-bold uppercase transition-colors">Hoàn thành</button>}
+                    </div>
+
+                    {/* Nút Xóa hiện lên khi hover */}
+                    {(isManager || task.createdBy === userEmail) && (
+                      <button onClick={() => deleteTask(task.id)} className="absolute top-2 right-2 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                        🗑️
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              
+              {displayedTasks.filter(t => t.status === col.id).length === 0 && (
+                <div className="text-center py-10 text-gray-400 font-bold text-xs italic">Trống</div>
+              )}
             </div>
           </div>
         ))}
