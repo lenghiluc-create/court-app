@@ -3186,10 +3186,31 @@ function QuanLyCongViec({ db, userEmail, userRole, clerksList, showToast }) {
                     <h4 className="font-bold text-sm text-gray-800 mb-1 leading-tight">{task.title}</h4>
                     {task.note && <p className="text-[11px] text-gray-500 italic mb-3 line-clamp-2">{task.note}</p>}
                     
-                    <div className="flex flex-col gap-1 text-[11px] font-bold text-gray-600 bg-gray-50 p-2 rounded-lg border border-gray-100 mt-2">
-                      <p>👤 Giao cho: <span className="text-orange-700">{task.assignee}</span></p>
-                      <p className={isOverdue ? "text-red-600" : ""}>🕒 Hạn chót: {moment(task.deadline).format("DD/MM/YYYY")}</p>
-                    </div>
+                    <div className="flex flex-col gap-1.5 text-[11px] font-bold text-gray-600 bg-gray-50 p-2.5 rounded-xl border border-gray-200/60 mt-2 shadow-inner">
+  <p className="flex items-center gap-1.5">
+    <span className="opacity-70">👤 Giao cho:</span> 
+    <span className="text-orange-800 font-black uppercase">{task.assignee}</span>
+  </p>
+  
+  {/* Đường gạch ngang nét đứt chia tách nội dung */}
+  <div className="border-t border-gray-200 border-dashed my-1"></div>
+  
+  {/* 🕒 NGÀY PHÂN CÔNG (Tự động lấy ngày + giờ phút hệ thống ghi nhận) */}
+  <p className="text-gray-500 flex items-center gap-1">
+    <span>🕒 Ngày phân:</span> 
+    <span className="text-gray-700 font-extrabold">
+      {task.createdAt ? moment(task.createdAt).format("DD/MM/YYYY [lúc] HH:mm") : "---"}
+    </span>
+  </p>
+  
+  {/* 🚨 NGÀY ĐẾN HẠN (Hạn chót hoàn thành, nếu trễ hạn sẽ đổi màu đỏ cảnh báo) */}
+  <p className={`flex items-center gap-1 ${isOverdue ? "text-red-600 font-black animate-pulse" : "text-emerald-700"}`}>
+    <span>📅 Đến hạn:</span> 
+    <span>
+      {task.deadline ? moment(task.deadline).format("DD/MM/YYYY") : "---"}
+    </span>
+  </p>
+</div>
 
                     {/* Nút thao tác chuyển cột */}
                     <div className="mt-3 pt-3 border-t border-gray-100 flex gap-2">
