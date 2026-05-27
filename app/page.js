@@ -200,55 +200,18 @@ const goiYThamPhan = () => {
       setManualJudge(null); // Giao xong thì reset cái chọn tay
     } catch (e) { showToast("Lỗi phân án: " + e.message, "error"); }
   };
-  const handlePhanAnDongLoat = async () => {
-    if (!isChanHan && !isAdmin) return showToast("⛔ Chỉ Chánh án mới có quyền phê duyệt giao án!", "error");
-    if (dsChoPhanAn.length === 0) return;
-
-    const confirmMsg = `🚀 Ní có chắc muốn HỆ THỐNG TỰ ĐỘNG PHÂN CÔNG ĐỒNG LOẠT ${dsChoPhanAn.length} hồ sơ này không?`;
-    if (!window.confirm(confirmMsg)) return;
-
+// 1. HÀM ĐỔI NHANH THẨM PHÁN TRÊN THẺ
+  const handleChangeJudgeDirectly = async (id, judgeName) => {
     try {
       const { doc, updateDoc } = await import('firebase/firestore');
-      
-      // 1. Tạo bản sao tải trọng hiện tại của tất cả Thẩm phán
-      let tempLoads = listJudges.filter(j => j.role !== "Chánh án").map(j => ({
-          name: j.name,
-          tonCu: parseInt(j.tonCu) || 0,
-          soAnDangCho: schedule.filter(a => a.judge === j.name && a.status === 'pending' && !a.datetime).length,
-          weight: j.weight && j.weight > 0 ? j.weight : 1
-      }));
-
-      // 2. Lặp qua từng hồ sơ để giao (AI sẽ tự rải đều hồ sơ)
-      for (let item of dsChoPhanAn) {
-          // Sắp xếp tìm người rảnh nhất ở thời điểm hiện tại
-          tempLoads.sort((a, b) => ((a.tonCu + a.soAnDangCho) / a.weight) - ((b.tonCu + b.soAnDangCho) / b.weight));
-          const targetJudge = tempLoads[0];
-
-          if (!targetJudge) continue;
-
-          // Cập nhật thẳng lên Firebase
-          await updateDoc(doc(db, "schedule", item.id), {
-              judge: targetJudge.name,
-              status: "pending",
-              room: "Chưa phân phòng",
-              updatedAt: moment().toISOString(),
-              updatedBy: user?.email || "Hệ thống tự động"
-          });
-
-          // Mô phỏng cộng thêm 1 án cho Thẩm phán này để hồ sơ tiếp theo hệ thống sẽ chia cho người khác
-          targetJudge.soAnDangCho += 1;
-      }
-
-      showToast(`✅ Đã phân án đồng loạt ${dsChoPhanAn.length} hồ sơ thành công!`, "success");
-      setPhanAnForm({ caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự" });
-      setChoPhanAnId(null);
-      setManualJudge(null);
+      // Lưu tạm tên Thẩm phán do Lãnh đạo chỉ định cứng vào hồ sơ chờ
+      await updateDoc(doc(db, "schedule", id), { judge: judgeName });
     } catch (e) {
-      showToast("Lỗi phân án đồng loạt: " + e.message, "error");
+      showToast("Lỗi: " + e.message, "error");
     }
   };
 
-  // Hàm này dùng để UI "nhìn trước" tương lai xem AI sẽ giao án cho ai
+  // 2. HÀM TÍNH TOÁN DỰ KIẾN (Cập nhật)
   const predictAssignments = () => {
     let tempLoads = listJudges.filter(j => j.role !== "Chánh án").map(j => ({
         name: j.name,
@@ -258,11 +221,70 @@ const goiYThamPhan = () => {
     }));
 
     return dsChoPhanAn.map(item => {
+        // NẾU LÃNH ĐẠO ĐÃ CHỌN TAY TRÊN THẺ -> Tôn trọng ý Lãnh đạo
+        if (item.judge) { 
+           const target = tempLoads.find(j => j.name === item.judge);
+           if (target) target.soAnDangCho += 1;
+           return { ...item, suggestedJudge: item.judge, isManual: true };
+        }
+
+        // NẾU KHÔNG CHỌN -> Để AI tự gán cho người rảnh nhất
         tempLoads.sort((a, b) => ((a.tonCu + a.soAnDangCho) / a.weight) - ((b.tonCu + b.soAnDangCho) / b.weight));
         const target = tempLoads[0];
         if(target) target.soAnDangCho += 1; 
-        return { ...item, suggestedJudge: target ? target.name : "Đang tính..." };
+        return { ...item, suggestedJudge: target ? target.name : "Đang tính...", isManual: false };
     });
+  };
+
+  // 3. HÀM PHÂN ÁN ĐỒNG LOẠT (Cập nhật)
+  const handlePhanAnDongLoat = async () => {
+    if (!isChanHan && !isAdmin) return showToast("⛔ Chỉ Chánh án mới có quyền phê duyệt giao án!", "error");
+    if (dsChoPhanAn.length === 0) return;
+
+    if (!window.confirm(`🚀 Ní có chắc muốn HỆ THỐNG GIAO ĐỒNG LOẠT ${dsChoPhanAn.length} hồ sơ này không?`)) return;
+
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      let tempLoads = listJudges.filter(j => j.role !== "Chánh án").map(j => ({
+          name: j.name,
+          tonCu: parseInt(j.tonCu) || 0,
+          soAnDangCho: schedule.filter(a => a.judge === j.name && a.status === 'pending' && !a.datetime).length,
+          weight: j.weight && j.weight > 0 ? j.weight : 1
+      }));
+
+      for (let item of dsChoPhanAn) {
+          let targetJudgeName = item.judge; // Ưu tiên lấy người đã bị "Chỉ định cứng"
+
+          if (!targetJudgeName) { // Nếu chưa chỉ định thì AI tính toán
+              tempLoads.sort((a, b) => ((a.tonCu + a.soAnDangCho) / a.weight) - ((b.tonCu + b.soAnDangCho) / b.weight));
+              const targetJudge = tempLoads[0];
+              if (targetJudge) {
+                  targetJudgeName = targetJudge.name;
+                  targetJudge.soAnDangCho += 1;
+              }
+          } else { // Cập nhật lại số lượng cho người bị chỉ định cứng để lần sau AI chia công bằng
+              const targetJudge = tempLoads.find(j => j.name === targetJudgeName);
+              if(targetJudge) targetJudge.soAnDangCho += 1;
+          }
+
+          if (!targetJudgeName) continue;
+
+          // Xốt lệnh cập nhật sang Chờ xét xử
+          await updateDoc(doc(db, "schedule", item.id), {
+              judge: targetJudgeName,
+              status: "pending",
+              room: "Chưa phân phòng",
+              updatedAt: moment().toISOString(),
+              updatedBy: user?.email || "Hệ thống tự động"
+          });
+      }
+
+      showToast(`✅ Đã phân án đồng loạt ${dsChoPhanAn.length} hồ sơ thành công!`, "success");
+      setPhanAnForm({ caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự" });
+      setChoPhanAnId(null);
+    } catch (e) {
+      showToast("Lỗi phân án đồng loạt: " + e.message, "error");
+    }
   };
 
   const inputBase = "w-full border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[15px] font-medium text-gray-800";
@@ -1848,13 +1870,26 @@ useEffect(() => {
             <div key={item.id} onClick={() => { setPhanAnForm(item); setChoPhanAnId(item.id); }} className={`min-w-[260px] max-w-[260px] p-4 bg-white border-2 rounded-xl cursor-pointer transition-all hover:border-indigo-400 hover:-translate-y-1 hover:shadow-md ${choPhanAnId === item.id ? 'border-indigo-600 shadow-lg bg-indigo-50/50' : 'border-gray-200'}`}>
               <p className="font-bold text-[13px] text-blue-900 line-clamp-2 mb-3 leading-tight" title={item.caseName}>{item.caseName}</p>
               
-              {/* KHUNG HIỂN THỊ TRƯỚC TÊN THẨM PHÁN */}
-              <div className="bg-indigo-50 p-2.5 rounded-lg border border-indigo-100 mb-3 shadow-sm">
-                 <p className="text-[9px] text-indigo-500 uppercase font-black mb-1 tracking-wider">AI dự kiến giao cho:</p>
-                 <p className="text-xs font-black text-indigo-800 flex items-center gap-1.5">
-                   <span className="text-lg">👨‍⚖️</span> {item.suggestedJudge}
-                 </p>
-              </div>
+             {/* KHUNG HIỂN THỊ VÀ CHO PHÉP ĐỔI TRỰC TIẾP THẨM PHÁN */}
+<div className={`p-2.5 rounded-lg border mb-3 shadow-sm transition-all ${item.isManual ? 'bg-green-50 border-green-200' : 'bg-indigo-50 border-indigo-100'}`}>
+   <p className={`text-[9px] uppercase font-black mb-1.5 tracking-wider ${item.isManual ? 'text-green-600' : 'text-indigo-500'}`}>
+     {item.isManual ? "📌 CHỈ ĐỊNH RIÊNG:" : "🤖 AI ĐỀ XUẤT CHO:"}
+   </p>
+   
+   <select 
+      value={item.judge || ""} 
+      onChange={(e) => {
+          e.stopPropagation(); // Rất quan trọng: Ngăn không cho click nhầm sang việc chọn hồ sơ sửa
+          handleChangeJudgeDirectly(item.id, e.target.value);
+      }}
+      className={`w-full text-xs font-black p-2 rounded outline-none border cursor-pointer ${item.isManual ? 'bg-green-100 text-green-800 border-green-300' : 'bg-white text-indigo-800 border-indigo-200 shadow-inner'}`}
+   >
+      <option value="">🤖 Tự động (Đề xuất: {item.suggestedJudge})</option>
+      {listJudges.filter(j => j.role !== "Chánh án").map(j => (
+         <option key={j.id} value={j.name}>👨‍⚖️ {j.name}</option>
+      ))}
+   </select>
+</div>
 
               <div className="flex justify-between items-center text-[10px] text-gray-500 pt-2 border-t border-gray-100">
                  <p>Loại án: <span className="font-black text-gray-700">{item.caseType}</span></p>
