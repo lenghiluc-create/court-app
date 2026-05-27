@@ -2003,19 +2003,46 @@ useEffect(() => {
       <div className="bg-slate-900 p-8 rounded-2xl text-white shadow-2xl relative overflow-hidden border-2 border-indigo-500/30">
         <div className="absolute top-0 right-0 p-4 opacity-10 text-8xl">⚖️</div>
         
-        <h3 className="text-indigo-400 font-black uppercase tracking-tighter text-sm mb-6 flex items-center gap-2">
+        <h3 className="text-indigo-400 font-black uppercase tracking-tighter text-sm mb-4 flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full animate-ping ${manualJudge ? 'bg-green-500' : 'bg-indigo-500'}`}></span>
-          {manualJudge ? "Chế độ: Chỉ định Thẩm phán" : "Hệ thống phân tích (AI Suggest)"}
+          {manualJudge ? "Chế độ: Lãnh đạo chỉ định" : "Hệ thống phân tích (AI Suggest)"}
         </h3>
 
-        {/* CÂU LỆNH ĐIỀU KIỆN 1: Kiểm tra xem có AI hoặc có chọn tay không */}
+        {/* BỘ LỌC TỰ CHỌN BỔ SUNG (GHI ĐÈ AI) */}
+        <div className="mb-6 relative z-10 bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+          <label className="block text-[11px] uppercase font-black text-gray-400 mb-2 tracking-widest">
+            Thay đổi Thẩm phán thủ công:
+          </label>
+          <select 
+            value={manualJudge ? manualJudge.name : ""} 
+            onChange={(e) => {
+              const selectedName = e.target.value;
+              if (!selectedName) {
+                setManualJudge(null); // Trả lại quyền phân án cho AI
+              } else {
+                const judgeObj = listJudges.find(j => j.name === selectedName);
+                setManualJudge(judgeObj);
+              }
+            }}
+            className="w-full bg-slate-800 border border-slate-600 text-yellow-400 text-sm font-black p-3 rounded-lg outline-none focus:border-indigo-500 transition-all cursor-pointer shadow-inner"
+          >
+            <option value="" className="text-white">🤖 Cho phép Hệ thống AI tự tính toán</option>
+            {listJudges.filter(j => j.role !== "Chánh án").map(j => (
+              <option key={j.id} value={j.name} className="text-white">
+                👨‍⚖️ {j.name} (Đang thụ lý: {parseInt(j.tonCu) || 0} vụ)
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* HIỂN THỊ THÔNG TIN THẨM PHÁN SẼ ĐƯỢC GIAO */}
         {goiYThamPhan() || manualJudge ? (
           <div className="space-y-6 relative z-10">
             <div className="text-center">
               <p className="text-gray-400 text-xs uppercase font-bold mb-1">
-                {manualJudge ? "Thẩm phán được chọn:" : "Đề xuất Thẩm phán thụ lý:"}
+                {manualJudge ? "Thẩm phán được đích danh chọn:" : "Đề xuất Thẩm phán thụ lý:"}
               </p>
-              <h4 className={`text-4xl font-black tracking-tight ${manualJudge ? 'text-green-400' : 'text-yellow-400'}`}>
+              <h4 className={`text-3xl md:text-4xl font-black tracking-tight ${manualJudge ? 'text-green-400' : 'text-yellow-400'}`}>
                 {manualJudge ? manualJudge.name : goiYThamPhan()?.name}
               </h4>
               <span className="inline-block mt-2 px-4 py-1 bg-indigo-500/20 border border-indigo-500/40 rounded-full text-[10px] font-black uppercase">
@@ -2025,8 +2052,8 @@ useEffect(() => {
 
             {/* BẢNG THỐNG KÊ SỐ LIỆU ĐANG ÔM */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white/5 p-4 rounded-xl border border-white/10 text-center">
-                <p className="text-[10px] text-gray-500 uppercase font-bold">Số án đang ôm</p>
+              <div className="bg-white/5 p-4 rounded-xl border border-white/10 text-center shadow-inner">
+                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Số án đang ôm</p>
                 <div className="flex items-end justify-center gap-1">
                   <span className={`text-2xl font-black ${manualJudge ? 'text-green-300' : 'text-indigo-300'}`}>
                     {manualJudge 
@@ -2037,8 +2064,8 @@ useEffect(() => {
                 </div>
               </div>
 
-              <div className="bg-white/5 p-4 rounded-xl border border-white/10 text-center">
-                <p className="text-[10px] text-gray-500 uppercase font-bold">Định mức</p>
+              <div className="bg-white/5 p-4 rounded-xl border border-white/10 text-center shadow-inner">
+                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Định mức</p>
                 <div className="flex items-end justify-center gap-1">
                   <span className="text-2xl font-black text-gray-300">
                     {manualJudge ? (manualJudge.weight || 1) * 100 : (goiYThamPhan()?.weight || 1) * 100}
@@ -2048,14 +2075,20 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* CÂU LỆNH ĐIỀU KIỆN 2: Kiểm tra xem có phải Chánh án/Admin không để hiện nút bấm */}
+            {/* NÚT XÁC NHẬN GIAO ÁN ĐƠN LẺ */}
             {(isChanHan || isAdmin) ? (
-              <button 
-                onClick={handleLuuPhanAn} 
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-xl shadow-xl transition-all active:scale-95 uppercase tracking-widest text-sm"
-              >
-                XÁC NHẬN GIAO ÁN NÀY
-              </button>
+              choPhanAnId ? (
+                <button 
+                  onClick={handleLuuPhanAn} 
+                  className={`w-full font-black py-4 rounded-xl shadow-xl transition-all active:scale-95 uppercase tracking-widest text-sm ${manualJudge ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-red-600 hover:bg-red-700 text-white'}`}
+                >
+                  XÁC NHẬN GIAO CHO VỤ NÀY
+                </button>
+              ) : (
+                <div className="w-full bg-gray-800/80 border border-gray-700 text-gray-400 font-bold py-4 rounded-xl text-center text-xs px-2 italic">
+                  👈 Chọn 1 hồ sơ bên trái để giao lẻ, hoặc bấm "Phân án đồng loạt" ở trên
+                </div>
+              )
             ) : (
               <div className="w-full bg-gray-800 border border-gray-700 text-gray-500 font-black py-4 rounded-xl text-center uppercase tracking-widest text-sm cursor-not-allowed">
                 ⛔ CHỈ CHÁNH ÁN ĐƯỢC PHÊ DUYỆT
