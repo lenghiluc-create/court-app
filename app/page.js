@@ -203,7 +203,6 @@ const goiYThamPhan = () => {
 // 1. HÀM ĐỔI NHANH THẨM PHÁN TRÊN THẺ
   const handleChangeJudgeDirectly = async (id, judgeName) => {
     try {
-      const { doc, updateDoc } = await import('firebase/firestore');
       // Lưu tạm tên Thẩm phán do Lãnh đạo chỉ định cứng vào hồ sơ chờ
       await updateDoc(doc(db, "schedule", id), { judge: judgeName });
     } catch (e) {
@@ -536,22 +535,19 @@ useEffect(() => {
       ghiNhatKy("Xóa lịch (Cảnh báo)", `Đã xóa vụ án: ${caseName}`); 
     }
   };
-  const handleDeleteIns = async (id) => {
-  if (window.confirm("Ní có chắc muốn xóa lịch thẩm định này không?")) {
-    try {
-      const { doc, deleteDoc } = await import("firebase/firestore");
-      const { db } = await import("./firebase"); 
-      
-      await deleteDoc(doc(db, "inspections", id));
-      
-      setToast({ show: true, message: "Đã xóa lịch thẩm định!", type: "success" });
-      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-    } catch (error) {
-      console.error("Lỗi xóa:", error);
-      setToast({ show: true, message: "Lỗi: " + error.message, type: "error" });
+ const handleDeleteIns = async (id) => {
+    if (window.confirm("Ní có chắc muốn xóa lịch thẩm định này không?")) {
+      try {
+        // Gọi thẳng lệnh deleteDoc luôn, không cần import lại nữa
+        await deleteDoc(doc(db, "inspections", id));
+        
+        showToast("Đã xóa lịch thẩm định thành công!", "success");
+      } catch (error) {
+        console.error("Lỗi xóa:", error);
+        showToast("Lỗi khi xóa: " + error.message, "error");
+      }
     }
-  }
-};
+  };
 
   const onEventDrop = async ({ event, start, end }) => {
     if (!canEditSchedule) return showToast("Không có quyền dời lịch!", "error");
@@ -2025,14 +2021,37 @@ useEffect(() => {
           </select>
         </div>
         
-        {/* Nút lưu nháp đưa xuống đây */}
-        <button 
-          onClick={handleLuuChoPhanAn}
-          className="w-full mt-4 bg-gray-100 hover:bg-gray-200 text-gray-700 border-2 border-gray-300 font-black py-4 rounded-xl shadow-sm transition-all active:scale-95 uppercase tracking-widest text-sm"
-        >
-          LƯU VÀO DANH SÁCH CHỜ (CHƯA PHÂN)
-        </button>
-      </div>
+       <button 
+            onClick={handleLuuChoPhanAn}
+            className={`flex-1 text-white font-black py-4 rounded-xl shadow-md transition-all active:scale-95 uppercase tracking-widest text-sm ${choPhanAnId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-gray-800 hover:bg-black'}`}
+          >
+            {choPhanAnId ? "✏️ CẬP NHẬT HỒ SƠ ĐANG CHỌN" : "LƯU MỚI VÀO DANH SÁCH CHỜ"}
+          </button>
+
+          {/* HIỆN THÊM NÚT XÓA KHI ĐANG CHỌN SỬA HỒ SƠ CŨ */}
+          {choPhanAnId && (
+            <button 
+              onClick={async () => {
+                if (window.confirm("⚠️ Bạn có chắc muốn xóa vĩnh viễn hồ sơ này khỏi danh sách chờ không?")) {
+                  try {
+                    // Dùng thẳng deleteDoc, đã bỏ dòng import gây lỗi
+                    await deleteDoc(doc(db, "schedule", choPhanAnId));
+                    
+                    showToast("Đã xóa hồ sơ chờ thành công!", "success");
+                    setPhanAnForm({ caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự" });
+                    setChoPhanAnId(null);
+                  } catch(e) {
+                    showToast("Lỗi xóa: " + e.message, "error");
+                  }
+                }
+              }}
+              className="bg-red-50 hover:bg-red-500 text-red-600 hover:text-white border-2 border-red-200 hover:border-red-500 font-black px-5 rounded-xl shadow-sm transition-all active:scale-95"
+              title="Xóa hồ sơ khỏi danh sách chờ"
+            >
+              🗑️ XÓA
+            </button>
+          )}
+        </div>
 
       {/* CỘT PHẢI: KẾT QUẢ PHÂN ÁN BẰNG AI HOẶC CHỌN TAY */}
       <div className="bg-slate-900 p-8 rounded-2xl text-white shadow-2xl relative overflow-hidden border-2 border-indigo-500/30">
