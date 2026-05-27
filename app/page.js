@@ -200,6 +200,70 @@ const goiYThamPhan = () => {
       setManualJudge(null); // Giao xong thì reset cái chọn tay
     } catch (e) { showToast("Lỗi phân án: " + e.message, "error"); }
   };
+  const handlePhanAnDongLoat = async () => {
+    if (!isChanHan && !isAdmin) return showToast("⛔ Chỉ Chánh án mới có quyền phê duyệt giao án!", "error");
+    if (dsChoPhanAn.length === 0) return;
+
+    const confirmMsg = `🚀 Ní có chắc muốn HỆ THỐNG TỰ ĐỘNG PHÂN CÔNG ĐỒNG LOẠT ${dsChoPhanAn.length} hồ sơ này không?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      
+      // 1. Tạo bản sao tải trọng hiện tại của tất cả Thẩm phán
+      let tempLoads = listJudges.filter(j => j.role !== "Chánh án").map(j => ({
+          name: j.name,
+          tonCu: parseInt(j.tonCu) || 0,
+          soAnDangCho: schedule.filter(a => a.judge === j.name && a.status === 'pending' && !a.datetime).length,
+          weight: j.weight && j.weight > 0 ? j.weight : 1
+      }));
+
+      // 2. Lặp qua từng hồ sơ để giao (AI sẽ tự rải đều hồ sơ)
+      for (let item of dsChoPhanAn) {
+          // Sắp xếp tìm người rảnh nhất ở thời điểm hiện tại
+          tempLoads.sort((a, b) => ((a.tonCu + a.soAnDangCho) / a.weight) - ((b.tonCu + b.soAnDangCho) / b.weight));
+          const targetJudge = tempLoads[0];
+
+          if (!targetJudge) continue;
+
+          // Cập nhật thẳng lên Firebase
+          await updateDoc(doc(db, "schedule", item.id), {
+              judge: targetJudge.name,
+              status: "pending",
+              room: "Chưa phân phòng",
+              updatedAt: moment().toISOString(),
+              updatedBy: user?.email || "Hệ thống tự động"
+          });
+
+          // Mô phỏng cộng thêm 1 án cho Thẩm phán này để hồ sơ tiếp theo hệ thống sẽ chia cho người khác
+          targetJudge.soAnDangCho += 1;
+      }
+
+      showToast(`✅ Đã phân án đồng loạt ${dsChoPhanAn.length} hồ sơ thành công!`, "success");
+      setPhanAnForm({ caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự" });
+      setChoPhanAnId(null);
+      setManualJudge(null);
+    } catch (e) {
+      showToast("Lỗi phân án đồng loạt: " + e.message, "error");
+    }
+  };
+
+  // Hàm này dùng để UI "nhìn trước" tương lai xem AI sẽ giao án cho ai
+  const predictAssignments = () => {
+    let tempLoads = listJudges.filter(j => j.role !== "Chánh án").map(j => ({
+        name: j.name,
+        tonCu: parseInt(j.tonCu) || 0,
+        soAnDangCho: schedule.filter(a => a.judge === j.name && a.status === 'pending' && !a.datetime).length,
+        weight: j.weight && j.weight > 0 ? j.weight : 1
+    }));
+
+    return dsChoPhanAn.map(item => {
+        tempLoads.sort((a, b) => ((a.tonCu + a.soAnDangCho) / a.weight) - ((b.tonCu + b.soAnDangCho) / b.weight));
+        const target = tempLoads[0];
+        if(target) target.soAnDangCho += 1; 
+        return { ...item, suggestedJudge: target ? target.name : "Đang tính..." };
+    });
+  };
 
   const inputBase = "w-full border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-[15px] font-medium text-gray-800";
   const labelStyle = "block text-center text-[13px] font-black text-teal-900 bg-teal-100 border border-teal-200 py-2.5 px-4 rounded-md mb-2 w-full uppercase tracking-widest shadow-sm"; 
@@ -1765,14 +1829,37 @@ useEffect(() => {
     
     {/* 1. KHAY CHỨA DANH SÁCH CHỜ PHÂN ÁN */}
     {dsChoPhanAn.length > 0 && (
-      <div className="mb-8 bg-amber-50 p-4 rounded-xl border border-amber-200 shadow-inner">
-        <h3 className="text-sm font-black text-amber-800 uppercase mb-3 flex items-center gap-2"><span className="text-lg">📁</span> Danh sách hồ sơ chờ duyệt phân án ({dsChoPhanAn.length})</h3>
+      <div className="mb-8 bg-amber-50 p-5 rounded-xl border border-amber-200 shadow-inner relative">
+        <div className="flex justify-between items-center mb-4 border-b border-amber-200 pb-3">
+           <h3 className="text-sm font-black text-amber-800 uppercase flex items-center gap-2">
+             <span className="text-xl">📁</span> Danh sách hồ sơ chờ phân án ({dsChoPhanAn.length})
+           </h3>
+           
+           {/* NÚT PHÂN ÁN ĐỒNG LOẠT THẦN THÁNH */}
+           {(isChanHan || isAdmin) && (
+             <button onClick={handlePhanAnDongLoat} className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg text-[11px] font-black uppercase shadow-md transition-all flex items-center gap-2 active:scale-95">
+               <span>🚀 Phân Án Đồng Loạt</span>
+             </button>
+           )}
+        </div>
+        
         <div className="flex gap-4 overflow-x-auto pb-2 custom-scrollbar">
-          {dsChoPhanAn.map(item => (
-            <div key={item.id} onClick={() => { setPhanAnForm(item); setChoPhanAnId(item.id); }} className={`min-w-[250px] max-w-[250px] p-3 bg-white border-2 rounded-lg cursor-pointer transition-all hover:border-indigo-400 hover:-translate-y-1 hover:shadow-md ${choPhanAnId === item.id ? 'border-indigo-600 shadow-lg bg-indigo-50/50' : 'border-gray-200'}`}>
-              <p className="font-bold text-[12px] text-blue-900 truncate" title={item.caseName}>{item.caseName}</p>
-              <p className="text-[10px] text-gray-500 mt-1">Loại án: <span className="font-bold">{item.caseType}</span></p>
-              <p className="text-[10px] text-gray-400 mt-0.5 italic">Nhập bởi: {item.createdBy?.split('@')[0]}</p>
+          {predictAssignments().map(item => (
+            <div key={item.id} onClick={() => { setPhanAnForm(item); setChoPhanAnId(item.id); }} className={`min-w-[260px] max-w-[260px] p-4 bg-white border-2 rounded-xl cursor-pointer transition-all hover:border-indigo-400 hover:-translate-y-1 hover:shadow-md ${choPhanAnId === item.id ? 'border-indigo-600 shadow-lg bg-indigo-50/50' : 'border-gray-200'}`}>
+              <p className="font-bold text-[13px] text-blue-900 line-clamp-2 mb-3 leading-tight" title={item.caseName}>{item.caseName}</p>
+              
+              {/* KHUNG HIỂN THỊ TRƯỚC TÊN THẨM PHÁN */}
+              <div className="bg-indigo-50 p-2.5 rounded-lg border border-indigo-100 mb-3 shadow-sm">
+                 <p className="text-[9px] text-indigo-500 uppercase font-black mb-1 tracking-wider">AI dự kiến giao cho:</p>
+                 <p className="text-xs font-black text-indigo-800 flex items-center gap-1.5">
+                   <span className="text-lg">👨‍⚖️</span> {item.suggestedJudge}
+                 </p>
+              </div>
+
+              <div className="flex justify-between items-center text-[10px] text-gray-500 pt-2 border-t border-gray-100">
+                 <p>Loại án: <span className="font-black text-gray-700">{item.caseType}</span></p>
+                 <p className="italic font-medium">Nhập: {item.createdBy?.split('@')[0]}</p>
+              </div>
             </div>
           ))}
         </div>
