@@ -516,6 +516,30 @@ useEffect(() => {
       ghiNhatKy("Đổi trạng thái", `Chuyển vụ "${caseName}" sang: ${newStatus}`);
     } catch (err) { showToast("Lỗi cập nhật trạng thái", "error"); }
   };
+  // HÀM CẬP NHẬT TRẠNG THÁI NGHỊ ÁN 
+  const updateCaseStatus = async (id, status) => {
+    let extraData = {};
+    if (status === 'nghi_an') {
+      const duKien = window.prompt("⚖️ Vụ án chuyển sang Nghị án.\nNhập ngày dự kiến tuyên án (VD: 30/05/2026):");
+      if (duKien) {
+        extraData = { duKienTuyenAn: duKien };
+      } else {
+        return; // Nếu Thư ký bấm Hủy thì không làm gì cả
+      }
+    }
+    
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      await updateDoc(doc(db, "schedule", id), { 
+        status: status, 
+        ...extraData,
+        updatedAt: new Date().toISOString()
+      });
+      showToast("✅ Đã cập nhật trạng thái thành công!", "success");
+    } catch (e) {
+      showToast("Lỗi cập nhật: " + e.message, "error");
+    }
+  };
 
   const togglePublish = async (item) => {
     try {
@@ -1400,6 +1424,7 @@ useEffect(() => {
                   <select value={statusFilter} onChange={e => {setStatusFilter(e.target.value); setShowOnlyUrgent(false);}} className={filterStyle}>
                      <option value="all">📁 Tất cả Trạng thái</option>
                      <option value="pending">⏳ Đang chờ xử</option>
+                     <option value="nghi_an">📁 Đang nghị án</option>
                      <option value="suspended">⏸ Tạm ngừng</option>
                      <option value="completed">✅ Đã xử xong</option>
                   </select>
@@ -1555,11 +1580,18 @@ useEffect(() => {
     <span className="text-[11px] font-bold text-red-700">{item.prosecutor || "---"}</span>
   </div>
 </td>
-
+{/* Trong phần hiển thị trạng thái của vụ án */}
+{item.status === 'nghi_an' && (
+  <span className="bg-purple-600 text-white px-2 py-1 rounded-full text-[10px] font-black uppercase animate-pulse">
+    ⚖️ Đang Nghị Án
+  </span>
+)}
+{/* BẮT ĐẦU CỘT THAO TÁC */}
 {(canEdit || userRole === 'thamphan') && (
   <td className="px-2 py-2 w-[15%] align-top text-center border border-gray-300">
     <div className="flex flex-col gap-1.5 w-full max-w-[130px] mx-auto">
       
+      {/* CÁC NÚT KHI ÁN ĐANG CHỜ XỬ HOẶC CHƯA CÓ TRẠNG THÁI */}
       {canEdit && (item.status === 'pending' || !item.status) && (
         <>
           <div className="grid grid-cols-2 gap-1">
@@ -1582,9 +1614,36 @@ useEffect(() => {
           >
             ⏸ TẠM NGỪNG
           </button>
+          
+          {/* 🚨 NÚT NGHỊ ÁN MỚI ĐƯỢC THÊM VÀO ĐÂY 🚨 */}
+          <button 
+            onClick={() => updateCaseStatus(item.id, 'nghi_an')} 
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-1.5 font-black uppercase text-[9px] rounded-sm shadow-md transition-all animate-pulse"
+          >
+            ⚖️ NGHỊ ÁN
+          </button>
         </>
       )}
 
+      {/* HIỂN THỊ KHI ĐANG NGHỊ ÁN */}
+      {item.status === 'nghi_an' && (
+        <div className="bg-indigo-100 border border-indigo-300 p-1.5 rounded-sm mb-1">
+          <p className="text-[10px] font-black text-indigo-800 uppercase">Đang nghị án</p>
+          {item.duKienTuyenAn && (
+            <p className="text-[9px] font-bold text-indigo-600 mt-0.5">Dự kiến: {item.duKienTuyenAn}</p>
+          )}
+          {canEdit && (
+             <button 
+               onClick={() => toggleStatus(item.id, 'pending', item.caseName)} 
+               className="mt-1 w-full bg-white hover:bg-gray-100 text-indigo-700 py-1 font-black uppercase text-[8px] rounded border border-indigo-200"
+             >
+               MỞ LẠI
+             </button>
+          )}
+        </div>
+      )}
+
+      {/* CÁC NÚT KHI ÁN ĐÃ XONG */}
       {item.status === 'completed' && (
         <div className="grid grid-cols-1 gap-1.5">
            <button 
@@ -1603,7 +1662,6 @@ useEffect(() => {
              <button 
                onClick={() => toggleStatus(item.id, 'pending', item.caseName)} 
                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 py-1.5 font-black uppercase text-[9px] rounded-sm border"
-               title="Chuyển vụ án về lại trạng thái Chờ xử"
              >
                MỞ LẠI
              </button>
@@ -1611,15 +1669,17 @@ useEffect(() => {
         </div>
       )}
 
-      {canEdit && item.status !== 'completed' && (
+      {/* NÚT LÊN LỊCH LẠI */}
+      {canEdit && item.status !== 'completed' && item.status !== 'nghi_an' && (
         <button 
           onClick={() => handleReschedule(item)} 
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 font-black uppercase text-[9px] rounded-sm shadow-md"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 font-black uppercase text-[9px] rounded-sm shadow-md mt-1"
         >
           LÊN LỊCH LẠI
         </button>
       )}
 
+      {/* NHÓM NÚT SỬA / LOG / XÓA */}
       {canEdit && (
         <div className="pt-2 border-t border-dashed border-gray-200 mt-1 flex flex-col gap-1">
           <div className="grid grid-cols-2 gap-1">
@@ -1646,11 +1706,11 @@ useEffect(() => {
             </button>
           )}
         </div>
-      )} 
-
+      )}
     </div>
   </td>
 )}
+{/* KẾT THÚC CỘT THAO TÁC */}
             </tr>
           );
         })}
