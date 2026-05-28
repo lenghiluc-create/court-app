@@ -328,7 +328,7 @@ useEffect(() => {
       setActiveTab("trial"); 
     }
     setIsMounted(true);
-    const qIns = query(collection(db, "inspections"), orderBy("date", "desc"));
+    const qIns = query(collection(db, "inspections"), orderBy("date", "asc"));
       const unsubscribeIns = onSnapshot(qIns, (snapshot) => {
         setInspections(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       });
@@ -1881,7 +1881,7 @@ useEffect(() => {
       className={`w-full text-xs font-black p-2 rounded outline-none border cursor-pointer ${item.isManual ? 'bg-green-100 text-green-800 border-green-300' : 'bg-white text-indigo-800 border-indigo-200 shadow-inner'}`}
    >
       <option value="">🤖 Tự động (Đề xuất: {item.suggestedJudge})</option>
-      {listJudges.filter(j => j.role !== "Chánh án").map(j => (
+      {listJudges.map(j => (
          <option key={j.id} value={j.name}>👨‍⚖️ {j.name}</option>
       ))}
    </select>
@@ -1920,7 +1920,7 @@ useEffect(() => {
             </thead>
             
             <tbody>
-            {listJudges.map(judge => {
+            {listJudges.filter(j => j.role !== "Chánh án").map(judge => {
               // HỆ THỐNG LẤY SỐ TỔNG (ĐÃ BAO GỒM GỐC CẤU HÌNH + ÁN MỚI PHÂN)
               const statsCuaJudge = bangMaTranPhanAn.stats[judge.name] || {};
               const tongTatCa = Object.values(statsCuaJudge).reduce((acc, val) => acc + (val || 0), 0);
@@ -2030,7 +2030,7 @@ useEffect(() => {
 
           {/* HIỆN THÊM NÚT XÓA KHI ĐANG CHỌN SỬA HỒ SƠ CŨ */}
           {choPhanAnId && (
-            <button 
+            <button   
               onClick={async () => {
                 if (window.confirm("⚠️ Bạn có chắc muốn xóa vĩnh viễn hồ sơ này khỏi danh sách chờ không?")) {
                   try {
@@ -2081,7 +2081,7 @@ useEffect(() => {
             className="w-full bg-slate-800 border border-slate-600 text-yellow-400 text-sm font-black p-3 rounded-lg outline-none focus:border-indigo-500 transition-all cursor-pointer shadow-inner"
           >
             <option value="" className="text-white">🤖 Cho phép Hệ thống AI tự tính toán</option>
-            {listJudges.filter(j => j.role !== "Chánh án").map(j => (
+            {listJudges.map(j => (
               <option key={j.id} value={j.name} className="text-white">
                 👨‍⚖️ {j.name} (Đang thụ lý: {parseInt(j.tonCu) || 0} vụ)
               </option>
@@ -3200,7 +3200,7 @@ function QuanLyThamPhan({ db, showToast }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {listJudges.map(j => (
+        {listJudges.filter(j => j.role !== "Chánh án").map(j => (
           <div key={j.id} className="p-4 border border-gray-200 rounded-xl flex justify-between items-center bg-gray-50 group hover:border-blue-300 transition-all">
             <div className="flex-1">
               <p className="font-black text-blue-900 text-sm uppercase">{j.name}</p>
