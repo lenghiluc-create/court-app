@@ -1465,6 +1465,7 @@ useEffect(() => {
           
           return (
             <tr key={item.id} className={`transition-all ${rowBgClass}`}>
+              {/* CỘT 1: LỊCH & CẬP NHẬT */}
               <td className={`px-2 py-2 w-[15%] align-top text-center border-r border-gray-300 ${isRowUrgent ? 'border-l-4 border-l-red-500' : isForgotten ? 'border-l-4 border-l-orange-500' : ''}`}>
                 {item.status === 'suspended' ? (
                   <div className="text-purple-600 font-bold uppercase text-[10px]">⏸ Tạm ngừng</div>
@@ -1481,236 +1482,171 @@ useEffect(() => {
                 </div>
               </td>
 
-<td className="px-2 py-2 w-[45%] align-top border border-gray-300">
-  <div className="font-bold uppercase text-blue-900 text-[12px] mb-1.5 leading-tight line-clamp-2 break-words">
-    {item.caseName || "Vụ án chưa có tên"}
-  </div>
-  
-  <div className="flex flex-wrap gap-1 mb-2">
-    {isForgotten && (
-      <span className="bg-orange-600 text-white text-[9px] px-2 py-1 rounded font-black uppercase animate-pulse shadow-sm">
-        ⚠️ QUÊN CẬP NHẬT
-      </span>
-    )}
-    {isRowUrgent && (
-      <span className="bg-red-600 text-white text-[9px] px-2 py-1 rounded font-black uppercase animate-pulse shadow-sm">
-        🔥 SẮP XỬ (24H)
-      </span>
-    )}
-    {overduePublish && (
-      <span className="bg-red-600 text-white text-[9px] font-black px-2 py-1 rounded border border-red-700 animate-pulse uppercase">
-        🚨 CHẬM PHÁT HÀNH
-      </span>
-    )}
-    {effective && (
-      <span className="bg-teal-100 text-teal-800 text-[9px] font-black px-2 py-1 rounded border border-teal-200 uppercase">
-        ⚖️ ÁN CÓ HIỆU LỰC
-      </span>
-    )}
-  </div>
+              {/* CỘT 2: NỘI DUNG & CẢNH BÁO */}
+              <td className="px-2 py-2 w-[45%] align-top border border-gray-300">
+                <div className="font-bold uppercase text-blue-900 text-[12px] mb-1.5 leading-tight line-clamp-2 break-words">
+                  {item.caseName || "Vụ án chưa có tên"}
+                </div>
+                
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {isForgotten && (
+                    <span className="bg-orange-600 text-white text-[9px] px-2 py-1 rounded font-black uppercase animate-pulse shadow-sm">
+                      ⚠️ QUÊN CẬP NHẬT
+                    </span>
+                  )}
+                  {isRowUrgent && (
+                    <span className="bg-red-600 text-white text-[9px] px-2 py-1 rounded font-black uppercase animate-pulse shadow-sm">
+                      🔥 SẮP XỬ (24H)
+                    </span>
+                  )}
+                  {overduePublish && (
+                    <span className="bg-red-600 text-white text-[9px] font-black px-2 py-1 rounded border border-red-700 animate-pulse uppercase">
+                      🚨 CHẬM PHÁT HÀNH
+                    </span>
+                  )}
+                  {effective && (
+                    <span className="bg-teal-100 text-teal-800 text-[9px] font-black px-2 py-1 rounded border border-teal-200 uppercase">
+                      ⚖️ ÁN CÓ HIỆU LỰC
+                    </span>
+                  )}
+                  {/* TUI ĐÃ CHUYỂN THẺ NGHỊ ÁN VÀO ĐÂY CHO ĐÚNG LUẬT HTML */}
+                  {item.status === 'nghi_an' && (
+                    <span className="bg-purple-600 text-white text-[9px] px-2 py-1 rounded font-black uppercase animate-pulse shadow-sm">
+                      ⚖️ ĐANG NGHỊ ÁN
+                    </span>
+                  )}
+                </div>
 
-  <div className="text-gray-500 font-bold text-[11px]">
-    <p className="mb-2 italic opacity-70">{item.caseType} / {item.trialCount}</p>
-    
-    <div className="space-y-0.5 bg-gray-50/50 p-1.5 rounded-md border border-gray-100">
-  {item.caseType?.includes("Hình sự") ? (
-    <div className="flex flex-col">
-       <span className="text-red-600 uppercase text-[9px]">Bị cáo:</span>
-       <span className="text-[11px] font-bold text-gray-800 uppercase">
-         {item.plaintiff || item.defendant || "---"}
-       </span>
-    </div>
-    ) : item.caseType?.includes("Cai nghiện") ? (
-        <div className="flex flex-col">
-           <span className="text-teal-600 uppercase text-[9px]">Người bị đề nghị:</span>
-           <span className="text-[11px] font-bold text-gray-800 uppercase">
-             {item.plaintiff || item.defendant || "---"}
-           </span>
-        </div>
-  ) : (
-    <div className="space-y-1">
-      <div className="flex flex-col">
-        <span className="text-gray-500 uppercase text-[9px]">NĐ:</span>
-        <span className="text-[11px] font-bold text-gray-800 uppercase">
-          {item.plaintiff || "---"}
-        </span>
-      </div>
-      <div className="flex flex-col">
-        <span className="text-gray-500 uppercase text-[9px]">BĐ:</span>
-        <span className="text-[11px] font-bold text-gray-800 uppercase">
-          {item.defendant || "---"}
-        </span>
-      </div>
-    </div>
-  )}
-</div>
-  </div>
+                <div className="text-gray-500 font-bold text-[11px]">
+                  <p className="mb-2 italic opacity-70">{item.caseType} / {item.trialCount}</p>
+                  
+                  <div className="space-y-0.5 bg-gray-50/50 p-1.5 rounded-md border border-gray-100">
+                {item.caseType?.includes("Hình sự") ? (
+                  <div className="flex flex-col">
+                     <span className="text-red-600 uppercase text-[9px]">Bị cáo:</span>
+                     <span className="text-[11px] font-bold text-gray-800 uppercase">
+                       {item.plaintiff || item.defendant || "---"}
+                     </span>
+                  </div>
+                  ) : item.caseType?.includes("Cai nghiện") ? (
+                      <div className="flex flex-col">
+                         <span className="text-teal-600 uppercase text-[9px]">Người bị đề nghị:</span>
+                         <span className="text-[11px] font-bold text-gray-800 uppercase">
+                           {item.plaintiff || item.defendant || "---"}
+                         </span>
+                      </div>
+                ) : (
+                  <div className="space-y-1">
+                    <div className="flex flex-col">
+                      <span className="text-gray-500 uppercase text-[9px]">NĐ:</span>
+                      <span className="text-[11px] font-bold text-gray-800 uppercase">
+                        {item.plaintiff || "---"}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-gray-500 uppercase text-[9px]">BĐ:</span>
+                      <span className="text-[11px] font-bold text-gray-800 uppercase">
+                        {item.defendant || "---"}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+                </div>
 
-  {item.status === 'completed' && !item.publishedAt && (
-    <div className="mt-2 text-[10px] font-black px-2 py-1 rounded border bg-amber-50 text-amber-700 border-amber-200 inline-block">
-      HẠN PHÁT HÀNH: {calculateDeadlines(item).publish}
-    </div>
-  )}
-</td>
+                {item.status === 'completed' && !item.publishedAt && (
+                  <div className="mt-2 text-[10px] font-black px-2 py-1 rounded border bg-amber-50 text-amber-700 border-amber-200 inline-block">
+                    HẠN PHÁT HÀNH: {calculateDeadlines(item).publish}
+                  </div>
+                )}
+              </td>
 
-<td className="px-2 py-2 w-[25%] align-top space-y-1.5 border border-gray-300">
-  <div className="flex flex-col gap-1">
-    <div className="flex items-center gap-1">
-      <span className="text-red-600 w-6 flex-shrink-0 font-bold text-[10px]">TP:</span> 
-      <span className="text-[11px] font-bold text-gray-800 uppercase">{item.judge || "---"}</span>
-    </div>
-    <div className="flex items-center gap-1">
-      <span className="text-gray-500 font-bold w-6 flex-shrink-0 text-[10px]">TK:</span> 
-      <span className="text-[11px] font-bold text-gray-800">{item.clerk || "---"}</span>
-    </div>
-  </div>
+              {/* CỘT 3: THÀNH PHẦN HĐXX */}
+              <td className="px-2 py-2 w-[25%] align-top space-y-1.5 border border-gray-300">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1">
+                    <span className="text-red-600 w-6 flex-shrink-0 font-bold text-[10px]">TP:</span> 
+                    <span className="text-[11px] font-bold text-gray-800 uppercase">{item.judge || "---"}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-gray-500 font-bold w-6 flex-shrink-0 text-[10px]">TK:</span> 
+                    <span className="text-[11px] font-bold text-gray-800">{item.clerk || "---"}</span>
+                  </div>
+                </div>
 
-  <div className="pt-1.5 border-t border-gray-100 mt-1">
-    <div className="flex gap-1">
-      <span className="text-gray-400 font-bold w-6 flex-shrink-0 text-[10px]">HT:</span>
-      <div className="flex flex-col gap-0.5">
-        <span className="text-[11px] font-medium text-gray-700 leading-tight">{item.juror1 || "---"}</span>
-        <span className="text-[11px] font-medium text-gray-700 leading-tight">{item.juror2 || "---"}</span>
-      </div>
-    </div>
-  </div>
+                <div className="pt-1.5 border-t border-gray-100 mt-1">
+                  <div className="flex gap-1">
+                    <span className="text-gray-400 font-bold w-6 flex-shrink-0 text-[10px]">HT:</span>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[11px] font-medium text-gray-700 leading-tight">{item.juror1 || "---"}</span>
+                      <span className="text-[11px] font-medium text-gray-700 leading-tight">{item.juror2 || "---"}</span>
+                    </div>
+                  </div>
+                </div>
 
-  <div className="pt-1.5 flex items-center gap-1">
-    <span className="w-6 font-bold text-red-400 flex-shrink-0 text-[10px]">KSV:</span> 
-    <span className="text-[11px] font-bold text-red-700">{item.prosecutor || "---"}</span>
-  </div>
-</td>
-{/* Trong phần hiển thị trạng thái của vụ án */}
-{item.status === 'nghi_an' && (
-  <span className="bg-purple-600 text-white px-2 py-1 rounded-full text-[10px] font-black uppercase animate-pulse">
-    ⚖️ Đang Nghị Án
-  </span>
-)}
-{/* BẮT ĐẦU CỘT THAO TÁC */}
-{(canEdit || userRole === 'thamphan') && (
-  <td className="px-2 py-2 w-[15%] align-top text-center border border-gray-300">
-    <div className="flex flex-col gap-1.5 w-full max-w-[130px] mx-auto">
-      
-      {/* CÁC NÚT KHI ÁN ĐANG CHỜ XỬ HOẶC CHƯA CÓ TRẠNG THÁI */}
-      {canEdit && (item.status === 'pending' || !item.status) && (
-        <>
-          <div className="grid grid-cols-2 gap-1">
-            <button 
-              onClick={() => toggleStatus(item.id, 'completed', item.caseName)} 
-              className="bg-green-600 hover:bg-green-700 text-white py-1.5 font-black uppercase text-[9px] rounded-sm shadow-sm transition-all"
-            >
-              XONG
-            </button>
-            <button 
-              onClick={() => handleReschedule(item)} 
-              className="bg-gray-200 hover:bg-gray-300 text-gray-700 py-1.5 font-black uppercase text-[9px] rounded-sm border transition-all"
-            >
-              HOÃN
-            </button>
-          </div>
-          <button 
-            onClick={() => toggleStatus(item.id, 'suspended', item.caseName)} 
-            className="w-full bg-purple-100 hover:bg-purple-200 text-purple-700 py-1.5 font-black uppercase text-[9px] rounded-sm border border-purple-200 transition-all"
-          >
-            ⏸ TẠM NGỪNG
-          </button>
-          
-          {/* 🚨 NÚT NGHỊ ÁN MỚI ĐƯỢC THÊM VÀO ĐÂY 🚨 */}
-          <button 
-            onClick={() => updateCaseStatus(item.id, 'nghi_an')} 
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-1.5 font-black uppercase text-[9px] rounded-sm shadow-md transition-all animate-pulse"
-          >
-            ⚖️ NGHỊ ÁN
-          </button>
-        </>
-      )}
+                <div className="pt-1.5 flex items-center gap-1">
+                  <span className="w-6 font-bold text-red-400 flex-shrink-0 text-[10px]">KSV:</span> 
+                  <span className="text-[11px] font-bold text-red-700">{item.prosecutor || "---"}</span>
+                </div>
+              </td>
 
-      {/* HIỂN THỊ KHI ĐANG NGHỊ ÁN */}
-      {item.status === 'nghi_an' && (
-        <div className="bg-indigo-100 border border-indigo-300 p-1.5 rounded-sm mb-1">
-          <p className="text-[10px] font-black text-indigo-800 uppercase">Đang nghị án</p>
-          {item.duKienTuyenAn && (
-            <p className="text-[9px] font-bold text-indigo-600 mt-0.5">Dự kiến: {item.duKienTuyenAn}</p>
-          )}
-          {canEdit && (
-             <button 
-               onClick={() => toggleStatus(item.id, 'pending', item.caseName)} 
-               className="mt-1 w-full bg-white hover:bg-gray-100 text-indigo-700 py-1 font-black uppercase text-[8px] rounded border border-indigo-200"
-             >
-               MỞ LẠI
-             </button>
-          )}
-        </div>
-      )}
+              {/* CỘT 4: TÁC VỤ (CỘT NÀY BÂY GIỜ ĐÃ KHỚP HOÀN TOÀN) */}
+              {(canEdit || userRole === 'thamphan') && (
+                <td className="px-2 py-2 w-[15%] align-top text-center border border-gray-300">
+                  <div className="flex flex-col gap-1.5 w-full max-w-[130px] mx-auto">
+                    
+                    {/* 1. KHI ÁN CHỜ XỬ HOẶC CHƯA CÓ TRẠNG THÁI */}
+                    {canEdit && (item.status === 'pending' || !item.status) && (
+                      <>
+                        <div className="grid grid-cols-2 gap-1">
+                          <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-600 hover:bg-green-700 text-white py-1.5 font-black uppercase text-[9px] rounded-sm shadow-sm transition-all">XONG</button>
+                          <button onClick={() => handleReschedule(item)} className="bg-gray-200 hover:bg-gray-300 text-gray-700 py-1.5 font-black uppercase text-[9px] rounded-sm border transition-all">HOÃN</button>
+                        </div>
+                        <button onClick={() => toggleStatus(item.id, 'suspended', item.caseName)} className="w-full bg-purple-100 hover:bg-purple-200 text-purple-700 py-1.5 font-black uppercase text-[9px] rounded-sm border border-purple-200 transition-all">⏸ TẠM NGỪNG</button>
+                        <button onClick={() => updateCaseStatus(item.id, 'nghi_an')} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-1.5 font-black uppercase text-[9px] rounded-sm shadow-md transition-all animate-pulse mt-1">⚖️ NGHỊ ÁN</button>
+                      </>
+                    )}
 
-      {/* CÁC NÚT KHI ÁN ĐÃ XONG */}
-      {item.status === 'completed' && (
-        <div className="grid grid-cols-1 gap-1.5">
-           <button 
-             onClick={() => togglePublish(item)} 
-             className={`py-1.5 rounded-sm text-[9px] font-black uppercase shadow-sm transition-all ${
-               item.publishedAt 
-                 ? 'bg-green-100 text-green-700 border border-green-300' 
-                 : 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse'
-             }`}
-             title={item.publishedAt ? "Đã phát hành" : "Nhấn để chốt phát hành án"}
-           >
-             {item.publishedAt ? "✅ ĐÃ PH" : "📢 PHÁT HÀNH"}
-           </button>
+                    {/* 2. HIỂN THỊ NÚT MỞ LẠI KHI ĐANG NGHỊ ÁN */}
+                    {item.status === 'nghi_an' && (
+                      <div className="bg-indigo-100 border border-indigo-300 p-1.5 rounded-sm mb-1">
+                        <p className="text-[10px] font-black text-indigo-800 uppercase">Đang nghị án</p>
+                        {item.duKienTuyenAn && <p className="text-[9px] font-bold text-indigo-600 mt-0.5">Dự kiến: {item.duKienTuyenAn}</p>}
+                        {canEdit && (
+                           <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="mt-1 w-full bg-white hover:bg-gray-100 text-indigo-700 py-1 font-black uppercase text-[8px] rounded border border-indigo-200">MỞ LẠI</button>
+                        )}
+                      </div>
+                    )}
 
-           {canEdit && (
-             <button 
-               onClick={() => toggleStatus(item.id, 'pending', item.caseName)} 
-               className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 py-1.5 font-black uppercase text-[9px] rounded-sm border"
-             >
-               MỞ LẠI
-             </button>
-           )}
-        </div>
-      )}
+                    {/* 3. KHI ÁN ĐÃ XONG */}
+                    {item.status === 'completed' && (
+                      <div className="grid grid-cols-1 gap-1.5">
+                         <button onClick={() => togglePublish(item)} className={`py-1.5 rounded-sm text-[9px] font-black uppercase shadow-sm transition-all ${item.publishedAt ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse'}`} title={item.publishedAt ? "Đã phát hành" : "Nhấn để chốt phát hành án"}>
+                           {item.publishedAt ? "✅ ĐÃ PH" : "📢 PHÁT HÀNH"}
+                         </button>
+                         {canEdit && <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 py-1.5 font-black uppercase text-[9px] rounded-sm border">MỞ LẠI</button>}
+                      </div>
+                    )}
 
-      {/* NÚT LÊN LỊCH LẠI */}
-      {canEdit && item.status !== 'completed' && item.status !== 'nghi_an' && (
-        <button 
-          onClick={() => handleReschedule(item)} 
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 font-black uppercase text-[9px] rounded-sm shadow-md mt-1"
-        >
-          LÊN LỊCH LẠI
-        </button>
-      )}
+                    {/* 4. NÚT LÊN LỊCH LẠI */}
+                    {canEdit && item.status !== 'completed' && item.status !== 'nghi_an' && (
+                      <button onClick={() => handleReschedule(item)} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 font-black uppercase text-[9px] rounded-sm shadow-md mt-1">LÊN LỊCH LẠI</button>
+                    )}
 
-      {/* NHÓM NÚT SỬA / LOG / XÓA */}
-      {canEdit && (
-        <div className="pt-2 border-t border-dashed border-gray-200 mt-1 flex flex-col gap-1">
-          <div className="grid grid-cols-2 gap-1">
-            <button 
-              onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} 
-              className="bg-blue-50 hover:bg-blue-100 text-blue-600 py-1.5 rounded-sm text-[9px] font-black uppercase transition-all"
-            >
-              SỬA
-            </button>
-            <button 
-              onClick={() => setSelectedEvent(item)} 
-              className="bg-gray-50 hover:bg-gray-100 text-gray-500 py-1.5 rounded-sm text-[9px] font-black uppercase transition-all"
-            >
-              LOG
-            </button>
-          </div>        
-          
-          {canManagePortal && (
-            <button 
-              onClick={() => handleDelete(item.id, item.caseName)} 
-              className="w-full bg-red-50 hover:bg-red-500 hover:text-white text-red-500 py-1.5 rounded-sm text-[9px] font-black uppercase transition-all border border-red-100"
-            >
-              XÓA HỒ SƠ
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  </td>
-)}
-{/* KẾT THÚC CỘT THAO TÁC */}
+                    {/* 5. NHÓM NÚT SỬA / LOG / XÓA */}
+                    {canEdit && (
+                      <div className="pt-2 border-t border-dashed border-gray-200 mt-1 flex flex-col gap-1">
+                        <div className="grid grid-cols-2 gap-1">
+                          <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 hover:bg-blue-100 text-blue-600 py-1.5 rounded-sm text-[9px] font-black uppercase transition-all">SỬA</button>
+                          <button onClick={() => setSelectedEvent(item)} className="bg-gray-50 hover:bg-gray-100 text-gray-500 py-1.5 rounded-sm text-[9px] font-black uppercase transition-all">LOG</button>
+                        </div>        
+                        {canManagePortal && <button onClick={() => handleDelete(item.id, item.caseName)} className="w-full bg-red-50 hover:bg-red-500 hover:text-white text-red-500 py-1.5 rounded-sm text-[9px] font-black uppercase transition-all border border-red-100">XÓA HỒ SƠ</button>}
+                      </div>
+                    )}
+
+                  </div>
+                </td>
+              )}
             </tr>
           );
         })}
