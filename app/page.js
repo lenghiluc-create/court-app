@@ -1590,63 +1590,67 @@ useEffect(() => {
                 </div>
               </td>
 
-              {/* CỘT 4: TÁC VỤ (CỘT NÀY BÂY GIỜ ĐÃ KHỚP HOÀN TOÀN) */}
-              {(canEdit || userRole === 'thamphan') && (
-                <td className="px-2 py-2 w-[15%] align-top text-center border border-gray-300">
-                  <div className="flex flex-col gap-1.5 w-full max-w-[130px] mx-auto">
-                    
-                    {/* 1. KHI ÁN CHỜ XỬ HOẶC CHƯA CÓ TRẠNG THÁI */}
-                    {canEdit && (item.status === 'pending' || !item.status) && (
-                      <>
-                        <div className="grid grid-cols-2 gap-1">
-                          <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="bg-green-600 hover:bg-green-700 text-white py-1.5 font-black uppercase text-[9px] rounded-sm shadow-sm transition-all">XONG</button>
-                          <button onClick={() => handleReschedule(item)} className="bg-gray-200 hover:bg-gray-300 text-gray-700 py-1.5 font-black uppercase text-[9px] rounded-sm border transition-all">HOÃN</button>
-                        </div>
-                        <button onClick={() => toggleStatus(item.id, 'suspended', item.caseName)} className="w-full bg-purple-100 hover:bg-purple-200 text-purple-700 py-1.5 font-black uppercase text-[9px] rounded-sm border border-purple-200 transition-all">⏸ TẠM NGỪNG</button>
-                        <button onClick={() => updateCaseStatus(item.id, 'nghi_an')} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-1.5 font-black uppercase text-[9px] rounded-sm shadow-md transition-all animate-pulse mt-1">⚖️ NGHỊ ÁN</button>
-                      </>
-                    )}
+              {/* BẮT ĐẦU CỘT THAO TÁC (DẠNG DROPDOWN MENU) */}
+{/* BẮT ĐẦU CỘT THAO TÁC (DẠNG CLICK XỔ XUỐNG CỰC MƯỢT) */}
+{(canEdit || userRole === 'thamphan') && (
+  <td className="px-2 py-2 w-[15%] align-top text-center border border-gray-300">
+    
+    <details className="w-full max-w-[130px] mx-auto group [&_summary::-webkit-details-marker]:hidden">
+      {/* NÚT CHÍNH: Bấm vào để mở */}
+      <summary className="bg-slate-800 hover:bg-black text-white px-2 py-2 rounded-md text-[10px] font-black uppercase shadow-sm transition-all flex justify-center items-center gap-1 cursor-pointer list-none outline-none border border-slate-700 active:scale-95">
+        ⚙️ THAO TÁC <span className="group-open:rotate-180 transition-transform text-[8px] ml-1">▼</span>
+      </summary>
 
-                    {/* 2. HIỂN THỊ NÚT MỞ LẠI KHI ĐANG NGHỊ ÁN */}
-                    {item.status === 'nghi_an' && (
-                      <div className="bg-indigo-100 border border-indigo-300 p-1.5 rounded-sm mb-1">
-                        <p className="text-[10px] font-black text-indigo-800 uppercase">Đang nghị án</p>
-                        {item.duKienTuyenAn && <p className="text-[9px] font-bold text-indigo-600 mt-0.5">Dự kiến: {item.duKienTuyenAn}</p>}
-                        {canEdit && (
-                           <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="mt-1 w-full bg-white hover:bg-gray-100 text-indigo-700 py-1 font-black uppercase text-[8px] rounded border border-indigo-200">MỞ LẠI</button>
-                        )}
-                      </div>
-                    )}
+      {/* DANH SÁCH NÚT: Đẩy hàng xuống để hiện ra, không lo bị che */}
+      <div className="mt-1.5 flex flex-col gap-1 bg-gray-100/80 p-1 border border-gray-200 rounded-md shadow-inner text-left animate-fadeIn">
+        
+        {/* 1. KHI ÁN CHỜ XỬ HOẶC CHƯA CÓ TRẠNG THÁI */}
+        {canEdit && (item.status === 'pending' || !item.status) && (
+          <>
+            <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-green-100 text-green-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">✅ Xét xử xong</button>
+            <button onClick={() => handleReschedule(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-gray-200 text-gray-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">🔄 Hoãn</button>
+            <button onClick={() => toggleStatus(item.id, 'suspended', item.caseName)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-purple-100 text-purple-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">⏸ Tạm ngừng</button>
+            <button onClick={() => updateCaseStatus(item.id, 'nghi_an')} className="w-full text-left px-2 py-1.5 bg-white hover:bg-indigo-100 text-indigo-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5 animate-pulse">⚖️ Nghị án</button>
+          </>
+        )}
 
-                    {/* 3. KHI ÁN ĐÃ XONG */}
-                    {item.status === 'completed' && (
-                      <div className="grid grid-cols-1 gap-1.5">
-                         <button onClick={() => togglePublish(item)} className={`py-1.5 rounded-sm text-[9px] font-black uppercase shadow-sm transition-all ${item.publishedAt ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse'}`} title={item.publishedAt ? "Đã phát hành" : "Nhấn để chốt phát hành án"}>
-                           {item.publishedAt ? "✅ ĐÃ PH" : "📢 PHÁT HÀNH"}
-                         </button>
-                         {canEdit && <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 py-1.5 font-black uppercase text-[9px] rounded-sm border">MỞ LẠI</button>}
-                      </div>
-                    )}
+        {/* 2. HIỂN THỊ NÚT MỞ LẠI KHI ĐANG NGHỊ ÁN */}
+        {item.status === 'nghi_an' && canEdit && (
+          <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-indigo-100 text-indigo-700 font-bold uppercase text-[9px] rounded border border-indigo-100 shadow-sm transition-all flex items-center gap-1.5">🔓 Mở lại án</button>
+        )}
 
-                    {/* 4. NÚT LÊN LỊCH LẠI */}
-                    {canEdit && item.status !== 'completed' && item.status !== 'nghi_an' && (
-                      <button onClick={() => handleReschedule(item)} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 font-black uppercase text-[9px] rounded-sm shadow-md mt-1">LÊN LỊCH LẠI</button>
-                    )}
+        {/* 3. KHI ÁN ĐÃ XONG */}
+        {item.status === 'completed' && (
+          <>
+             <button onClick={() => togglePublish(item)} className={`w-full text-left px-2 py-1.5 font-bold uppercase text-[9px] rounded border shadow-sm transition-all flex items-center gap-1.5 ${item.publishedAt ? 'bg-green-50 text-green-700 border-green-200' : 'bg-amber-100 hover:bg-amber-200 text-amber-700 border-amber-300 animate-pulse'}`}>
+               {item.publishedAt ? "✅ Đã phát hành" : "📢 Chốt PH"}
+             </button>
+             {canEdit && <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-gray-200 text-gray-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">🔓 Mở lại án</button>}
+          </>
+        )}
 
-                    {/* 5. NHÓM NÚT SỬA / LOG / XÓA */}
-                    {canEdit && (
-                      <div className="pt-2 border-t border-dashed border-gray-200 mt-1 flex flex-col gap-1">
-                        <div className="grid grid-cols-2 gap-1">
-                          <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="bg-blue-50 hover:bg-blue-100 text-blue-600 py-1.5 rounded-sm text-[9px] font-black uppercase transition-all">SỬA</button>
-                          <button onClick={() => setSelectedEvent(item)} className="bg-gray-50 hover:bg-gray-100 text-gray-500 py-1.5 rounded-sm text-[9px] font-black uppercase transition-all">LOG</button>
-                        </div>        
-                        {canManagePortal && <button onClick={() => handleDelete(item.id, item.caseName)} className="w-full bg-red-50 hover:bg-red-500 hover:text-white text-red-500 py-1.5 rounded-sm text-[9px] font-black uppercase transition-all border border-red-100">XÓA HỒ SƠ</button>}
-                      </div>
-                    )}
+        {/* 4. NÚT LÊN LỊCH LẠI */}
+        {canEdit && item.status !== 'completed' && item.status !== 'nghi_an' && item.status !== 'pending' && (
+          <button onClick={() => handleReschedule(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-blue-100 text-blue-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">📅 Lên lịch lại</button>
+        )}
 
-                  </div>
-                </td>
-              )}
+        {/* ĐƯỜNG PHÂN CÁCH MỜ */}
+        {canEdit && <div className="h-[1px] bg-gray-300 my-0.5 mx-1"></div>}
+
+        {/* 5. NHÓM NÚT SỬA / LOG / XÓA */}
+        {canEdit && (
+          <>
+            <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="w-full text-left px-2 py-1.5 bg-white hover:bg-blue-50 text-blue-600 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">✏️ Sửa hồ sơ</button>
+            <button onClick={() => setSelectedEvent(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-gray-100 text-gray-600 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">🕒 Xem Log</button>
+            {canManagePortal && <button onClick={() => handleDelete(item.id, item.caseName)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-red-100 text-red-600 font-bold uppercase text-[9px] rounded border border-red-100 shadow-sm transition-all flex items-center gap-1.5">🗑️ Xóa hồ sơ</button>}
+          </>
+        )}
+      </div>
+    </details>
+
+  </td>
+)}
+{/* KẾT THÚC CỘT THAO TÁC */}
             </tr>
           );
         })}
