@@ -1903,8 +1903,10 @@ useEffect(() => {
               </tr>
             </thead>
            <tbody className="divide-y divide-gray-100 bg-white">
-  {inspections.map(item => (
-    <tr key={item.id} className="hover:bg-teal-50/50 transition-all font-bold">
+            {inspections
+              .filter(item => moment(item.date).isSameOrAfter(moment().startOf('day'))) // DÒNG NÀY SẼ LỌC ẨN NGÀY CŨ NÈ
+              .map(item => (
+                <tr key={item.id} className="hover:bg-teal-50/50 transition-all font-bold">
       <td className="px-2 py-2 border border-gray-300 text-center text-teal-900">
   <div className="flex flex-col items-center">
     <span className="text-blue-600 font-black flex items-center gap-1">
@@ -1939,7 +1941,9 @@ useEffect(() => {
   ))}
 </tbody>
           </table>
-          {inspections.length === 0 && <div className="p-20 text-center text-gray-300 font-bold uppercase italic">Chưa có lịch thẩm định nào</div>}
+          {inspections.filter(item => moment(item.date).isSameOrAfter(moment().startOf('day'))).length === 0 && (
+            <div className="p-20 text-center text-gray-300 font-bold uppercase italic">Chưa có lịch thẩm định nào sắp tới</div>
+          )}
         </div>
       </div>
       
