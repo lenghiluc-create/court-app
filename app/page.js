@@ -825,9 +825,14 @@ useEffect(() => {
     let tableHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8" /><style>table { border-collapse: collapse; width: 100%; font-family: 'Times New Roman', Times, serif; font-size: 13pt; } td, th { border: 1px solid #000000; padding: 8px; vertical-align: top; } .no-border { border: none !important; } .text-center { text-align: center; vertical-align: middle; } .font-bold { font-weight: bold; }</style></head><body><table><tr><td colspan="2" class="no-border text-center font-bold">TÒA ÁN NHÂN DÂN<br/>KHU VỰC 9 - CẦN THƠ</td><td colspan="5" class="no-border text-center font-bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/>Độc lập - Tự do - Hạnh Phúc</td></tr><tr><td colspan="7" class="no-border text-center"><i>Cần Thơ, ngày ${moment().format("DD")} tháng ${moment().format("MM")} năm ${moment().format("YYYY")}</i></td></tr><tr><td colspan="7" class="no-border"></td></tr><tr><td colspan="7" class="no-border text-center font-bold" style="font-size: 16pt;">DANH SÁCH LỊCH XẾT XỬ</td></tr><tr><td colspan="7" class="no-border text-center font-bold" style="font-size: 12pt; color: #666;">(${exportFilterType === 'createdAt' ? 'Tiêu chí: Trích xuất theo ngày nhập hệ thống' : 'Tiêu chí: Trích xuất theo ngày xét xử'}<br/>Từ ngày: ${exportStart ? moment(exportStart).format("DD/MM/YYYY") : "..."} - Đến ngày: ${exportEnd ? moment(exportEnd).format("DD/MM/YYYY") : "..."})</td></tr><tr><td colspan="7" class="no-border"></td></tr><tr><th class="text-center font-bold" style="background-color: #f2f2f2; width: 50px;">STT</th><th class="text-center font-bold" style="background-color: #f2f2f2; width: 350px;">NỘI DUNG VỤ ÁN</th><th class="text-center font-bold" style="background-color: #f2f2f2; width: 150px;">NGÀY XẾT XỬ</th><th class="text-center font-bold" style="background-color: #f2f2f2; width: 220px;">CHỦ TỌA, THƯ KÝ, KSV</th><th class="text-center font-bold" style="background-color: #f2f2f2; width: 220px;">HỘI THẨM NHÂN DÂN</th><th class="text-center font-bold" style="background-color: #f2f2f2; width: 120px;">PHÒNG XỬ</th><th class="text-center font-bold" style="background-color: #f2f2f2; width: 120px;">NGƯỜI NHẬP</th></tr>`;
     
     dataToExport.forEach((item, index) => {
-      const noidung = item.caseType?.includes("Hình sự") 
-        ? `<b>${item.caseName || ""}</b><br/>Bị cáo: ${item.plaintiff || item.defendant || ""}`
-        : `<b>${item.caseName || ""}</b><br/>NĐ: ${item.plaintiff || ""}<br/>BĐ: ${item.defendant || ""}`;
+      let noidung = "";
+      if (item.caseType?.includes("Hình sự")) {
+        noidung = `<b>${item.caseName || ""}</b><br/>Bị cáo: ${item.defendant || "---"}<br/>Bị hại/NLQ: ${item.plaintiff || "---"}`;
+      } else if (item.caseType === "cainghien" || item.caseType?.includes("Cai nghiện") || item.caseType?.includes("Hành chính")) {
+        noidung = `<b>${item.caseName || ""}</b><br/>CQ Đề nghị: ${item.plaintiff || "---"}<br/>Người bị ĐN: ${item.defendant || "---"}`;
+      } else {
+        noidung = `<b>${item.caseName || ""}</b><br/>NĐ: ${item.plaintiff || "---"}<br/>BĐ: ${item.defendant || "---"}`;
+      }
         
       // 3. XỬ LÝ ĐẸP: Nếu án hoãn hoặc án mới nhập chưa lên lịch cụ thể thì hiện chữ thông báo rõ ràng
       const thoigian = item.datetime 
