@@ -125,6 +125,41 @@ const handlePostNews = async () => {
     showToast("Lỗi khi đăng tin!", "error"); 
   }
 };
+const getLabelBenBi = (loaiAn) => {
+  switch (loaiAn) {
+    case 'Hình sự':
+      return 'Bị cáo:';
+    case 'cainghien':
+    case 'Cai nghiện': // Dựa theo option Ní đang dùng trong form
+    case 'Hành chính':
+      return 'Người bị đề nghị:';
+    case 'Dân sự':
+    case 'Hôn nhân & GĐ':
+    case 'Kinh tế':
+    case 'Lao động':
+      return 'Bị đơn:';
+    default:
+      return 'Bị cáo / Bị đơn / Đương sự:';
+  }
+};
+
+const getLabelBenKien = (loaiAn) => {
+  switch (loaiAn) {
+    case 'Hình sự':
+      return 'Bị hại / Người liên quan:';
+    case 'cainghien':
+    case 'Cai nghiện':
+      return 'Cơ quan đề nghị:';
+    case 'Dân sự':
+    case 'Hôn nhân & GĐ':
+    case 'Hành chính':
+    case 'Lao động':
+    case 'Kinh tế':
+      return 'Nguyên đơn / Người khởi kiện:';
+    default:
+      return 'Nguyên đơn / VKS / CQ Đề nghị:';
+  }
+};
 const goiYThamPhan = () => {
     const danhSachChoAI = listJudges.filter(j => j.role !== "Chánh án");
     
@@ -1277,6 +1312,34 @@ useEffect(() => {
                       </div>
                     </div>
                   </div>
+                  <div className="grid grid-cols-2 gap-4">
+          <div>
+            {/* GỌI HÀM ĐỔI TÊN Ở ĐÂY NÈ NÍ */}
+            <label className="block text-xs font-black text-gray-500 mb-2 uppercase">
+              {getLabelBenKien(phanAnForm.caseType)} 
+            </label>
+            <input 
+              type="text"
+              value={phanAnForm.plaintiff}
+              onChange={e => setPhanAnForm({...phanAnForm, plaintiff: e.target.value})}
+              className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:border-indigo-500 outline-none transition-all"
+              placeholder="VD: Ông Nguyễn Văn A..."
+            />
+          </div>
+          <div>
+             {/* GỌI HÀM ĐỔI TÊN Ở ĐÂY NÈ NÍ */}
+            <label className="block text-xs font-black text-gray-500 mb-2 uppercase">
+              {getLabelBenBi(phanAnForm.caseType)}
+            </label>
+            <input 
+              type="text"
+              value={phanAnForm.defendant}
+              onChange={e => setPhanAnForm({...phanAnForm, defendant: e.target.value})}
+              className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:border-indigo-500 outline-none transition-all"
+              placeholder="VD: Bà Trần Thị B..."
+            />
+          </div>
+        </div>
 
           {user && (
         <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200 animate-fadeIn relative z-10 mb-8">
@@ -1373,11 +1436,54 @@ useEffect(() => {
                 </div>
 
                 <div><label className={labelStyle}>Trích yếu vụ án <span className="text-red-500">*</span></label><textarea value={form.caseName} onChange={e => setForm({...form, caseName: e.target.value})} className={inputBase} rows="2" /></div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div><label className={labelStyle}>Nguyên đơn/Bị cáo</label><input value={form.plaintiff} onChange={e => setForm({...form, plaintiff: e.target.value})} className={inputBase} /></div>
-                  <div><label className={labelStyle}>Bị đơn/Bị hại</label><input value={form.defendant} onChange={e => setForm({...form, defendant: e.target.value})} className={inputBase} /></div>
-                </div>
-
+                {/* ĐẢO VỊ TRÍ HIỂN THỊ BẰNG REACT (Đảm bảo 100% chạy mượt và chuẩn phím Tab) */}
+{(form.caseType === 'Hình sự' || form.caseType === 'cainghien' || form.caseType?.includes('Cai nghiện') || form.caseType === 'Hành chính') ? (
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    {/* CỘT TRÁI: BỊ CÁO / NGƯỜI BỊ ĐỀ NGHỊ (Lưu vào defendant) */}
+    <div>
+      <label className={labelStyle}>{getLabelBenBi(form.caseType)}</label>
+      <input 
+        value={form.defendant} 
+        onChange={e => setForm({...form, defendant: e.target.value})} 
+        className={inputBase} 
+        placeholder="Nhập thông tin..." 
+      />
+    </div>
+    {/* CỘT PHẢI: BỊ HẠI / CƠ QUAN ĐỀ NGHỊ (Lưu vào plaintiff) */}
+    <div>
+      <label className={labelStyle}>{getLabelBenKien(form.caseType)}</label>
+      <input 
+        value={form.plaintiff} 
+        onChange={e => setForm({...form, plaintiff: e.target.value})} 
+        className={inputBase} 
+        placeholder="Nhập thông tin..." 
+      />
+    </div>
+  </div>
+) : (
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    {/* CỘT TRÁI: NGUYÊN ĐƠN (Lưu vào plaintiff) */}
+    <div>
+      <label className={labelStyle}>{getLabelBenKien(form.caseType)}</label>
+      <input 
+        value={form.plaintiff} 
+        onChange={e => setForm({...form, plaintiff: e.target.value})} 
+        className={inputBase} 
+        placeholder="Nhập thông tin..." 
+      />
+    </div>
+    {/* CỘT PHẢI: BỊ ĐƠN (Lưu vào defendant) */}
+    <div>
+      <label className={labelStyle}>{getLabelBenBi(form.caseType)}</label>
+      <input 
+        value={form.defendant} 
+        onChange={e => setForm({...form, defendant: e.target.value})} 
+        className={inputBase} 
+        placeholder="Nhập thông tin..." 
+      />
+    </div>
+  </div>
+)}
                 <div className="pt-6 border-t-2 border-dashed border-gray-200 mt-8 bg-red-50 p-6 rounded-lg border border-red-200 shadow-inner">
                    <h3 className="text-[14px] font-medium text-white bg-red-600 border border-red-700 py-3 rounded-md mb-6 text-center uppercase shadow-md">Thành phần Hội đồng xét xử</h3>
                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -1521,36 +1627,40 @@ useEffect(() => {
                   <p className="mb-2 italic opacity-70">{item.caseType} / {item.trialCount}</p>
                   
                   <div className="space-y-0.5 bg-gray-50/50 p-1.5 rounded-md border border-gray-100">
-                {item.caseType?.includes("Hình sự") ? (
-                  <div className="flex flex-col">
-                     <span className="text-red-600 uppercase text-[9px]">Bị cáo:</span>
-                     <span className="text-[11px] font-bold text-gray-800 uppercase">
-                       {item.plaintiff || item.defendant || "---"}
-                     </span>
-                  </div>
-                  ) : item.caseType?.includes("Cai nghiện") ? (
-                      <div className="flex flex-col">
-                         <span className="text-teal-600 uppercase text-[9px]">Người bị đề nghị:</span>
-                         <span className="text-[11px] font-bold text-gray-800 uppercase">
-                           {item.plaintiff || item.defendant || "---"}
-                         </span>
-                      </div>
-                ) : (
-                  <div className="space-y-1">
-                    <div className="flex flex-col">
-                      <span className="text-gray-500 uppercase text-[9px]">NĐ:</span>
-                      <span className="text-[11px] font-bold text-gray-800 uppercase">
-                        {item.plaintiff || "---"}
-                      </span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-gray-500 uppercase text-[9px]">BĐ:</span>
-                      <span className="text-[11px] font-bold text-gray-800 uppercase">
-                        {item.defendant || "---"}
-                      </span>
-                    </div>
-                  </div>
-                )}
+  {item.caseType?.includes("Hình sự") ? (
+    <div className="space-y-1">
+      <div className="flex flex-col">
+         <span className="text-red-600 uppercase text-[9px]">Bị cáo:</span>
+         <span className="text-[11px] font-bold text-gray-800 uppercase">{item.defendant || "---"}</span>
+      </div>
+      <div className="flex flex-col">
+         <span className="text-gray-500 uppercase text-[9px]">Bị hại / NLQ:</span>
+         <span className="text-[11px] font-bold text-gray-800 uppercase">{item.plaintiff || "---"}</span>
+      </div>
+    </div>
+  ) : (item.caseType === "cainghien" || item.caseType?.includes("Cai nghiện") || item.caseType?.includes("Hành chính")) ? (
+    <div className="space-y-1">
+      <div className="flex flex-col">
+         <span className="text-teal-600 uppercase text-[9px]">Cơ quan đề nghị:</span>
+         <span className="text-[11px] font-bold text-gray-800 uppercase">{item.plaintiff || "---"}</span>
+      </div>
+      <div className="flex flex-col">
+         <span className="text-teal-600 uppercase text-[9px]">Người bị đề nghị:</span>
+         <span className="text-[11px] font-bold text-gray-800 uppercase">{item.defendant || "---"}</span>
+      </div>
+    </div>
+  ) : (
+    <div className="space-y-1">
+      <div className="flex flex-col">
+        <span className="text-gray-500 uppercase text-[9px]">NĐ:</span>
+        <span className="text-[11px] font-bold text-gray-800 uppercase">{item.plaintiff || "---"}</span>
+      </div>
+      <div className="flex flex-col">
+        <span className="text-gray-500 uppercase text-[9px]">BĐ:</span>
+        <span className="text-[11px] font-bold text-gray-800 uppercase">{item.defendant || "---"}</span>
+      </div>
+    </div>
+  )}
               </div>
                 </div>
 
@@ -2588,17 +2698,23 @@ useEffect(() => {
   </h3>
   
   <div className="text-[10px] md:text-lg text-blue-300 font-medium mb-3">
-    {item.caseType === "Hình sự" ? (
-      <>
-        <span className="opacity-70">Bị cáo:</span> {item.defendant || "---"}
-      </>
-    ) : (
-      <>
-        <span className="opacity-70">NĐ:</span> {item.plaintiff || "---"} 
-        <span className="mx-2 opacity-50">|</span> 
-        <span className="opacity-70">BĐ:</span> {item.defendant || "---"}
-      </>
-    )}
+    {item.caseType?.includes("Hình sự") ? (
+  <>
+    <span className="opacity-70">Bị cáo:</span> {item.plaintiff || item.defendant || "---"}
+  </>
+) : (item.caseType === "cainghien" || item.caseType?.includes("Cai nghiện") || item.caseType?.includes("Hành chính")) ? (
+  <>
+    <span className="opacity-70">Cơ quan ĐN:</span> {item.plaintiff || "---"} 
+    <span className="mx-2 opacity-50">|</span> 
+    <span className="opacity-70">Người bị ĐN:</span> {item.defendant || "---"}
+  </>
+) : (
+  <>
+    <span className="opacity-70">NĐ:</span> {item.plaintiff || "---"} 
+    <span className="mx-2 opacity-50">|</span> 
+    <span className="opacity-70">BĐ:</span> {item.defendant || "---"}
+  </>
+)}
   </div>
 
   <div className="flex flex-wrap gap-x-6 gap-y-2 mt-2 text-[11px] md:text-xl text-gray-400 font-light italic">
