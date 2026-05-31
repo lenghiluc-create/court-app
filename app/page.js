@@ -929,13 +929,21 @@ useEffect(() => {
                             </div>
                             <div className="text-gray-500 font-bold text-[11px]">
                                {item.caseType?.includes("Hình sự") ? (
-                                  <p><span className="text-red-600 uppercase text-[9px]">Bị cáo:</span> {item.plaintiff || item.defendant || "---"}</p>
-                               ) : (
-                                  <div className="flex gap-4">
-                                    <p><span className="text-gray-500 uppercase text-[9px]">NĐ:</span> {item.plaintiff || "---"}</p>
-                                    <p><span className="text-gray-500 uppercase text-[9px]">BĐ:</span> {item.defendant || "---"}</p>
-                                  </div>
-                               )}
+  <div className="space-y-1">
+    <p><span className="text-red-600 uppercase text-[9px]">Bị cáo:</span> <span className="font-bold text-gray-800">{item.defendant || "---"}</span></p>
+    <p><span className="text-gray-500 uppercase text-[9px]">Bị hại / NLQ:</span> <span className="font-bold text-gray-800">{item.plaintiff || "---"}</span></p>
+  </div>
+) : (item.caseType === "cainghien" || item.caseType?.includes("Cai nghiện") || item.caseType?.includes("Hành chính")) ? (
+  <div className="flex gap-4">
+    <p><span className="text-teal-600 uppercase text-[9px]">CQ ĐN:</span> <span className="font-bold text-gray-800">{item.plaintiff || "---"}</span></p>
+    <p><span className="text-teal-600 uppercase text-[9px]">Người bị ĐN:</span> <span className="font-bold text-gray-800">{item.defendant || "---"}</span></p>
+  </div>
+) : (
+  <div className="flex gap-4">
+    <p><span className="text-gray-500 uppercase text-[9px]">NĐ:</span> <span className="font-bold text-gray-800">{item.plaintiff || "---"}</span></p>
+    <p><span className="text-gray-500 uppercase text-[9px]">BĐ:</span> <span className="font-bold text-gray-800">{item.defendant || "---"}</span></p>
+  </div>
+)}
                             </div>
                           </td>
 
