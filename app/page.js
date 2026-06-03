@@ -375,6 +375,7 @@ useEffect(() => {
       const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
         if (currentUser) {
           setUser(currentUser);
+          setViewMode("app");
           const email = currentUser.email ? currentUser.email.toLowerCase() : "";
           
           try {
@@ -435,6 +436,8 @@ useEffect(() => {
       await setPersistence(auth, browserSessionPersistence);
       await signInWithEmailAndPassword(auth, loginEmail, loginPass);
       showToast("Đăng nhập thành công!", "success");
+      setViewMode("app"); // Tự động chuyển thẳng vào giao diện làm việc
+      setShowLoginModal(false);
     } catch (err) { setLoginError("❌ Sai tài khoản hoặc mật khẩu. Vui lòng kiểm tra lại!"); 
     } finally { 
       setLoading(false); 
