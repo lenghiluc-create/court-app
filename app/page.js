@@ -1329,34 +1329,6 @@ useEffect(() => {
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-          <div>
-            {/* GỌI HÀM ĐỔI TÊN Ở ĐÂY NÈ NÍ */}
-            <label className="block text-xs font-black text-gray-500 mb-2 uppercase">
-              {getLabelBenKien(phanAnForm.caseType)} 
-            </label>
-            <input 
-              type="text"
-              value={phanAnForm.plaintiff}
-              onChange={e => setPhanAnForm({...phanAnForm, plaintiff: e.target.value})}
-              className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:border-indigo-500 outline-none transition-all"
-              placeholder="VD: Ông Nguyễn Văn A..."
-            />
-          </div>
-          <div>
-             {/* GỌI HÀM ĐỔI TÊN Ở ĐÂY NÈ NÍ */}
-            <label className="block text-xs font-black text-gray-500 mb-2 uppercase">
-              {getLabelBenBi(phanAnForm.caseType)}
-            </label>
-            <input 
-              type="text"
-              value={phanAnForm.defendant}
-              onChange={e => setPhanAnForm({...phanAnForm, defendant: e.target.value})}
-              className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:border-indigo-500 outline-none transition-all"
-              placeholder="VD: Bà Trần Thị B..."
-            />
-          </div>
-        </div>
 
           {user && (
         <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200 animate-fadeIn relative z-10 mb-8">
