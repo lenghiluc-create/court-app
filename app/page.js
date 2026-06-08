@@ -590,39 +590,30 @@ useEffect(() => {
       showToast(isPublishing ? "📤 Đã ghi nhận phát hành bản án!" : "Hủy ghi nhận phát hành", "success");
     } catch (err) { showToast("Lỗi cập nhật phát hành", "error"); }
   };
-// HÀM NHẬN KHÁNG CÁO VÀ TÍNH TOÁN THỜI HẠN CHUYỂN HỒ SƠ
+// 1. HÀM NHẬN KHÁNG CÁO (Hỏi thêm người kháng cáo)
   const handleKhangCao = async (item) => {
-    const inputDate = window.prompt(`⚖️ Nhập ngày nhận đơn Kháng cáo cho vụ: ${item.caseName}\n(Định dạng: DD/MM/YYYY. Nếu để trống sẽ lấy ngày hôm nay):`);
+    const inputDate = window.prompt(`⚖️ Nhập ngày nhận đơn Kháng cáo/Kháng nghị vụ: ${item.caseName}\n(Định dạng: DD/MM/YYYY. Để trống sẽ lấy hôm nay):`);
+    if (inputDate === null) return;
 
-    if (inputDate === null) return; // Thư ký bấm Hủy
+    // HỎI THÊM NGƯỜI KHÁNG CÁO
+    const nguoiKhangCao = window.prompt(`👤 Ai là người nộp đơn Kháng cáo / Cơ quan Kháng nghị?\n(VD: Bị đơn Trần Văn A kháng cáo toàn phần)`);
+    if (nguoiKhangCao === null) return;
 
-    let ngayKhangCao = moment(); // Mặc định là hôm nay
+    let ngayKhangCao = moment();
     if (inputDate.trim() !== "") {
         const parsed = moment(inputDate, ["DD/MM/YYYY", "YYYY-MM-DD"], true);
-        if (parsed.isValid()) {
-            ngayKhangCao = parsed;
-        } else {
-            return showToast("Sai định dạng ngày! Vui lòng nhập chuẩn DD/MM/YYYY", "error");
-        }
+        if (parsed.isValid()) ngayKhangCao = parsed;
+        else return showToast("Sai định dạng ngày! Vui lòng nhập chuẩn DD/MM/YYYY", "error");
     }
 
-    // --- BẮT ĐẦU TÍNH TOÁN THEO LUẬT CỦA NÍ ---
-    // 1. Cộng 30 ngày cơ bản từ ngày nhận kháng cáo
     let hanChuyen = moment(ngayKhangCao).add(30, 'days');
-
-    // 2. Phân loại án để cộng tiếp
     if (item.caseType?.includes("Hình sự")) {
-        // Án Hình sự: Cộng thêm 7 ngày (Tính luôn T7, CN)
         hanChuyen.add(7, 'days');
     } else {
-        // Án Dân sự, Hành chính...: Cộng thêm 5 ngày LÀM VIỆC
         let daysAdded = 0;
         while (daysAdded < 5) {
             hanChuyen.add(1, 'days');
-            // isoWeekday(): 6 là Thứ 7, 7 là Chủ nhật -> Bỏ qua không đếm
-            if (hanChuyen.isoWeekday() !== 6 && hanChuyen.isoWeekday() !== 7) {
-                daysAdded++;
-            }
+            if (hanChuyen.isoWeekday() !== 6 && hanChuyen.isoWeekday() !== 7) daysAdded++;
         }
     }
 
@@ -632,15 +623,30 @@ useEffect(() => {
             isKhangCao: true,
             ngayKhangCao: ngayKhangCao.toISOString(),
             hanChuyenKhangCao: hanChuyen.toISOString(),
-            updatedBy: user.email,
+            nguoiKhangCao: nguoiKhangCao || "Không ghi rõ", // Lưu tên người kháng cáo
+            trangThaiKhangCao: "dang_cho_chuyen", // Gắn cờ đang chờ
+            updatedBy: user?.email || "Hệ thống",
             updatedAt: moment().toISOString()
         });
-        showToast(`✅ Đã ghi nhận Kháng cáo! Hạn chuyển: ${hanChuyen.format("DD/MM/YYYY")}`, "success");
-        ghiNhatKy("Kháng cáo", `Nhận kháng cáo vụ "${item.caseName}". Hạn chuyển: ${hanChuyen.format("DD/MM/YYYY")}`);
-    } catch (e) {
-        showToast("Lỗi cập nhật: " + e.message, "error");
-    }
+        showToast(`✅ Đã ghi nhận! Hạn chuyển: ${hanChuyen.format("DD/MM/YYYY")}`, "success");
+    } catch (e) { showToast("Lỗi cập nhật: " + e.message, "error"); }
   };
+
+  // 2. HÀM CHỐT ĐÃ CHUYỂN PHÚC THẨM (Ngừng báo đỏ)
+  const handleChuyenPhucTham = async (item) => {
+    if (!window.confirm(`📦 Bạn có chắc là ĐÃ CHUYỂN hồ sơ vụ "${item.caseName}" lên Tòa Phúc thẩm chưa?`)) return;
+    try {
+        const { doc, updateDoc } = await import('firebase/firestore');
+        await updateDoc(doc(db, "schedule", item.id), {
+            trangThaiKhangCao: "da_chuyen", // Đổi cờ thành Đã chuyển
+            ngayChuyenPhucTham: moment().toISOString(),
+            updatedBy: user?.email || "Hệ thống",
+            updatedAt: moment().toISOString()
+        });
+        showToast("✅ Đã chốt chuyển hồ sơ thành công!", "success");
+    } catch (e) { showToast("Lỗi cập nhật: " + e.message, "error"); }
+  };
+
   const handleDelete = async (id, caseName) => {
     if(confirm("Xóa hồ sơ này?")) {
       await deleteDoc(doc(db,"schedule", id));
@@ -648,7 +654,7 @@ useEffect(() => {
     }
   };
  const handleDeleteIns = async (id) => {
-    if (window.confirm("Ní có chắc muốn xóa lịch thẩm định này không?")) {
+    if (window.confirm("Bạn có chắc muốn xóa lịch thẩm định này không?")) {
       try {
         // Gọi thẳng lệnh deleteDoc luôn, không cần import lại nữa
         await deleteDoc(doc(db, "inspections", id));
@@ -756,7 +762,9 @@ useEffect(() => {
     return schedule.filter(i => {
       const search = (searchQuery || "").toLowerCase().trim();
       const matchSearch = search === "" || (i.caseName || "").toLowerCase().includes(search) || (i.plaintiff || "").toLowerCase().includes(search) || (i.defendant || "").toLowerCase().includes(search);
-      const matchStatus = statusFilter === 'all' ? true : i.status === statusFilter;
+      const matchStatus = statusFilter === 'all' ? true : 
+                    statusFilter === 'has_appeal' ? i.isKhangCao === true : 
+                    i.status === statusFilter;
       const matchCreator = creatorFilter === 'all' ? true : (i.createdBy === creatorFilter);
       const matchJudge = judgeFilter === 'all' ? true : (i.judge === judgeFilter);
       const matchClerk = clerkFilter === 'all' ? true : (i.clerk === clerkFilter);
@@ -1572,6 +1580,7 @@ useEffect(() => {
                      <option value="nghi_an">📁 Đang nghị án</option>
                      <option value="suspended">⏸ Tạm ngừng</option>
                      <option value="completed">✅ Đã xử xong</option>
+                     <option value="has_appeal">📜 Án có Kháng cáo</option>
                   </select>
                   <label className="flex items-center gap-2 text-sm font-bold text-red-600 bg-red-50 px-4 py-2.5 rounded-md border border-red-200 cursor-pointer">
                     <input type="checkbox" checked={showOnlyUrgent} onChange={e => setShowOnlyUrgent(e.target.checked)} className="w-4 h-4 accent-red-600" /> Sắp xử (24h)
@@ -1653,6 +1662,17 @@ useEffect(() => {
                     <span className="bg-teal-100 text-teal-800 text-[9px] font-black px-2 py-1 rounded border border-teal-200 uppercase">
                       ⚖️ ÁN CÓ HIỆU LỰC
                     </span>
+                  )}
+                  {/* HIỂN THỊ THẺ KHÁNG CÁO SIÊU XỊN */}
+                  {item.isKhangCao && (
+                    <div className={`mt-2 p-2 rounded border shadow-sm w-max ${item.trangThaiKhangCao === 'da_chuyen' ? 'bg-gray-100 border-gray-300' : 'bg-orange-50 border-orange-300'}`}>
+                        <div className={`text-[10px] font-black uppercase mb-1 ${item.trangThaiKhangCao === 'da_chuyen' ? 'text-gray-500' : 'text-orange-800 animate-pulse'}`}>
+                           {item.trangThaiKhangCao === 'da_chuyen' ? '📦 ĐÃ CHUYỂN PHÚC THẨM' : `📜 HẠN CHUYỂN HỒ SƠ: ${item.hanChuyenKhangCao ? moment(item.hanChuyenKhangCao).format("DD/MM/YYYY") : "---"}`}
+                        </div>
+                        <p className="text-[10px] font-bold text-gray-700 italic border-t border-dashed border-gray-300 pt-1">
+                           ND: {item.nguoiKhangCao}
+                        </p>
+                    </div>
                   )}
                   {/* TUI ĐÃ CHUYỂN THẺ NGHỊ ÁN VÀO ĐÂY CHO ĐÚNG LUẬT HTML */}
                   {item.status === 'nghi_an' && (
@@ -1775,6 +1795,14 @@ useEffect(() => {
                {item.publishedAt ? "✅ Đã phát hành" : "📢 Chốt PH"}
              </button>
              {canEdit && <button onClick={() => toggleStatus(item.id, 'pending', item.caseName)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-gray-200 text-gray-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">🔓 Mở lại án</button>}
+             
+             {/* NÚT KHÁNG CÁO & CHUYỂN PHÚC THẨM */}
+             {canEdit && !item.isKhangCao && (
+                <button onClick={() => handleKhangCao(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-orange-100 text-orange-700 font-bold uppercase text-[9px] rounded border border-orange-200 shadow-sm transition-all flex items-center gap-1.5">📜 Nhận Kháng Cáo</button>
+             )}
+             {canEdit && item.isKhangCao && item.trangThaiKhangCao !== 'da_chuyen' && (
+                <button onClick={() => handleChuyenPhucTham(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-teal-100 text-teal-700 font-bold uppercase text-[9px] rounded border border-teal-200 shadow-sm transition-all flex items-center gap-1.5">📦 Đã chuyển Phúc thẩm</button>
+             )}
           </>
         )}
 
