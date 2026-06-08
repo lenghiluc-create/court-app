@@ -590,7 +590,57 @@ useEffect(() => {
       showToast(isPublishing ? "📤 Đã ghi nhận phát hành bản án!" : "Hủy ghi nhận phát hành", "success");
     } catch (err) { showToast("Lỗi cập nhật phát hành", "error"); }
   };
+// HÀM NHẬN KHÁNG CÁO VÀ TÍNH TOÁN THỜI HẠN CHUYỂN HỒ SƠ
+  const handleKhangCao = async (item) => {
+    const inputDate = window.prompt(`⚖️ Nhập ngày nhận đơn Kháng cáo cho vụ: ${item.caseName}\n(Định dạng: DD/MM/YYYY. Nếu để trống sẽ lấy ngày hôm nay):`);
 
+    if (inputDate === null) return; // Thư ký bấm Hủy
+
+    let ngayKhangCao = moment(); // Mặc định là hôm nay
+    if (inputDate.trim() !== "") {
+        const parsed = moment(inputDate, ["DD/MM/YYYY", "YYYY-MM-DD"], true);
+        if (parsed.isValid()) {
+            ngayKhangCao = parsed;
+        } else {
+            return showToast("Sai định dạng ngày! Vui lòng nhập chuẩn DD/MM/YYYY", "error");
+        }
+    }
+
+    // --- BẮT ĐẦU TÍNH TOÁN THEO LUẬT CỦA NÍ ---
+    // 1. Cộng 30 ngày cơ bản từ ngày nhận kháng cáo
+    let hanChuyen = moment(ngayKhangCao).add(30, 'days');
+
+    // 2. Phân loại án để cộng tiếp
+    if (item.caseType?.includes("Hình sự")) {
+        // Án Hình sự: Cộng thêm 7 ngày (Tính luôn T7, CN)
+        hanChuyen.add(7, 'days');
+    } else {
+        // Án Dân sự, Hành chính...: Cộng thêm 5 ngày LÀM VIỆC
+        let daysAdded = 0;
+        while (daysAdded < 5) {
+            hanChuyen.add(1, 'days');
+            // isoWeekday(): 6 là Thứ 7, 7 là Chủ nhật -> Bỏ qua không đếm
+            if (hanChuyen.isoWeekday() !== 6 && hanChuyen.isoWeekday() !== 7) {
+                daysAdded++;
+            }
+        }
+    }
+
+    try {
+        const { doc, updateDoc } = await import('firebase/firestore');
+        await updateDoc(doc(db, "schedule", item.id), {
+            isKhangCao: true,
+            ngayKhangCao: ngayKhangCao.toISOString(),
+            hanChuyenKhangCao: hanChuyen.toISOString(),
+            updatedBy: user.email,
+            updatedAt: moment().toISOString()
+        });
+        showToast(`✅ Đã ghi nhận Kháng cáo! Hạn chuyển: ${hanChuyen.format("DD/MM/YYYY")}`, "success");
+        ghiNhatKy("Kháng cáo", `Nhận kháng cáo vụ "${item.caseName}". Hạn chuyển: ${hanChuyen.format("DD/MM/YYYY")}`);
+    } catch (e) {
+        showToast("Lỗi cập nhật: " + e.message, "error");
+    }
+  };
   const handleDelete = async (id, caseName) => {
     if(confirm("Xóa hồ sơ này?")) {
       await deleteDoc(doc(db,"schedule", id));
