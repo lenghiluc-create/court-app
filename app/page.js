@@ -646,6 +646,41 @@ useEffect(() => {
         showToast("✅ Đã chốt chuyển hồ sơ thành công!", "success");
     } catch (e) { showToast("Lỗi cập nhật: " + e.message, "error"); }
   };
+  // 3. HÀM CHỐT KẾT QUẢ PHÚC THẨM VÀ ĐÁNH GIÁ LỖI CHỦ QUAN
+  const handleKetQuaPhucTham = async (item) => {
+    const luaChon = window.prompt(
+        `🏆 CẬP NHẬT KẾT QUẢ PHÚC THẨM vụ: ${item.caseName}\n\nNhập SỐ tương ứng với kết quả:\n1 - Y án sơ thẩm\n2 - Sửa bản án\n3 - Hủy bản án\n4 - Rút đơn / Đình chỉ xét xử`
+    );
+
+    if (!luaChon) return;
+
+    let ketQuaStr = "";
+    let isLoiChuQuan = false;
+
+    if (luaChon === "1") ketQuaStr = "Y án sơ thẩm";
+    else if (luaChon === "2") {
+        ketQuaStr = "Sửa bản án";
+        isLoiChuQuan = window.confirm("⚠️ Việc SỬA án này có bị xem là do LỖI CHỦ QUAN của Thẩm phán không?\n(Bấm OK = Có lỗi / Bấm Cancel = Khách quan)");
+    }
+    else if (luaChon === "3") {
+        ketQuaStr = "Hủy bản án";
+        isLoiChuQuan = window.confirm("🚨 Việc HỦY án này có bị xem là do LỖI CHỦ QUAN của Thẩm phán không?\n(Bấm OK = Có lỗi / Bấm Cancel = Khách quan)");
+    }
+    else if (luaChon === "4") ketQuaStr = "Rút đơn / Đình chỉ";
+    else return showToast("Lựa chọn không hợp lệ! Vui lòng nhập từ 1 đến 4.", "error");
+
+    try {
+        const { doc, updateDoc } = await import('firebase/firestore');
+        await updateDoc(doc(db, "schedule", item.id), {
+            ketQuaPhucTham: ketQuaStr,
+            loiChuQuan: isLoiChuQuan,
+            ngayChotPhucTham: moment().toISOString(),
+            updatedBy: user?.email || "Hệ thống",
+            updatedAt: moment().toISOString()
+        });
+        showToast(`✅ Đã chốt KQ Phúc thẩm: ${ketQuaStr}`, "success");
+    } catch (e) { showToast("Lỗi cập nhật: " + e.message, "error"); }
+  };
 
   const handleDelete = async (id, caseName) => {
     if(confirm("Xóa hồ sơ này?")) {
@@ -790,6 +825,22 @@ useEffect(() => {
     });
   }, [schedule, searchQuery, statusFilter, showOnlyUrgent, creatorFilter, judgeFilter, clerkFilter, startDate, endDate]);
   
+  // THUẬT TOÁN ĐÁNH GIÁ CHẤT LƯỢNG XÉT XỬ (TỶ LỆ HỦY / SỬA)
+  const chatLuongXetXu = useMemo(() => {
+    const stats = {};
+    schedule.filter(i => i.status === 'completed' && i.judge).forEach(item => {
+      if (!stats[item.judge]) {
+         stats[item.judge] = { tongAn: 0, biKhangCao: 0, biHuy: 0, biSua: 0 };
+      }
+      stats[item.judge].tongAn += 1;
+      if (item.isKhangCao) stats[item.judge].biKhangCao += 1;
+      if (item.ketQuaPhucTham === "Hủy bản án" && item.loiChuQuan) stats[item.judge].biHuy += 1;
+      if (item.ketQuaPhucTham === "Sửa bản án" && item.loiChuQuan) stats[item.judge].biSua += 1;
+    });
+    return Object.keys(stats).map(judge => ({
+       name: judge, ...stats[judge]
+    })).sort((a,b) => b.biHuy - a.biHuy || b.biSua - a.biSua || b.tongAn - a.tongAn);
+  }, [schedule]);
   // =========================================================
   // THUẬT TOÁN TÍNH MA TRẬN TẢI TRỌNG THẨM PHÁN
   // =========================================================
@@ -1663,13 +1714,14 @@ useEffect(() => {
                       ⚖️ ÁN CÓ HIỆU LỰC
                     </span>
                   )}
-                  {/* HIỂN THỊ THẺ KHÁNG CÁO SIÊU XỊN */}
+                  {/* HIỂN THỊ THẺ KHÁNG CÁO SIÊU XỊN (BẢN CÓ KẾT QUẢ) */}
                   {item.isKhangCao && (
-                    <div className={`mt-2 p-2 rounded border shadow-sm w-max ${item.trangThaiKhangCao === 'da_chuyen' ? 'bg-gray-100 border-gray-300' : 'bg-orange-50 border-orange-300'}`}>
-                        <div className={`text-[10px] font-black uppercase mb-1 ${item.trangThaiKhangCao === 'da_chuyen' ? 'text-gray-500' : 'text-orange-800 animate-pulse'}`}>
-                           {item.trangThaiKhangCao === 'da_chuyen' ? '📦 ĐÃ CHUYỂN PHÚC THẨM' : `📜 HẠN CHUYỂN HỒ SƠ: ${item.hanChuyenKhangCao ? moment(item.hanChuyenKhangCao).format("DD/MM/YYYY") : "---"}`}
+                    <div className={`mt-2 p-2 rounded border shadow-sm w-max ${item.ketQuaPhucTham ? 'bg-blue-50 border-blue-300' : item.trangThaiKhangCao === 'da_chuyen' ? 'bg-gray-100 border-gray-300' : 'bg-orange-50 border-orange-300'}`}>
+                        <div className={`text-[10px] font-black uppercase mb-1 ${item.ketQuaPhucTham ? 'text-blue-800' : item.trangThaiKhangCao === 'da_chuyen' ? 'text-gray-500' : 'text-orange-800 animate-pulse'}`}>
+                           {item.ketQuaPhucTham ? `🏆 KQPT: ${item.ketQuaPhucTham}` : item.trangThaiKhangCao === 'da_chuyen' ? '📦 ĐÃ CHUYỂN PHÚC THẨM' : `📜 HẠN CHUYỂN: ${item.hanChuyenKhangCao ? moment(item.hanChuyenKhangCao).format("DD/MM/YYYY") : "---"}`}
                         </div>
                         <p className="text-[10px] font-bold text-gray-700 italic border-t border-dashed border-gray-300 pt-1">
+                           {item.ketQuaPhucTham && item.loiChuQuan ? <span className="text-white bg-red-600 px-1 rounded mr-1 not-italic">LỖI CHỦ QUAN</span> : ""}
                            ND: {item.nguoiKhangCao}
                         </p>
                     </div>
@@ -1760,7 +1812,6 @@ useEffect(() => {
               </td>
 
               {/* BẮT ĐẦU CỘT THAO TÁC (DẠNG DROPDOWN MENU) */}
-{/* BẮT ĐẦU CỘT THAO TÁC (DẠNG CLICK XỔ XUỐNG CỰC MƯỢT) */}
 {(canEdit || userRole === 'thamphan') && (
   <td className="px-2 py-2 w-[15%] align-top text-center border border-gray-300">
     
@@ -1802,6 +1853,10 @@ useEffect(() => {
              )}
              {canEdit && item.isKhangCao && item.trangThaiKhangCao !== 'da_chuyen' && (
                 <button onClick={() => handleChuyenPhucTham(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-teal-100 text-teal-700 font-bold uppercase text-[9px] rounded border border-teal-200 shadow-sm transition-all flex items-center gap-1.5">📦 Đã chuyển Phúc thẩm</button>
+             )}
+             {/* NÚT CHỐT KẾT QUẢ PHÚC THẨM (Chỉ hiện khi án đã chuyển PT) */}
+             {canEdit && item.trangThaiKhangCao === 'da_chuyen' && !item.ketQuaPhucTham && (
+                <button onClick={() => handleKetQuaPhucTham(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-blue-100 text-blue-700 font-bold uppercase text-[9px] rounded border border-blue-200 shadow-sm transition-all flex items-center gap-1.5 animate-pulse">🏆 Chốt KQ Phúc thẩm</button>
              )}
           </>
         )}
@@ -2411,7 +2466,40 @@ useEffect(() => {
             <span className="text-2xl">📅</span> Chi tiết án đã xét xử theo tháng
           </h3>
         </div>
-
+{/* BẢNG ĐÁNH GIÁ CHẤT LƯỢNG XÉT XỬ CỦA THẨM PHÁN */}
+      <div className="bg-white rounded-2xl shadow-2xl border p-6 mt-8 border-t-8 border-t-red-600">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="font-black text-red-800 uppercase text-lg flex items-center gap-2">
+            <span className="text-2xl">⚖️</span> Đánh giá Chất lượng Xét xử (Tỷ lệ Hủy/Sửa án)
+          </h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-center border-collapse border border-gray-300 text-[12px]">
+            <thead className="bg-red-50 text-red-900 text-[11px] font-black uppercase">
+              <tr>
+                <th className="px-2 py-3 border border-gray-300 text-left">Thẩm phán</th>
+                <th className="px-2 py-3 border border-gray-300">Án đã giải quyết</th>
+                <th className="px-2 py-3 border border-gray-300 text-orange-700">Bị Kháng cáo/Kháng nghị</th>
+                <th className="px-2 py-3 border border-gray-300 text-red-600 bg-red-100">Bị HỦY (Lỗi chủ quan)</th>
+                <th className="px-2 py-3 border border-gray-300 text-amber-600 bg-amber-100">Bị SỬA (Lỗi chủ quan)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 bg-white">
+              {chatLuongXetXu.map((tp, idx) => (
+                <tr key={idx} className="hover:bg-red-50/30 transition-all">
+                   <td className="px-2 py-2 border border-gray-300 font-black text-blue-900 text-left">{tp.name}</td>
+                   <td className="px-2 py-2 border border-gray-300 font-bold text-gray-700">{tp.tongAn}</td>
+                   <td className="px-2 py-2 border border-gray-300 font-bold text-orange-600">{tp.biKhangCao}</td>
+                   <td className="px-2 py-2 border border-gray-300 font-black text-red-600 text-lg bg-red-50/50">{tp.biHuy}</td>
+                   <td className="px-2 py-2 border border-gray-300 font-black text-amber-600 text-lg bg-amber-50/50">{tp.biSua}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="text-[10px] text-gray-500 italic font-bold mt-2">* Lưu ý: Bảng thống kê này chỉ tính những vụ án bị Hủy/Sửa do <b>Lỗi chủ quan</b> của Thẩm phán để làm cơ sở bình xét thi đua.</p>
+        </div>
+      </div>
+      
         <div className="space-y-6">
           {completedByMonth.map((monthData, idx) => (
             <div key={idx} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
