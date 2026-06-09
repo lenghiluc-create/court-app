@@ -66,6 +66,7 @@ export default function PremiumCourtApp() {
   // Filter States
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [dateFilterType, setDateFilterType] = useState("datetime");
   const [creatorFilter, setCreatorFilter] = useState("all");
   const [judgeFilter, setJudgeFilter] = useState("all");
   const [clerkFilter, setClerkFilter] = useState("all");
@@ -804,11 +805,18 @@ useEffect(() => {
       const matchJudge = judgeFilter === 'all' ? true : (i.judge === judgeFilter);
       const matchClerk = clerkFilter === 'all' ? true : (i.clerk === clerkFilter);
       const matchUrgent = showOnlyUrgent ? isUrgent(i.datetime) : true;
+      
       let matchDate = true;
       if (startDate || endDate) {
-        const itemDateStr = i.datetime ? i.datetime.split('T')[0] : null;
-        if (!itemDateStr) { matchDate = false; } 
-        else {
+        // NÂNG CẤP: Cho phép chọn trường dữ liệu để lọc
+        const targetDate = dateFilterType === 'createdAt' ? i.createdAt : i.datetime;
+        
+        // Cắt bỏ phần giờ phút, chỉ lấy ngày (YYYY-MM-DD)
+        const itemDateStr = targetDate ? (targetDate.includes('T') ? targetDate.split('T')[0] : targetDate) : null;
+        
+        if (!itemDateStr) { 
+            matchDate = false; 
+        } else {
           const itemTime = moment(itemDateStr).startOf('day').valueOf();
           const start = startDate ? moment(startDate).startOf('day').valueOf() : 0;
           const end = endDate ? moment(endDate).startOf('day').valueOf() : Infinity;
@@ -823,7 +831,7 @@ useEffect(() => {
       if (a.status !== 'pending' && b.status !== 'pending') return dateB - dateA;
       return a.status === 'pending' ? -1 : 1;
     });
-  }, [schedule, searchQuery, statusFilter, showOnlyUrgent, creatorFilter, judgeFilter, clerkFilter, startDate, endDate]);
+  }, [schedule, searchQuery, statusFilter, showOnlyUrgent, creatorFilter, judgeFilter, clerkFilter, startDate, endDate, dateFilterType]); // <-- Đã chèn thêm dateFilterType ở cuối dòng này
   
   // THUẬT TOÁN ĐÁNH GIÁ CHẤT LƯỢNG XÉT XỬ (TỶ LỆ HỦY / SỬA)
   const chatLuongXetXu = useMemo(() => {
@@ -1618,11 +1626,23 @@ useEffect(() => {
                 </div>
                 
                 <div className="flex flex-col xl:flex-row flex-wrap gap-4 w-full items-center">
-                  <div className="flex items-center gap-2 border border-gray-300 rounded-md px-4 py-2.5 bg-white w-full md:w-auto">
-                    <span className="text-xs font-bold text-gray-500">Từ:</span><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="outline-none text-sm bg-transparent" />
-                    <span className="text-xs font-bold text-gray-500">Đến:</span><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="outline-none text-sm bg-transparent" />
-                    {(startDate || endDate) && <button onClick={() => {setStartDate(""); setEndDate("")}} className="text-red-500 font-bold px-1.5">✕</button>}
-                  </div>
+                  <div className="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-2 bg-white w-full md:w-auto shadow-sm">
+           {/* MENU CHỌN KIỂU LỌC */}
+           <select 
+             value={dateFilterType} 
+             onChange={e => setDateFilterType(e.target.value)} 
+             className="text-[11px] font-black text-blue-800 bg-blue-50 outline-none border border-blue-200 rounded py-1.5 px-2 cursor-pointer uppercase shadow-inner"
+           >
+             <option value="datetime">📅 Lọc Ngày Xử</option>
+             <option value="createdAt">📥 Lọc Ngày Nhập</option>
+           </select>
+
+           <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="outline-none text-sm bg-transparent font-bold text-gray-700 ml-1" title="Từ ngày" />
+           <span className="text-xs font-bold text-gray-300">-</span>
+           <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="outline-none text-sm bg-transparent font-bold text-gray-700" title="Đến ngày" />
+           
+           {(startDate || endDate) && <button onClick={() => {setStartDate(""); setEndDate("")}} className="text-white bg-red-500 rounded-full w-5 h-5 flex items-center justify-center font-bold text-[10px] ml-1 hover:bg-red-600 transition-all shadow-sm">✕</button>}
+        </div>
                   <select value={judgeFilter} onChange={e => setJudgeFilter(e.target.value)} className={filterStyle}><option value="all">👨‍⚖️ Thẩm phán (Tất cả)</option>{judgesList.map(name => <option key={name} value={name}>{name}</option>)}</select>
                   <select value={clerkFilter} onChange={e => setClerkFilter(e.target.value)} className={filterStyle}><option value="all">📝 Thư ký (Tất cả)</option>{clerksList.map(name => <option key={name} value={name}>{name}</option>)}</select>
                   <select value={statusFilter} onChange={e => {setStatusFilter(e.target.value); setShowOnlyUrgent(false);}} className={filterStyle}>
@@ -2499,7 +2519,7 @@ useEffect(() => {
           <p className="text-[10px] text-gray-500 italic font-bold mt-2">* Lưu ý: Bảng thống kê này chỉ tính những vụ án bị Hủy/Sửa do <b>Lỗi chủ quan</b> của Thẩm phán để làm cơ sở bình xét thi đua.</p>
         </div>
       </div>
-      
+
         <div className="space-y-6">
           {completedByMonth.map((monthData, idx) => (
             <div key={idx} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
