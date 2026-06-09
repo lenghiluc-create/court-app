@@ -699,7 +699,7 @@ useEffect(() => {
     let chuoiTen = danhSach.join(" và ");
 
     // Lên kịch bản lời gọi chuẩn phong cách Tòa án
-    let kichBan = `Kính mời đương sự ${chuoiTen}, vui lòng di chuyển vào ${item.room || "phòng xét xử"} để làm việc. Xin nhắc lại, kính mời đương sự ${chuoiTen} vào ${item.room || "phòng xét xử"}.`;
+    let kichBan = `Kính mời đương sự ${chuoiTen}, vui lòng di chuyển vào phòng xử ${item.room || "phòng xét xử"} để làm việc. Xin nhắc lại, kính mời đương sự ${chuoiTen} vào phòng xét xử ${item.room || "phòng xét xử"}.`;
 
     // Gọi Robot ra đọc
     const ut = new SpeechSynthesisUtterance(kichBan);
@@ -1927,7 +1927,9 @@ useEffect(() => {
           <button onClick={() => handleReschedule(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-blue-100 text-blue-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">📅 Lên lịch lại</button>
         )}
 
-        {/* ĐƯỜNG PHÂN CÁCH MỜ */}
+        <button onClick={() => docTenDuongSu(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-amber-100 text-amber-700 font-bold uppercase text-[9px] rounded border border-amber-200 shadow-sm transition-all flex items-center gap-1.5">
+           📢 Phát thanh gọi tên
+        </button>
         {canEdit && <div className="h-[1px] bg-gray-300 my-0.5 mx-1"></div>}
 
         {/* 5. NHÓM NÚT SỬA / LOG / XÓA */}
