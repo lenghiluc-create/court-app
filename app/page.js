@@ -67,6 +67,7 @@ export default function PremiumCourtApp() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [dateFilterType, setDateFilterType] = useState("datetime");
+  const [reportMonth, setReportMonth] = useState("");
   const [creatorFilter, setCreatorFilter] = useState("all");
   const [judgeFilter, setJudgeFilter] = useState("all");
   const [clerkFilter, setClerkFilter] = useState("all");
@@ -833,10 +834,20 @@ useEffect(() => {
     });
   }, [schedule, searchQuery, statusFilter, showOnlyUrgent, creatorFilter, judgeFilter, clerkFilter, startDate, endDate, dateFilterType]); // <-- Đã chèn thêm dateFilterType ở cuối dòng này
   
-  // THUẬT TOÁN ĐÁNH GIÁ CHẤT LƯỢNG XÉT XỬ (TỶ LỆ HỦY / SỬA)
+  // THUẬT TOÁN ĐÁNH GIÁ CHẤT LƯỢNG XÉT XỬ (ĐÃ NÂNG CẤP LỌC THEO THÁNG)
   const chatLuongXetXu = useMemo(() => {
     const stats = {};
-    schedule.filter(i => i.status === 'completed' && i.judge).forEach(item => {
+    schedule.filter(i => {
+      if (i.status !== 'completed' || !i.judge) return false;
+      
+      // NẾU CÓ CHỌN THÁNG -> BẮT ĐẦU LỌC TRƯỚC KHI ĐẾM
+      if (reportMonth) {
+        const itemMonth = i.datetime ? moment(i.datetime).format("YYYY-MM") : "";
+        if (itemMonth !== reportMonth) return false;
+      }
+      return true;
+      
+    }).forEach(item => {
       if (!stats[item.judge]) {
          stats[item.judge] = { tongAn: 0, biKhangCao: 0, biHuy: 0, biSua: 0 };
       }
@@ -845,10 +856,11 @@ useEffect(() => {
       if (item.ketQuaPhucTham === "Hủy bản án" && item.loiChuQuan) stats[item.judge].biHuy += 1;
       if (item.ketQuaPhucTham === "Sửa bản án" && item.loiChuQuan) stats[item.judge].biSua += 1;
     });
+    
     return Object.keys(stats).map(judge => ({
        name: judge, ...stats[judge]
     })).sort((a,b) => b.biHuy - a.biHuy || b.biSua - a.biSua || b.tongAn - a.tongAn);
-  }, [schedule]);
+  }, [schedule, reportMonth]);
   // =========================================================
   // THUẬT TOÁN TÍNH MA TRẬN TẢI TRỌNG THẨM PHÁN
   // =========================================================
@@ -2421,7 +2433,20 @@ useEffect(() => {
           <h2 className="text-3xl font-black uppercase tracking-tighter">Báo Cáo Kết Quả Xét Xử</h2>
           <p className="opacity-70 font-bold uppercase text-[11px] mt-1 tracking-[0.2em]">Thống kê tổng hợp</p>
         </div>
-        <div className="text-right"><span className="text-4xl">📈</span></div>
+       <div className="flex items-center gap-3 bg-white/20 p-3 rounded-xl border border-white/30 backdrop-blur-sm shadow-inner">
+           <span className="text-[11px] font-black uppercase tracking-widest text-blue-100 hidden sm:block">Chọn tháng:</span>
+           <input 
+              type="month" 
+              value={reportMonth} 
+              onChange={e => setReportMonth(e.target.value)} 
+              className="bg-white text-blue-900 font-black px-4 py-2 rounded-lg outline-none cursor-pointer shadow-sm" 
+           />
+           {reportMonth && (
+              <button onClick={() => setReportMonth("")} className="text-[10px] bg-red-500 hover:bg-red-600 text-white px-3 py-2.5 rounded-lg font-black uppercase transition-all shadow-md active:scale-95">
+                 Toàn thời gian
+              </button>
+           )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
