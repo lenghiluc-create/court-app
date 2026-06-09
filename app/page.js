@@ -683,7 +683,36 @@ useEffect(() => {
         showToast(`✅ Đã chốt KQ Phúc thẩm: ${ketQuaStr}`, "success");
     } catch (e) { showToast("Lỗi cập nhật: " + e.message, "error"); }
   };
+// HÀM PHÁT THANH GỌI TÊN ĐƯƠNG SỰ BẰNG GIỌNG NÓI TRÌNH DUYỆT (0 TỐN DUNG LƯỢNG)
+  const docTenDuongSu = (item) => {
+    if (!window.speechSynthesis) {
+      return showToast("Trình duyệt trên Tivi không hỗ trợ giọng nói!", "error");
+    }
 
+    // Dừng các giọng đọc cũ (nếu có) để đọc câu mới ngay lập tức
+    window.speechSynthesis.cancel();
+
+    // Gom tên đương sự lại cho tự nhiên
+    let danhSach = [];
+    if (item.plaintiff && item.plaintiff !== "---") danhSach.push(item.plaintiff);
+    if (item.defendant && item.defendant !== "---") danhSach.push(item.defendant);
+    let chuoiTen = danhSach.join(" và ");
+
+    // Lên kịch bản lời gọi chuẩn phong cách Tòa án
+    let kichBan = `Kính mời đương sự ${chuoiTen}, vui lòng di chuyển vào ${item.room || "phòng xét xử"} để làm việc. Xin nhắc lại, kính mời đương sự ${chuoiTen} vào ${item.room || "phòng xét xử"}.`;
+
+    // Gọi Robot ra đọc
+    const ut = new SpeechSynthesisUtterance(kichBan);
+    ut.lang = 'vi-VN'; // Bắt buộc đọc tiếng Việt
+    ut.rate = 0.85;    // Tốc độ đọc chậm rãi, dõng dạc (1.0 là bình thường)
+    ut.pitch = 1;      // Độ cao giọng chuẩn
+    
+    window.speechSynthesis.speak(ut);
+    
+    // Hiện thông báo góc màn hình
+    showToast("📢 Đang phát thanh gọi đương sự...");
+  };
+  
   const handleDelete = async (id, caseName) => {
     if(confirm("Xóa hồ sơ này?")) {
       await deleteDoc(doc(db,"schedule", id));
@@ -2953,8 +2982,20 @@ useEffect(() => {
   </div>
 </div>
             
-            <div className="hidden md:flex flex-col items-end gap-2">
-               <span className="bg-white/10 px-4 py-2 rounded-lg text-lg uppercase tracking-widest">{item.clerk}</span>
+            {/* CỘT BÊN PHẢI CỦA GIAO DIỆN TIVI: THƯ KÝ VÀ NÚT GỌI LOA */}
+            <div className="hidden md:flex flex-col items-end gap-3 w-max">
+               <span className="bg-white/10 px-6 py-3 rounded-lg text-xl uppercase font-black tracking-widest text-blue-200 border border-blue-500/30">
+                  {item.clerk}
+               </span>
+               
+               {/* NÚT BẤM GỌI LOA ĐƯƠNG SỰ */}
+               <button 
+                  onClick={() => docTenDuongSu(item)} 
+                  className="bg-amber-600/30 hover:bg-amber-500 text-amber-300 hover:text-white border border-amber-500/50 px-6 py-3 rounded-lg uppercase font-black tracking-widest transition-all flex items-center gap-2 active:scale-95 cursor-pointer shadow-lg"
+                  title="Phát thanh gọi tên đương sự"
+               >
+                  <span className="text-2xl animate-pulse">📢</span> GỌI ĐƯƠNG SỰ
+               </button>
             </div>
           </div>
         ))}
