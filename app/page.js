@@ -2452,31 +2452,54 @@ useEffect(() => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow-xl border-l-8 border-l-green-500">
           <h3 className="text-gray-500 font-black text-[11px] uppercase mb-4">✅ Tổng án đã xét xử</h3>
-          <p className="text-4xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p>
+          <p className="text-4xl font-black text-green-600">
+            {schedule.filter(i => i.status === 'completed' && (!reportMonth || moment(i.datetime || i.createdAt).format("YYYY-MM") === reportMonth)).length}
+          </p>
           <p className="text-[10px] text-gray-400 mt-2 italic font-bold">Toàn bộ án đã giải quyết xong</p>
         </div>
         <div className="bg-white p-6 rounded-2xl shadow-xl border-l-8 border-l-blue-500">
           <h3 className="text-gray-500 font-black text-[11px] uppercase mb-4">📁 Án đang chờ xử</h3>
-          <p className="text-4xl font-black text-blue-900">{schedule.filter(i => i.status === 'pending').length}</p>
+          <p className="text-4xl font-black text-blue-900">
+            {schedule.filter(i => i.status === 'pending' && (!reportMonth || moment(i.datetime || i.createdAt).format("YYYY-MM") === reportMonth)).length}
+          </p>
           <p className="text-[10px] text-gray-400 mt-2 italic font-bold">Tổng số vụ việc đang thụ lý</p>
         </div>
         <div className="bg-white p-6 rounded-2xl shadow-xl border-l-8 border-l-teal-500">
           <h3 className="text-gray-500 font-black text-[11px] uppercase mb-4">🏆 Tỷ lệ giải quyết</h3>
           <p className="text-4xl font-black text-teal-600">
-            {schedule.length > 0 ? Math.round((schedule.filter(i => i.status === 'completed').length / schedule.length) * 100) : 0}%
+            {(() => {
+               const filtered = schedule.filter(i => !reportMonth || moment(i.datetime || i.createdAt).format("YYYY-MM") === reportMonth);
+               const completed = filtered.filter(i => i.status === 'completed').length;
+               return filtered.length > 0 ? Math.round((completed / filtered.length) * 100) : 0;
+            })()}%
           </p>
           <p className="text-[10px] text-gray-400 mt-2 italic font-bold">Dựa trên tổng số án đã nhập</p>
         </div>
       </div>
-      {schedule.length > 0 && (
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+      {/* TỰ ĐỘNG TÍNH TOÁN VÀ VẼ BIỂU ĐỒ THEO THÁNG ĐƯỢC CHỌN */}
+      {(() => {
+        const filteredReport = schedule.filter(i => !reportMonth || moment(i.datetime || i.createdAt).format("YYYY-MM") === reportMonth);
+        if (filteredReport.length === 0) return null; 
+        
+        // Dữ liệu Biểu đồ tròn
+        const ctStats = {};
+        filteredReport.forEach(i => { if(i.caseType) ctStats[i.caseType] = (ctStats[i.caseType] || 0) + 1 });
+        const ctData = Object.keys(ctStats).map(key => ({ name: key, value: ctStats[key] }));
+        
+        // Dữ liệu Danh sách Thẩm phán án chờ
+        const jStats = {};
+        filteredReport.filter(i => i.status === 'pending').forEach(i => { if(i.judge) jStats[i.judge] = (jStats[i.judge] || 0) + 1 });
+        const jData = Object.keys(jStats).map(key => ({ name: key, value: jStats[key] })).sort((a,b) => b.value - a.value);
+
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
                <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-200">
                   <h3 className="text-center font-black text-[13px] text-gray-500 uppercase tracking-widest mb-4">Tỷ lệ theo Loại án</h3>
                   <div className="h-[320px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie data={caseTypeData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" label={({name, value}) => `${name} (${value})`}>
-                          {caseTypeData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
+                        <Pie data={ctData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" label={({name, value}) => `${name} (${value})`}>
+                          {ctData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
                         </Pie>
                         <Tooltip />
                       </PieChart>
@@ -2487,9 +2510,9 @@ useEffect(() => {
                <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-200 flex flex-col">
                   <h3 className="text-center font-black text-[13px] text-gray-500 uppercase tracking-widest mb-4">Án đang chờ xử theo Thẩm phán</h3>
                   <div className="h-[320px] w-full overflow-y-auto pr-2 custom-scrollbar">
-                    {judgeDataList.length > 0 ? (
+                    {jData.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 pt-2">
-                        {judgeDataList.map((item, index) => (
+                        {jData.map((item, index) => (
                           <div key={index} className="flex justify-between items-center border-b border-gray-100 pb-2">
                             <span className="text-[14px] font-bold text-gray-700 truncate pr-2" title={item.name}>
                               <span className="text-gray-400 mr-1.5">{index + 1}.</span>{item.name}
@@ -2503,8 +2526,9 @@ useEffect(() => {
                     )}
                   </div>
                </div>
-             </div>
-          )}
+            </div>
+        );
+      })()}
       <div className="bg-white rounded-2xl shadow-2xl border p-6 mt-8">
         <div className="flex justify-between items-center mb-6">
           <h3 className="font-black text-blue-900 uppercase text-lg flex items-center gap-2">
