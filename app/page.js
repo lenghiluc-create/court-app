@@ -62,6 +62,7 @@ export default function PremiumCourtApp() {
   const [exportStart, setExportStart] = useState(moment().startOf('month').format('YYYY-MM-DD')); 
   const [exportEnd, setExportEnd] = useState(moment().endOf('month').format('YYYY-MM-DD')); 
   const [exportFilterType, setExportFilterType] = useState('datetime');
+  const [exportUnexportedOnly, setExportUnexportedOnly] = useState(false); // Cờ lọc án chưa xuất
 
   // Filter States
   const [startDate, setStartDate] = useState("");
@@ -772,7 +773,7 @@ useEffect(() => {
     let nextTrialCount = item.trialCount === "Lần 1" ? "Lần 2" : "Mở lại";
     const oldDate = item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "Chưa có";
     const oldNote = `(Hoãn từ ngày ${oldDate})`;
-    setForm({ ...item, datetime: "", trialCount: nextTrialCount, status: "pending",
+    setForm({ ...item, datetime: "", trialCount: nextTrialCount, status: "pending", daXuatExcel: false,
     caseName: item.caseName.includes(oldNote) ? item.caseName : `${item.caseName} ${oldNote}`
   });
     setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'});
@@ -950,18 +951,14 @@ useEffect(() => {
     setShowExportModal(true); 
   };
 
-  const executeExport = () => {
-    // 1. SỬA LỖI 1: Cho phép lấy toàn bộ hồ sơ (kể cả án mới nhập hoặc án hoãn chưa có ngày xét xử)
+  const executeExport = async () => {
     let dataToExport = [...schedule]; 
     
     if (exportStart || exportEnd) {
       dataToExport = dataToExport.filter(i => {
-        // Lấy đúng trường ngày cần lọc theo lựa chọn của cán bộ
         const targetDate = exportFilterType === 'createdAt' ? i.createdAt : i.datetime;
-        
         if (!targetDate) return false;
         
-        // 2. SỬA LỖI 2: Trích xuất chính xác ngày từ targetDate chứ không viết cứng i.datetime nữa
         const dateStr = targetDate.includes('T') ? targetDate.split('T')[0] : targetDate;
         const itemTime = moment(dateStr).startOf('day').valueOf();
         
@@ -970,8 +967,12 @@ useEffect(() => {
         return itemTime >= start && itemTime <= end;
       });
     }
+
+    // 💡 TÍNH NĂNG MỚI: LỌC BỎ ÁN ĐÃ XUẤT NẾU CÓ TICK
+    if (exportUnexportedOnly) {
+      dataToExport = dataToExport.filter(i => !i.daXuatExcel);
+    }
     
-    // Sắp xếp thứ tự hiển thị theo ngày được chọn lọc
     dataToExport.sort((a, b) => {
       const dateA = exportFilterType === 'createdAt' ? a.createdAt : a.datetime;
       const dateB = exportFilterType === 'createdAt' ? b.createdAt : b.datetime;
@@ -979,11 +980,10 @@ useEffect(() => {
     });
 
     if (dataToExport.length === 0) {
-      return showToast("Không có vụ án nào trong khoảng thời gian này!", "error");
+      return showToast("Không có vụ án nào (hoặc các vụ trong kỳ này đều đã được xuất Excel từ trước)!", "error");
     }
 
-    // Thiết lập bảng Excel HTML tiêu chuẩn Times New Roman của Tòa án
-    // Thiết lập bảng Excel HTML tiêu chuẩn Times New Roman của Tòa án (Đã sửa viền mảnh)
+    // --- ĐOẠN VẼ BẢNG EXCEL (VIỀN MẢNH .5pt) CỦA NÍ ---
     let tableHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8" /><style>table { border-collapse: collapse; width: 100%; font-family: 'Times New Roman', Times, serif; font-size: 13pt; } td, th { border: .5pt solid windowtext; padding: 8px; vertical-align: top; } .no-border { border: none !important; } .text-center { text-align: center; vertical-align: middle; } .font-bold { font-weight: bold; }</style></head><body><table><tr><td colspan="2" class="no-border text-center font-bold">TÒA ÁN NHÂN DÂN<br/>KHU VỰC 9 - CẦN THƠ</td><td colspan="5" class="no-border text-center font-bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/>Độc lập - Tự do - Hạnh Phúc</td></tr><tr><td colspan="7" class="no-border text-center"><i>Cần Thơ, ngày ${moment().format("DD")} tháng ${moment().format("MM")} năm ${moment().format("YYYY")}</i></td></tr><tr><td colspan="7" class="no-border"></td></tr><tr><td colspan="7" class="no-border text-center font-bold" style="font-size: 16pt;">DANH SÁCH LỊCH XẾT XỬ</td></tr><tr><td colspan="7" class="no-border text-center font-bold" style="font-size: 12pt; color: #666;">(${exportFilterType === 'createdAt' ? 'Tiêu chí: Trích xuất theo ngày nhập hệ thống' : 'Tiêu chí: Trích xuất theo ngày xét xử'}<br/>Từ ngày: ${exportStart ? moment(exportStart).format("DD/MM/YYYY") : "..."} - Đến ngày: ${exportEnd ? moment(exportEnd).format("DD/MM/YYYY") : "..."})</td></tr><tr><td colspan="7" class="no-border"></td></tr><tr><th class="text-center font-bold" style="background-color: #f2f2f2; width: 50px;">STT</th><th class="text-center font-bold" style="background-color: #f2f2f2; width: 350px;">NỘI DUNG VỤ ÁN</th><th class="text-center font-bold" style="background-color: #f2f2f2; width: 150px;">NGÀY XẾT XỬ</th><th class="text-center font-bold" style="background-color: #f2f2f2; width: 220px;">CHỦ TỌA, THƯ KÝ, KSV</th><th class="text-center font-bold" style="background-color: #f2f2f2; width: 220px;">HỘI THẨM NHÂN DÂN</th><th class="text-center font-bold" style="background-color: #f2f2f2; width: 120px;">PHÒNG XỬ</th><th class="text-center font-bold" style="background-color: #f2f2f2; width: 120px;">NGƯỜI NHẬP</th></tr>`;
     
     dataToExport.forEach((item, index) => {
@@ -996,10 +996,9 @@ useEffect(() => {
         noidung = `<b>${item.caseName || ""}</b><br/>NĐ: ${item.plaintiff || "---"}<br/>BĐ: ${item.defendant || "---"}`;
       }
         
-      // 3. XỬ LÝ ĐẸP: Nếu án hoãn hoặc án mới nhập chưa lên lịch cụ thể thì hiện chữ thông báo rõ ràng
       const thoigian = item.datetime 
         ? `${moment(item.datetime).format("HH")} giờ ${moment(item.datetime).format("mm")} phút<br/>Ngày ${moment(item.datetime).format("DD/MM/YYYY")}`
-        : `<span style="color: #b45309; font-weight: bold; font-style: italic;">Chờ xếp lịch lại (Án hoãn/Mới)</span>`;
+        : `<span style="color: #b45309; font-weight: bold; font-style: italic;">Chờ xếp lịch lại</span>`;
       
       tableHtml += `<tr><td class="text-center">${index + 1}</td><td>${noidung}</td><td class="text-center">${thoigian}</td><td>TP: ${item.judge || ""}<br/>TK: ${item.clerk || ""}<br/>KSV: ${item.prosecutor || ""}</td><td>${item.juror1 || ""}<br/>${item.juror2 || ""}</td><td class="text-center font-bold">${item.room || ""}</td><td class="text-center">${item.createdBy ? item.createdBy.split('@')[0] : ""}</td></tr>`;
     });
@@ -1009,9 +1008,24 @@ useEffect(() => {
     const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
     link.download = `Bao_Cao_Lich_Xet_Xu_${exportStart ? moment(exportStart).format("DD_MM_YYYY") : "ToanBo"}.xls`;
     link.click();
+
+    // 💡 SAU KHI TẢI FILE XONG -> CHẠY VÒNG LẶP LƯU LẠI VẾT "ĐÃ XUẤT" LÊN FIREBASE
+    try {
+       const { doc, updateDoc } = await import('firebase/firestore');
+       for (let item of dataToExport) {
+          if (!item.daXuatExcel) {
+             await updateDoc(doc(db, "schedule", item.id), {
+                daXuatExcel: true,
+                ngayXuatExcel: moment().toISOString()
+             });
+          }
+       }
+    } catch(e) {
+       console.error("Lỗi đánh dấu đã xuất:", e);
+    }
     
     setShowExportModal(false); 
-    showToast("Đã trích xuất báo cáo Excel thành công!", "success");
+    showToast(`Đã xuất báo cáo ${dataToExport.length} vụ và đánh dấu vào hệ thống!`, "success");
   };
 
   const calendarEvents = useMemo(() => {
@@ -2900,6 +2914,19 @@ useEffect(() => {
                   <div>
                     <label className="block text-xs font-black text-gray-600 uppercase mb-2">Đến ngày</label>
                     <input type="date" value={exportEnd} onChange={e => setExportEnd(e.target.value)} className="w-full border-2 border-gray-200 p-3 bg-gray-50 outline-none focus:border-green-500 font-bold text-gray-900 rounded-xl" />
+                  </div>
+                  <div className="pt-2">
+                    <label className="flex items-center gap-3 cursor-pointer bg-green-50 p-3 rounded-lg border border-green-200">
+                      <input 
+                        type="checkbox" 
+                        checked={exportUnexportedOnly} 
+                        onChange={e => setExportUnexportedOnly(e.target.checked)} 
+                        className="w-5 h-5 accent-green-600" 
+                      />
+                      <span className="text-[11px] font-black text-green-800 uppercase tracking-wide">
+                        Lọc bỏ những vụ án đã từng xuất Excel
+                      </span>
+                    </label>
                   </div>
                   <div className="flex gap-4 pt-2">
                     <button type="button" onClick={() => setShowExportModal(false)} className="w-1/2 bg-gray-200 text-gray-700 font-black py-4 uppercase rounded-xl hover:bg-gray-300 transition-colors">HỦY BỎ</button>
