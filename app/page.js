@@ -521,6 +521,50 @@ useEffect(() => {
       if (!confirmSave) return; 
     }
   }
+  const conflicts = schedule.filter(item => {
+    // Bỏ qua chính vụ án đang sửa (nếu là update)
+    if (editingId && item.id === editingId) return false;
+    
+    // Bỏ qua nếu chưa chọn giờ
+    if (!item.datetime || !form.datetime) return false; 
+
+    // Kiểm tra xem có bị trùng cùng 1 thời điểm không (cùng ngày, cùng giờ)
+    const isSameTime = item.datetime === form.datetime;
+
+    if (isSameTime) {
+      // 1. Quét trùng Thẩm phán, Thư ký, Phòng xử
+      const trungTP = form.judge && form.judge !== "---" && item.judge === form.judge;
+      const trungTK = form.clerk && form.clerk !== "---" && item.clerk === form.clerk;
+      const trungPhong = form.room && form.room !== "---" && item.room === form.room;
+      
+      // 2. Quét chéo Hội thẩm 1 và Hội thẩm 2
+      const formHT1 = form.juror1;
+      const formHT2 = form.juror2;
+      const itemHT1 = item.juror1;
+      const itemHT2 = item.juror2;
+      
+      const trungHT1 = formHT1 && formHT1 !== "---" && (formHT1 === itemHT1 || formHT1 === itemHT2);
+      const trungHT2 = formHT2 && formHT2 !== "---" && (formHT2 === itemHT1 || formHT2 === itemHT2);
+
+      // Trả về true nếu trùng BẤT KỲ thành phần nào
+      if (trungTP || trungTK || trungPhong || trungHT1 || trungHT2) {
+         item.loiTrung = [];
+         if (trungPhong) item.loiTrung.push(`Phòng ${form.room}`);
+         if (trungTP) item.loiTrung.push(`Thẩm phán ${form.judge}`);
+         if (trungTK) item.loiTrung.push(`Thư ký ${form.clerk}`);
+         if (trungHT1) item.loiTrung.push(`Hội thẩm ${formHT1}`);
+         if (trungHT2) item.loiTrung.push(`Hội thẩm ${formHT2}`);
+         return true;
+      }
+    }
+    return false;
+  });
+
+  // NẾU CÓ TRÙNG -> CHẶN LẠI VÀ BÁO LỖI CHI TIẾT
+  if (conflicts.length > 0) {
+    const canhBao = conflicts.map(c => `• Vụ "${c.caseName}": Trùng ${c.loiTrung.join(", ")}`).join("\n");
+    return showToast(`⚠️ KHÔNG THỂ LƯU! Phát hiện TRÙNG LỊCH tại thời điểm này:\n\n${canhBao}`, "error"); 
+  }
     const isConflict = await isConflictServerSide(form.datetime, form.room, editingId, form.duration);
     if(isConflict) return showToast("⚠️ Xin lỗi, phòng này vừa được đặt. Vui lòng chọn giờ khác!", "error");
 
