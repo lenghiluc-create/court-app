@@ -1103,19 +1103,104 @@ useEffect(() => {
             ))}
           </div>
         )}
+<div className="max-w-3xl mx-auto mt-4 mb-10 p-6 bg-white rounded-2xl shadow-2xl border-t-4 border-blue-600">
+        <h2 className="text-xl font-black text-gray-800 uppercase text-center mb-2">🔍 Tra cứu Lịch Xét Xử & Hòa Giải</h2>
+        <p className="text-sm text-gray-500 text-center italic mb-6">Dành cho Đương sự, Người tham gia tố tụng và Luật sư</p>
+        
+        <div className="flex gap-2">
+          <input 
+            type="text" 
+            placeholder="Nhập tên Đương sự, số thụ lý hoặc tên vụ án..." 
+            className="flex-1 p-4 border-2 border-gray-200 rounded-xl outline-none focus:border-blue-500 font-bold text-gray-700 text-lg transition-colors"
+            value={tuKhoa}
+            onChange={(e) => setTuKhoa(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && tuKhoa.trim().length > 2) {
+                const res = schedule.filter(i => 
+                  (i.plaintiff && i.plaintiff.toLowerCase().includes(tuKhoa.toLowerCase())) ||
+                  (i.defendant && i.defendant.toLowerCase().includes(tuKhoa.toLowerCase())) ||
+                  (i.caseName && i.caseName.toLowerCase().includes(tuKhoa.toLowerCase()))
+                );
+                setKetQuaTraCuu(res);
+              }
+            }}
+          />
+          <button 
+            onClick={() => {
+               if(tuKhoa.trim().length < 2) return showToast("Vui lòng nhập ít nhất 2 ký tự!", "error");
+               const res = schedule.filter(i => 
+                  (i.plaintiff && i.plaintiff.toLowerCase().includes(tuKhoa.toLowerCase())) ||
+                  (i.defendant && i.defendant.toLowerCase().includes(tuKhoa.toLowerCase())) ||
+                  (i.caseName && i.caseName.toLowerCase().includes(tuKhoa.toLowerCase()))
+                );
+                setKetQuaTraCuu(res);
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-black uppercase tracking-wider shadow-lg transition-all active:scale-95"
+          >
+            TÌM KIẾM
+          </button>
+        </div>
 
-        {/* BẢNG LỊCH XÉT XỬ MẶC ĐỊNH CHO NGƯỜI DÂN */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 overflow-hidden">
-           <div className="flex justify-between items-center mb-4 pb-2 border-b">
-             <h2 className="font-black text-blue-900 text-lg uppercase flex items-center gap-2">
-               <span className="text-2xl">📅</span> Danh sách vụ án xét xử
-             </h2>
-             
-             {/* BỘ LỌC TÌM KIẾM CHO NGƯỜI DÂN */}
-             <div className="flex gap-2">
-                <input type="text" placeholder="Tìm tên đương sự..." onChange={e => setSearchQuery(e.target.value)} className="border border-gray-300 rounded-md px-3 py-1.5 text-xs outline-none focus:border-blue-500 min-w-[150px]" />
-             </div>
+        {/* HIỂN THỊ KẾT QUẢ CỦA CỔNG TRA CỨU */}
+        {ketQuaTraCuu !== null && (
+          <div className="mt-6 border-t-2 border-dashed border-gray-200 pt-6">
+            <h3 className="font-bold text-gray-600 mb-4">Tìm thấy <span className="text-blue-600 text-xl">{ketQuaTraCuu.length}</span> kết quả phù hợp:</h3>
+            
+            {ketQuaTraCuu.length === 0 ? (
+              <div className="bg-orange-50 text-orange-700 p-4 rounded-xl text-center font-bold">
+                Không tìm thấy lịch xét xử nào khớp với từ khóa "{tuKhoa}". Vui lòng kiểm tra lại.
+              </div>
+            ) : (
+              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                {ketQuaTraCuu.map((item, index) => (
+                  <div key={index} className="bg-gray-50 border border-gray-200 rounded-xl p-5 hover:border-blue-300 transition-all shadow-sm">
+                    <div className="flex justify-between items-start mb-3">
+                       <span className="bg-blue-100 text-blue-800 text-[10px] font-black px-2 py-1 uppercase rounded tracking-wider">
+                         {item.caseType || "Vụ việc"}
+                       </span>
+                       {item.datetime ? (
+                         <span className="text-green-700 font-black text-sm flex items-center gap-1 bg-green-100 px-3 py-1 rounded-full">
+                           ⏰ {moment(item.datetime).format("HH:mm - DD/MM/YYYY")}
+                         </span>
+                       ) : (
+                         <span className="text-orange-600 font-bold text-sm italic">Đang chờ xếp lịch</span>
+                       )}
+                    </div>
+                    
+                    <h4 className="font-bold text-gray-800 text-lg mb-2 leading-tight">{item.caseName}</h4>
+                    
+                    <div className="grid grid-cols-2 gap-4 text-sm mt-4">
+                       <div className="bg-white p-3 rounded-lg border border-gray-100">
+                         <span className="text-gray-400 text-xs font-bold uppercase block mb-1">Thẩm phán</span>
+                         <span className="font-semibold text-gray-700">{item.judge || "Chưa phân công"}</span>
+                       </div>
+                       <div className="bg-white p-3 rounded-lg border border-gray-100">
+                         <span className="text-gray-400 text-xs font-bold uppercase block mb-1">Địa điểm / Phòng</span>
+                         <span className="font-bold text-blue-900">{item.room || "Chưa xác định"}</span>
+                       </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ============================================================== */}
+      {/* 2. BẢNG LỊCH XÉT XỬ MẶC ĐỊNH CHO NGƯỜI DÂN (ĐOẠN CODE CỦA NÍ) */}
+      {/* ============================================================== */}
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 overflow-hidden">
+         <div className="flex justify-between items-center mb-4 pb-2 border-b">
+           <h2 className="font-black text-blue-900 text-lg uppercase flex items-center gap-2">
+             <span className="text-2xl">📅</span> Danh sách vụ án xét xử
+           </h2>
+           
+           {/* BỘ LỌC TÌM KIẾM CHO NGƯỜI DÂN */}
+           <div className="flex gap-2">
+              <input type="text" placeholder="Tìm tên đương sự..." onChange={e => setSearchQuery(e.target.value)} className="border border-gray-300 rounded-md px-3 py-1.5 text-xs outline-none focus:border-blue-500 min-w-[150px]" />
            </div>
+         </div>
 
            {/* BẢNG HIỂN THỊ DỮ LIỆU ÁN */}
            <div className="overflow-x-auto bg-gray-50/50 rounded-lg custom-scrollbar">
@@ -1714,91 +1799,7 @@ useEffect(() => {
                 <DnDCalendar localizer={localizer} events={calendarEvents} style={{ height: "100%", minWidth: "800px" }} onSelectEvent={e => setSelectedEvent(e)} onEventDrop={onEventDrop} resizable={false} />
               ) : <div className="font-bold text-gray-400 text-center mt-20">Đang tải bộ lịch...</div>}
             </div>
-            {/* 🔍 CỔNG TRA CỨU LỊCH XÉT XỬ DÀNH CHO CÔNG DÂN */}
-      <div className="max-w-3xl mx-auto mt-8 mb-12 p-6 bg-white rounded-2xl shadow-2xl border-t-4 border-blue-600">
-        <h2 className="text-xl font-black text-gray-800 uppercase text-center mb-2">🔍 Tra cứu Lịch Xét Xử & Hòa Giải</h2>
-        <p className="text-sm text-gray-500 text-center italic mb-6">Dành cho Đương sự, Người tham gia tố tụng và Luật sư</p>
-        
-        <div className="flex gap-2">
-          <input 
-            type="text" 
-            placeholder="Nhập tên Đương sự, số thụ lý hoặc tên vụ án..." 
-            className="flex-1 p-4 border-2 border-gray-200 rounded-xl outline-none focus:border-blue-500 font-bold text-gray-700 text-lg transition-colors"
-            value={tuKhoa}
-            onChange={(e) => setTuKhoa(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && tuKhoa.trim().length > 2) {
-                // Lọc dữ liệu khi bấm Enter
-                const res = schedule.filter(i => 
-                  (i.plaintiff && i.plaintiff.toLowerCase().includes(tuKhoa.toLowerCase())) ||
-                  (i.defendant && i.defendant.toLowerCase().includes(tuKhoa.toLowerCase())) ||
-                  (i.caseName && i.caseName.toLowerCase().includes(tuKhoa.toLowerCase()))
-                );
-                setKetQuaTraCuu(res);
-              }
-            }}
-          />
-          <button 
-            onClick={() => {
-               if(tuKhoa.trim().length < 2) return showToast("Vui lòng nhập ít nhất 2 ký tự!", "error");
-               const res = schedule.filter(i => 
-                  (i.plaintiff && i.plaintiff.toLowerCase().includes(tuKhoa.toLowerCase())) ||
-                  (i.defendant && i.defendant.toLowerCase().includes(tuKhoa.toLowerCase())) ||
-                  (i.caseName && i.caseName.toLowerCase().includes(tuKhoa.toLowerCase()))
-                );
-                setKetQuaTraCuu(res);
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-black uppercase tracking-wider shadow-lg transition-all active:scale-95"
-          >
-            TÌM KIẾM
-          </button>
-        </div>
-
-        {/* HIỂN THỊ KẾT QUẢ TRA CỨU */}
-        {ketQuaTraCuu !== null && (
-          <div className="mt-6 border-t-2 border-dashed border-gray-200 pt-6">
-            <h3 className="font-bold text-gray-600 mb-4">Tìm thấy <span className="text-blue-600 text-xl">{ketQuaTraCuu.length}</span> kết quả phù hợp:</h3>
             
-            {ketQuaTraCuu.length === 0 ? (
-              <div className="bg-orange-50 text-orange-700 p-4 rounded-xl text-center font-bold">
-                Không tìm thấy lịch xét xử nào khớp với từ khóa "{tuKhoa}". Vui lòng kiểm tra lại.
-              </div>
-            ) : (
-              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                {ketQuaTraCuu.map((item, index) => (
-                  <div key={index} className="bg-gray-50 border border-gray-200 rounded-xl p-5 hover:border-blue-300 transition-all shadow-sm">
-                    <div className="flex justify-between items-start mb-3">
-                       <span className="bg-blue-100 text-blue-800 text-[10px] font-black px-2 py-1 uppercase rounded tracking-wider">
-                         {item.caseType || "Vụ việc"}
-                       </span>
-                       {item.datetime ? (
-                         <span className="text-green-700 font-black text-sm flex items-center gap-1 bg-green-100 px-3 py-1 rounded-full">
-                           ⏰ {moment(item.datetime).format("HH:mm - DD/MM/YYYY")}
-                         </span>
-                       ) : (
-                         <span className="text-orange-600 font-bold text-sm italic">Đang chờ xếp lịch</span>
-                       )}
-                    </div>
-                    
-                    <h4 className="font-bold text-gray-800 text-lg mb-2 leading-tight">{item.caseName}</h4>
-                    
-                    <div className="grid grid-cols-2 gap-4 text-sm mt-4">
-                       <div className="bg-white p-3 rounded-lg border border-gray-100">
-                         <span className="text-gray-400 text-xs font-bold uppercase block mb-1">Thẩm phán</span>
-                         <span className="font-semibold text-gray-700">{item.judge || "Chưa phân công"}</span>
-                       </div>
-                       <div className="bg-white p-3 rounded-lg border border-gray-100">
-                         <span className="text-gray-400 text-xs font-bold uppercase block mb-1">Địa điểm / Phòng</span>
-                         <span className="font-bold text-blue-900">{item.room || "Chưa xác định"}</span>
-                       </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
             <div className="bg-white border border-gray-200 shadow-xl rounded-xl flex flex-col h-auto min-h-[850px] w-full" ref={tableSectionRef}>
               <div className="p-6 md:p-8 border-b border-gray-200 flex flex-col gap-6 bg-white z-10 rounded-t-xl">
                 <div className="flex justify-between items-center w-full">
