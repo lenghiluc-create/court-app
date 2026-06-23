@@ -1104,18 +1104,19 @@ useEffect(() => {
           </div>
         )}
 {/* ============================================================== */}
-      {/* 1. 🔍 CỔNG TRA CỨU BẢN THON GỌN (SLIM FIT) */}
+      {/* 1. 🔍 CỔNG TRA CỨU (FULL-WIDTH TRÀN VIỀN ĐỒNG BỘ 100%) */}
       {/* ============================================================== */}
-      <div className="max-w-2xl mx-auto mt-4 mb-8 p-5 bg-white rounded-xl shadow-lg border-t-4 border-blue-600">
-        <h2 className="text-lg font-black text-gray-800 uppercase text-center mb-1">🔍 Tra cứu Lịch Xét Xử & Hòa Giải</h2>
-        <p className="text-xs text-gray-500 text-center italic mb-4">Dành cho Đương sự, Người tham gia tố tụng và Luật sư</p>
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 md:p-6 mb-6 w-full">
         
-        <div className="flex gap-2">
+        <h2 className="text-xl font-black text-gray-800 uppercase mb-1">🔍 Tra cứu Lịch Xét Xử & Hòa Giải</h2>
+        <p className="text-sm text-gray-500 italic mb-5">Dành cho Đương sự, Người tham gia tố tụng và Luật sư</p>
+        
+        {/* Thanh Search liền khối kéo dài 100% */}
+        <div className="flex shadow-sm rounded-xl overflow-hidden border-2 border-gray-200 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100 transition-all w-full">
           <input 
             type="text" 
             placeholder="Nhập tên Đương sự, số thụ lý hoặc tên vụ án..." 
-            // 💡 Đã thu gọn padding (py-2.5), giảm font chữ (text-sm) và bo góc nhẹ hơn (rounded-lg)
-            className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-lg outline-none focus:border-blue-500 font-bold text-gray-700 text-sm transition-colors"
+            className="flex-1 px-5 py-3.5 outline-none font-bold text-gray-700 text-sm md:text-base"
             value={tuKhoa}
             onChange={(e) => setTuKhoa(e.target.value)}
             onKeyDown={(e) => {
@@ -1139,8 +1140,7 @@ useEffect(() => {
                 );
                 setKetQuaTraCuu(res);
             }}
-            // 💡 Nút bấm cũng được thu gọn cho bằng mép với ô nhập
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-black text-sm uppercase tracking-wider shadow transition-all active:scale-95 whitespace-nowrap"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-8 md:px-16 py-3.5 font-black text-sm uppercase tracking-wider transition-colors whitespace-nowrap"
           >
             TÌM KIẾM
           </button>
@@ -1148,23 +1148,23 @@ useEffect(() => {
 
         {/* HIỂN THỊ KẾT QUẢ CỦA CỔNG TRA CỨU */}
         {ketQuaTraCuu !== null && (
-          <div className="mt-5 border-t border-dashed border-gray-200 pt-5">
-            <h3 className="font-bold text-gray-600 mb-3 text-sm">Tìm thấy <span className="text-blue-600 text-lg">{ketQuaTraCuu.length}</span> kết quả phù hợp:</h3>
+          <div className="mt-6 border-t border-dashed border-gray-200 pt-6">
+            <h3 className="font-bold text-gray-600 mb-4 text-sm">Tìm thấy <span className="text-blue-600 text-xl">{ketQuaTraCuu.length}</span> kết quả phù hợp:</h3>
             
             {ketQuaTraCuu.length === 0 ? (
-              <div className="bg-orange-50 text-orange-700 p-3 rounded-lg text-center font-bold text-sm">
+              <div className="bg-orange-50 text-orange-700 p-4 rounded-xl text-center font-bold text-sm border border-orange-100">
                 Không tìm thấy lịch xét xử nào khớp với từ khóa "{tuKhoa}". Vui lòng kiểm tra lại.
               </div>
             ) : (
               <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                 {ketQuaTraCuu.map((item, index) => (
-                  <div key={index} className="bg-gray-50 border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-all shadow-sm">
+                  <div key={index} className="bg-gray-50 border border-gray-200 rounded-xl p-4 hover:border-blue-300 transition-all shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                       <span className="bg-blue-100 text-blue-800 text-[9px] font-black px-2 py-1 uppercase rounded tracking-wider">
+                       <span className="bg-blue-100 text-blue-800 text-[10px] font-black px-2 py-1 uppercase rounded tracking-wider">
                          {item.caseType || "Vụ việc"}
                        </span>
                        {item.datetime ? (
-                         <span className="text-green-700 font-black text-xs flex items-center gap-1 bg-green-100 px-2 py-1 rounded-full">
+                         <span className="text-green-700 font-black text-xs flex items-center gap-1 bg-green-100 px-3 py-1 rounded-full">
                            ⏰ {moment(item.datetime).format("HH:mm - DD/MM/YYYY")}
                          </span>
                        ) : (
@@ -1172,15 +1172,15 @@ useEffect(() => {
                        )}
                     </div>
                     
-                    <h4 className="font-bold text-gray-800 text-base mb-2 leading-tight">{item.caseName}</h4>
+                    <h4 className="font-bold text-gray-800 text-base mb-3 leading-tight">{item.caseName}</h4>
                     
-                    <div className="grid grid-cols-2 gap-3 text-xs mt-3">
-                       <div className="bg-white p-2 rounded border border-gray-100">
-                         <span className="text-gray-400 text-[10px] font-bold uppercase block mb-0.5">Thẩm phán</span>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs mt-2">
+                       <div className="bg-white p-2.5 rounded-lg border border-gray-100 col-span-2">
+                         <span className="text-gray-400 text-[10px] font-bold uppercase block mb-1">Thẩm phán</span>
                          <span className="font-semibold text-gray-700">{item.judge || "Chưa phân công"}</span>
                        </div>
-                       <div className="bg-white p-2 rounded border border-gray-100">
-                         <span className="text-gray-400 text-[10px] font-bold uppercase block mb-0.5">Phòng xử</span>
+                       <div className="bg-white p-2.5 rounded-lg border border-gray-100 col-span-2">
+                         <span className="text-gray-400 text-[10px] font-bold uppercase block mb-1">Phòng xử / Chi nhánh</span>
                          <span className="font-bold text-blue-900">{item.room || "Chưa xác định"}</span>
                        </div>
                     </div>
