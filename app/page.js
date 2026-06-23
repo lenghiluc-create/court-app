@@ -991,8 +991,37 @@ useEffect(() => {
   const judgeDataList = Object.keys(judgeStats).map(key => ({ name: key, value: judgeStats[key] })).sort((a,b) => b.value - a.value); 
   const CHART_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899'];
 
-  const handleExportClick = () => {
+  const handleExportClick = async () => {
+    // 1. GIỮ NGUYÊN KIỂM TRA DỮ LIỆU CỦA NÍ
     if (schedule.length === 0) return showToast("Không có dữ liệu hệ thống!", "error");
+
+    // 2. KHÚC THÊM MỚI: PHÂN QUYỀN VÀ HỎI TRƯỚC KHI MỞ MODAL
+    if (userRole === "admin" || canEdit) {
+      const xacNhanChotSoLieu = window.confirm(
+        "📊 BẠN CÓ MUỐN CHỐT SỐ LIỆU KHÔNG?\n\n" +
+        "👉 Bấm [OK]: Đánh dấu các hồ sơ này là 'Đã báo cáo' vào hệ thống và mở bảng xuất file.\n" +
+        "👉 Bấm [Cancel / Hủy]: Chỉ mở bảng tải file Excel để xem, KHÔNG thay đổi hệ thống."
+      );
+
+      // Nếu Cán bộ thống kê bấm OK -> Chạy vòng lặp dán nhãn Firebase
+      if (xacNhanChotSoLieu) {
+        try {
+          const updatePromises = processedSchedule.map(item => {
+             const docRef = doc(db, "schedule", item.id);
+             return updateDoc(docRef, { isExported: true });
+          });
+          
+          await Promise.all(updatePromises); // Đợi lưu xong hết
+          showToast("✅ Đã chốt số liệu và đánh dấu hệ thống thành công!", "success");
+          
+        } catch (error) {
+          console.error("Lỗi khi chốt số liệu:", error);
+          showToast("❌ Có lỗi xảy ra khi cập nhật trạng thái lên máy chủ!", "error");
+        }
+      }
+    }
+
+    // 3. GIỮ NGUYÊN LỆNH MỞ BẢNG XUẤT FILE CỦA NÍ (Dù bấm OK hay Hủy thì vẫn mở bảng cho tải file)
     setShowExportModal(true); 
   };
 
