@@ -6,7 +6,7 @@ import 'moment/locale/vi';
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { QRCodeSVG } from 'qrcode.react';
 
 // Firebase Imports
@@ -33,6 +33,7 @@ export default function PremiumCourtApp() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showOnlyUrgent, setShowOnlyUrgent] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [displayMode, setDisplayMode] = useState("table"); 
@@ -1417,158 +1418,93 @@ useEffect(() => {
   }
       `}} />
 
-      <aside className={`w-64 text-white hidden ${user ? 'xl:flex' : 'hidden'} flex-col fixed h-screen z-20 overflow-y-auto`}
-        style={{ 
-          fontFamily: "'Be Vietnam Pro', sans-serif",
-          background: 'rgba(220, 38, 38, 0.75)',
-          backdropFilter: 'blur(16px)', 
-          WebkitBackdropFilter: 'blur(16px)', 
-          borderRight: '1px solid rgba(255, 255, 255, 0.2)',
-          boxShadow: '4px 0 32px 0 rgba(0, 0, 0, 0.2)'
-        }}
+      <aside 
+        // 💡 Nền trong mờ (Glassmorphism): dùng backdrop-blur và bg-white/80
+        className={`bg-white/80 backdrop-blur-md border-r border-slate-200 text-slate-700 flex flex-col h-screen fixed z-20 overflow-y-auto transition-all duration-300 ease-in-out ${
+          user ? 'xl:flex' : 'hidden'
+        } ${isCollapsed ? 'w-[70px]' : 'w-64'}`}
+        style={{ fontFamily: "'Be Vietnam Pro', sans-serif", boxShadow: '2px 0 20px rgba(0,0,0,0.05)' }}
       >
-        <div 
-  onClick={() => setViewMode("portal")} 
-  className={`cursor-pointer px-3 py-3 rounded-lg flex justify-between items-center mb-4 transition-all ${viewMode === 'portal' ? 'bg-yellow-500 text-blue-950' : 'bg-white/10 hover:bg-white/20'}`}
->
-  <span className="font-bold text-sm">🏠 TRANG CHỦ PORTAL</span>
-</div>
-        <div className="py-10 px-6 text-center border-b border-white/20">
-          <img src="/lgtoaan1.png" alt="Logo Tòa án" className="w-20 h-20 mx-auto mb-4 drop-shadow-xl" />
-          <h2 className="font-extrabold text-2xl uppercase tracking-widest drop-shadow-md">KV9-Cần Thơ</h2>
-        </div>
-        <div className="p-4 space-y-2">
-  {/* ⚖️ LỊCH XÉT XỬ */}
-  <div 
-    onClick={() => { setActiveTab("trial"); setViewMode("app"); }} 
-    className={`cursor-pointer px-3 py-3 rounded-lg flex justify-between items-center transition-all ${activeTab === 'trial' ? 'bg-blue-600 scale-105' : 'bg-white/10 hover:bg-white/20'}`}
-  >
-    <span className="font-bold text-sm">⚖️ LỊCH XÉT XỬ</span>
-  </div>
-  {/* 🔄 PHÂN ÁN TỰ ĐỘNG */}
-  {canAssignCases && (
-    <div 
-      onClick={() => { setActiveTab("nhap_an"); setViewMode("app"); }} 
-      className={`cursor-pointer px-3 py-3 rounded-lg flex justify-between items-center transition-all mt-2 ${activeTab === 'nhap_an' ? 'bg-indigo-600 scale-105 shadow-md border-l-4 border-yellow-400' : 'bg-white/10 hover:bg-white/20'}`}
-    >
-      <span className="font-bold text-sm">🔄 PHÂN ÁN TỰ ĐỘNG</span>
-    </div>
-  )}
-
-  {/* 🌍 LỊCH THẨM ĐỊNH */}
-  {!isPublicView && (
-    <div 
-      onClick={() => { setActiveTab("inspection"); setViewMode("app"); }} 
-      className={`cursor-pointer px-3 py-3 rounded-lg flex justify-between items-center transition-all ${activeTab === 'inspection' ? 'bg-teal-600 scale-105' : 'bg-white/10 hover:bg-white/20'}`}
-    >
-      <span className="font-bold text-sm">🌍 LỊCH THẨM ĐỊNH</span>
-    </div>
-    
-  )}
-
-  {!isPublicView && (
-  <div 
-    onClick={() => { setActiveTab("report"); setViewMode("app"); }} 
-    className={`cursor-pointer px-3 py-3 rounded-lg flex justify-between items-center transition-all ${activeTab === 'report' ? 'bg-amber-600 scale-105' : 'bg-white/10 hover:bg-white/20'}`}
-  >
-    <span className="font-bold text-sm">📊 BÁO CÁO THỐNG KÊ</span>
-  </div>
-)}
-{/* 📝 QUẢN LÝ CÔNG VIỆC (TASK MANGER) */}
-  {!isPublicView && (
-    <div 
-      onClick={() => { setActiveTab("tasks"); setViewMode("app"); }} 
-      className={`cursor-pointer px-3 py-3 rounded-lg flex justify-between items-center transition-all mt-2 ${activeTab === 'tasks' ? 'bg-orange-600 scale-105 shadow-md border-l-4 border-yellow-400' : 'bg-white/10 hover:bg-white/20'}`}
-    >
-      <span className="font-bold text-sm">📝 QUẢN LÝ CÔNG VIỆC</span>
-    </div>
-  )}
-
-          {/* ⚙️ NHÓM DROPDOWN: QUẢN TRỊ HỆ THỐNG (CHỈ ADMIN MỚI THẤY) */}
-          {canManageUsers && !isPublicView && (
-            <div className="space-y-2 pt-2 border-t border-white/20 mt-4">
-              
-              <div 
-                onClick={() => setIsSystemMenuOpen(!isSystemMenuOpen)} 
-                className="cursor-pointer px-3 py-2.5 rounded-lg flex justify-between items-center transition-all bg-black/20 hover:bg-black/40 border border-white/10"
-              >
-                <span className="font-black text-xs text-gray-200 tracking-widest uppercase">⚙️ QUẢN TRỊ</span>
-                <span className="text-gray-400 text-xs transition-transform duration-300" style={{ transform: isSystemMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+        
+        {/* ======================================= */}
+        {/* LOGO & NÚT THU GỌN (MÀU ĐỎ TRUYỀN THỐNG) */}
+        {/* ======================================= */}
+        <div className="flex items-center justify-between h-24 px-4 border-b border-red-800 bg-red-700 sticky top-0 z-30">
+          {!isCollapsed && (
+            <div className="flex items-center gap-3 overflow-hidden">
+              <img src="/lgtoaan1.png" alt="Logo" className="w-10 h-10 flex-shrink-0 drop-shadow-md" />
+              <div className="flex flex-col">
+                 <span className="font-bold text-yellow-100 text-[11px] uppercase tracking-widest">Tòa Án Nhân Dân</span>
+                 <span className="font-black text-yellow-400 text-[13px] uppercase tracking-wider truncate">KV9-Cần Thơ</span>
               </div>
-
-              {isSystemMenuOpen && (
-                <div className="flex flex-col gap-2 pl-4 ml-2 border-l-2 border-white/20 animate-fadeIn">
-                  
-                  <div 
-                    onClick={() => setActiveTab("roles")} 
-                    className={`cursor-pointer px-3 py-2 rounded-lg flex justify-between items-center transition-all ${activeTab === 'roles' ? 'bg-slate-800 shadow-md border-l-4 border-amber-300' : 'hover:bg-white/10'}`}
-                  >
-                    <span className={`font-bold text-[11px] uppercase tracking-wide ${activeTab === 'roles' ? 'text-amber-300' : 'text-gray-300'}`}>Phân Quyền</span>
-                  </div>
-                  <div 
-                    onClick={() => setActiveTab("config_judges")} 
-                    className={`cursor-pointer px-3 py-2 rounded-lg flex justify-between items-center transition-all mt-2 ${activeTab === 'config_judges' ? 'bg-slate-800 shadow-md border-l-4 border-green-400' : 'hover:bg-white/10'}`}
-                  >
-                    <span className={`font-bold text-[11px] uppercase tracking-wide ${activeTab === 'config_judges' ? 'text-green-400' : 'text-gray-300'}`}>Cấu hình Thẩm phán</span>
-                  </div>
-
-                  <div 
-                    onClick={() => setActiveTab("logs")} 
-                    className={`cursor-pointer px-3 py-2 rounded-lg flex justify-between items-center transition-all ${activeTab === 'logs' ? 'bg-slate-800 shadow-md border-l-4 border-amber-500' : 'hover:bg-white/10'}`}
-                  >
-                    <span className={`font-bold text-[11px] uppercase tracking-wide ${activeTab === 'logs' ? 'text-amber-500' : 'text-gray-300'}`}>Nhật Ký Thao Tác</span>
-                  </div>
-                  <div 
-  onClick={() => { setActiveTab("manage_portal"); setDisplayMode("app"); }} 
-  className={`cursor-pointer px-3 py-2 rounded-lg flex justify-between items-center transition-all mt-2 ${activeTab === 'manage_portal' ? 'bg-slate-800 shadow-md border-l-4 border-blue-400' : 'hover:bg-white/10'}`}
->
-  <span className={`font-bold text-[11px] uppercase tracking-wide ${activeTab === 'manage_portal' ? 'text-blue-400' : 'text-gray-300'}`}>
-    Quản Trị Portal
-  </span>
-</div>
-                </div> 
-              )}
             </div>
           )}
-</div>
-  <div className="mt-auto p-4 bg-white/5 rounded-2xl border border-white/10 flex flex-col items-center gap-3">
-  <p className="text-[10px] font-light uppercase tracking-[0.2em] text-gray-400">Niêm yết công khai</p>
-  
- <div className="p-3 bg-white rounded-xl shadow-inner border border-gray-100 flex items-center justify-center">
-  <QRCodeSVG 
-    value={`${typeof window !== 'undefined' ? window.location.origin : ''}?mode=tv`}
-    size={160} 
-    level={"H"}
-    includeMargin={true}
-    marginSize={2}
-    imageSettings={{
-      src: "/lgtoaan1.png",
-      height: 40, 
-      width: 40,
-      excavate: true, 
-    }}
-  />
-</div>
-  
-  <p className="text-[9px] text-center text-blue-400 italic">
-    Đương sự quét mã này <br/> để xem lịch trên điện thoại
-  </p>
-</div>
-        <div className="p-6 border-t border-white/20 mt-auto bg-black/10">
-          <div className="mb-6 p-4 bg-white/10 border border-white/20 rounded-lg shadow-inner">
-             <p className="text-[10px] text-amber-300 font-bold uppercase mb-1 tracking-widest drop-shadow-md">Quyền: {roleDisplayNames[userRole]}</p>
-             <p className="text-[13px] font-black capitalize text-white truncate drop-shadow-md tracking-wide">
-  {userFullName || "Đang tải tên..."}
-</p>
-          </div>
-          <div className="space-y-3">
-             <button onClick={() => setShowPwdModal(true)} className="w-full bg-blue-600/80 hover:bg-blue-600 py-3 font-bold uppercase text-xs tracking-wider transition-all shadow-lg border border-white/20 rounded backdrop-blur-sm">🔑 ĐỔI MẬT KHẨU</button>
-             <button onClick={handleLogout} className="w-full bg-black/20 hover:bg-black/40 py-3 font-bold uppercase text-xs tracking-wider transition-all rounded border border-white/20 shadow-lg backdrop-blur-sm">🚪 ĐĂNG XUẤT</button>
-          </div>
+          <button onClick={() => setIsCollapsed(!isCollapsed)} className={`p-2 hover:bg-red-800 rounded-lg text-red-100 transition-colors flex-shrink-0 ${isCollapsed ? 'mx-auto' : ''}`}>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+          </button>
         </div>
+
+        {/* ======================================= */}
+        {/* DANH SÁCH MENU (CHỮ ĐẬM HƠN, RÕ HƠN) */}
+        {/* ======================================= */}
+        <div className="p-3 space-y-1 mt-2">
+          {/* TRANG CHỦ */}
+          <div onClick={() => setViewMode("portal")} className={`flex items-center px-3 py-3 rounded-lg cursor-pointer transition-colors ${viewMode === 'portal' ? 'bg-slate-100 text-slate-900 font-bold' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+            <span className="text-[17px]">🏠</span>{!isCollapsed && <span className="ml-3 text-[14px] font-bold">Trang chủ Portal</span>}
+          </div>
+
+          {/* LỊCH XÉT XỬ (ĐẬM HƠN) */}
+          <div onClick={() => { setActiveTab("trial"); setViewMode("app"); }} className={`flex items-center px-3 py-3 rounded-lg cursor-pointer transition-colors ${activeTab === 'trial' ? 'bg-blue-50 text-blue-800 font-extrabold border-l-4 border-blue-600' : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950 font-semibold'}`}>
+            <span className="text-[17px]">📅</span>{!isCollapsed && <span className="ml-3 text-[14px]">Lịch xét xử</span>}
+          </div>
+
+          {/* PHÂN ÁN */}
+          {canAssignCases && (
+            <div onClick={() => { setActiveTab("nhap_an"); setViewMode("app"); }} className={`flex items-center px-3 py-3 rounded-lg cursor-pointer transition-colors ${activeTab === 'nhap_an' ? 'bg-indigo-50 text-indigo-800 font-extrabold border-l-4 border-indigo-600' : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950 font-semibold'}`}>
+              <span className="text-[17px]">🔄</span>{!isCollapsed && <span className="ml-3 text-[14px]">Phân án tự động</span>}
+            </div>
+          )}
+
+          {/* LỊCH THẨM ĐỊNH (ĐẬM HƠN) */}
+          {!isPublicView && (
+            <div onClick={() => { setActiveTab("inspection"); setViewMode("app"); }} className={`flex items-center px-3 py-3 rounded-lg cursor-pointer transition-colors ${activeTab === 'inspection' ? 'bg-teal-50 text-teal-800 font-extrabold border-l-4 border-teal-600' : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950 font-semibold'}`}>
+              <span className="text-[17px]">🌍</span>{!isCollapsed && <span className="ml-3 text-[14px]">Lịch thẩm định</span>}
+            </div>
+          )}
+
+          {/* 💡 BỔ SUNG: BÁO CÁO */}
+          {!isPublicView && (
+            <div onClick={() => { setActiveTab("report"); setViewMode("app"); }} className={`flex items-center px-3 py-3 rounded-lg cursor-pointer transition-colors ${activeTab === 'report' ? 'bg-blue-50 text-blue-800 font-bold' : 'text-slate-500 hover:bg-slate-50'}`}>
+              <span className="text-[17px]">📊</span>{!isCollapsed && <span className="ml-3 text-[13px] font-medium">Báo cáo thống kê</span>}
+            </div>
+          )}
+
+          {/* 💡 BỔ SUNG: QUẢN LÝ CÔNG VIỆC */}
+          {!isPublicView && (
+            <div onClick={() => { setActiveTab("tasks"); setViewMode("app"); }} className={`flex items-center px-3 py-3 rounded-lg cursor-pointer transition-colors ${activeTab === 'tasks' ? 'bg-blue-50 text-blue-800 font-bold' : 'text-slate-500 hover:bg-slate-50'}`}>
+              <span className="text-[17px]">📝</span>{!isCollapsed && <span className="ml-3 text-[13px] font-medium">Quản lý công việc</span>}
+            </div>
+          )}
+        </div>
+
+        {/* QUẢN TRỊ */}
+        {canManageUsers && !isPublicView && (
+          <div className="mt-4 pt-4 border-t border-slate-100 px-3">
+            <div onClick={() => !isCollapsed && setIsSystemMenuOpen(!isSystemMenuOpen)} className="flex items-center justify-between px-3 py-3 rounded-lg cursor-pointer text-slate-400 hover:bg-slate-50">
+              <div className="flex items-center gap-3"><span className="text-[17px]">⚙️</span>{!isCollapsed && <span className="text-[11px] font-bold uppercase tracking-widest">Cấu hình chung</span>}</div>
+            </div>
+            {isSystemMenuOpen && !isCollapsed && (
+              <div className="pl-9 mt-1 space-y-1">
+                <div onClick={() => setActiveTab("roles")} className="px-3 py-2 text-[13px] text-slate-500 cursor-pointer hover:text-blue-700">Phân Quyền</div>
+                <div onClick={() => setActiveTab("config_judges")} className="px-3 py-2 text-[13px] text-slate-500 cursor-pointer hover:text-blue-700">Thẩm phán</div>
+                <div onClick={() => setActiveTab("logs")} className="px-3 py-2 text-[13px] text-slate-500 cursor-pointer hover:text-blue-700">Nhật ký thao tác</div>
+              </div> 
+            )}
+          </div>
+        )}
       </aside>
 
-      <main className={`${user ? 'xl:ml-64' : ''} flex flex-col min-h-screen relative z-10 flex-1 w-full overflow-x-hidden`}>
+      <main className={`${user ? (isCollapsed ? 'xl:ml-[70px]' : 'xl:ml-64') : ''} transition-all duration-300 ease-in-out flex flex-col min-h-screen relative z-10 flex-1 w-full overflow-x-hidden`}>
         <header className="bg-red-700 h-24 shadow-md flex items-center justify-between px-4 md:px-8 xl:px-12 sticky top-0 z-30 border-b border-red-800 w-full">
   
   <div className="flex-1 flex justify-start items-center gap-2">
@@ -2706,15 +2642,24 @@ useEffect(() => {
                   <h3 className="text-center font-black text-[13px] text-gray-500 uppercase tracking-widest mb-4">Tỷ lệ theo Loại án</h3>
                   <div className="h-[320px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={ctData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" label={({name, value}) => `${name} (${value})`}>
-                          {ctData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
-                        </Pie>
+                      <BarChart 
+                        data={ctData} 
+                        layout="vertical" 
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                        <XAxis type="number" />
+                        <YAxis dataKey="name" type="category" width={100} tick={{fontSize: 11}} />
                         <Tooltip />
-                      </PieChart>
+                        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                          {ctData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
                     </ResponsiveContainer>
                   </div>
-               </div>
+                </div>
 
                <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-200 flex flex-col">
                   <h3 className="text-center font-black text-[13px] text-gray-500 uppercase tracking-widest mb-4">Án đang chờ xử theo Thẩm phán</h3>
