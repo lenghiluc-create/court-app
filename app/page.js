@@ -6,7 +6,7 @@ import 'moment/locale/vi';
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { QRCodeSVG } from 'qrcode.react';
 
 // Firebase Imports
@@ -1504,103 +1504,143 @@ useEffect(() => {
         )}
       </aside>
 
-     <main className={`${user ? (isCollapsed ? 'xl:ml-[70px]' : 'xl:ml-64') : ''} transition-all duration-300 ease-in-out flex flex-col h-screen relative z-10 flex-1 w-full`}>
-        <header className="flex-shrink-0 bg-red-700 h-24 shadow-md flex items-center justify-between px-4 md:px-8 xl:px-12 z-30 border-b border-red-800 w-full">
-  
-  <div className="flex-1 flex justify-start items-center gap-2">
-    {!user ? (
-      <button onClick={() => setShowLoginModal(true)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 text-[10px] md:text-xs font-black uppercase shadow-md rounded-lg transition-all">
-        🔑 Đăng nhập Cán bộ
-      </button>
-    ) : (
-      <div className="flex xl:hidden gap-2">
-        <button onClick={() => setShowPwdModal(true)} className="bg-white/20 hover:bg-white/30 text-white px-3 py-2 text-[10px] font-black uppercase shadow-sm border border-white/30 rounded-md backdrop-blur-sm transition-all">🔑 MK</button>
-        <button onClick={handleLogout} className="bg-black/20 hover:bg-black/30 text-white border border-black/30 px-3 py-2 text-[10px] font-black uppercase shadow-sm rounded-md backdrop-blur-sm transition-all">🚪 THOÁT</button>
-      </div>
-    )}
-    {/* Nút quay lại Trang chủ cho người dân khi đang xem lịch */}
-    {!user && viewMode !== 'portal' && (
-       <button onClick={() => setViewMode('portal')} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 text-[10px] md:text-xs font-black uppercase shadow-md rounded-lg transition-all ml-1">
-         🏠 TRANG CHỦ
-       </button>
-    )}
-  </div>
+      <main className={`${user ? (isCollapsed ? 'xl:ml-[70px]' : 'xl:ml-64') : ''} transition-all duration-300 ease-in-out flex flex-col h-screen relative z-10 flex-1 w-full overflow-hidden bg-slate-50`}>
+        
+        {/* ============================================================== */}
+        {/* 1. HEADER (Đứng im cứng ngắc bằng flex-shrink-0) */}
+        {/* ============================================================== */}
+        <header className="flex-shrink-0 bg-red-700 h-24 shadow-md flex items-center justify-between px-4 md:px-8 xl:px-12 border-b border-red-800 w-full z-30 relative">
+          <div className="flex-1 flex justify-start items-center gap-2">
+            {!user ? (
+              <button onClick={() => setShowLoginModal(true)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 text-[10px] md:text-xs font-black uppercase shadow-md rounded-lg transition-all">
+                🔑 Đăng nhập Cán bộ
+              </button>
+            ) : (
+              <div className="flex xl:hidden gap-2">
+                <button onClick={() => setShowPwdModal(true)} className="bg-white/20 hover:bg-white/30 text-white px-3 py-2 text-[10px] font-black uppercase shadow-sm border border-white/30 rounded-md backdrop-blur-sm transition-all">🔑 MK</button>
+                <button onClick={handleLogout} className="bg-black/20 hover:bg-black/30 text-white border border-black/30 px-3 py-2 text-[10px] font-black uppercase shadow-sm rounded-md backdrop-blur-sm transition-all">🚪 THOÁT</button>
+              </div>
+            )}
+            {!user && viewMode !== 'portal' && (
+               <button onClick={() => setViewMode('portal')} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 text-[10px] md:text-xs font-black uppercase shadow-md rounded-lg transition-all ml-1">
+                 🏠 TRANG CHỦ
+               </button>
+            )}
+          </div>
 
-  <div className="flex-[2] text-center px-2 flex justify-center">
-    <h1 className="font-black text-[14px] sm:text-[16px] md:text-xl xl:text-2xl uppecarse text-yellow-300 truncate tracking-widest drop-shadow-md">
-      HỆ THỐNG QUẢN LÝ LỊCH TRỰC TUYẾN
-    </h1>
-  </div>
+          <div className="flex-[2] text-center px-2 flex justify-center">
+            <h1 className="font-black text-[14px] sm:text-[16px] md:text-xl xl:text-2xl uppercase text-yellow-300 truncate tracking-widest drop-shadow-md">
+              HỆ THỐNG QUẢN LÝ LỊCH TRỰC TUYẾN
+            </h1>
+          </div>
 
-  <div className="flex-1 flex items-center justify-end">
-    <div className="bg-yellow-400 text-red-800 px-3 py-2 md:px-6 md:py-3 font-black text-[10px] md:text-sm border border-yellow-500 uppercase tracking-widest text-center w-max rounded-lg shadow-md">
-      Cần Thơ: {moment().format("DD/MM/YYYY")}
-    </div>
-  </div>
+          <div className="flex-1 flex items-center justify-end">
+            <div className="bg-yellow-400 text-red-800 px-3 py-2 md:px-6 md:py-3 font-black text-[10px] md:text-sm border border-yellow-500 uppercase tracking-widest text-center w-max rounded-lg shadow-md">
+              Cần Thơ: {moment().format("DD/MM/YYYY")}
+            </div>
+          </div>
+        </header>
 
-</header>
+        {/* ============================================================== */}
+        {/* 2. DẢI BÁO CÁO CỐ ĐỊNH (ÉP 1 DÒNG TUYỆT ĐỐI - TRƯỢT NGANG NẾU HẸP) */}
+        {/* ============================================================== */}
+        {viewMode !== "portal" && activeTab === "trial" && (
+          <div className="flex-shrink-0 w-full z-20 relative px-4 md:px-8 xl:px-12 pt-4 pb-2 bg-slate-50">
+            {/* 💡 Flexbox trượt ngang: Ẩn thanh cuộn nhưng vẫn cho vuốt mượt mà */}
+            <div className="flex flex-row gap-3 w-full overflow-x-auto hide-scrollbar pb-1">
+              
+              {/* min-w-[120px] giúp các thẻ không bị bóp méo quá đà khi màn hình nhỏ */}
+              <div onClick={() => handleStatCardClick('pending')} className="flex-1 min-w-[120px] bg-white hover:bg-blue-50 cursor-pointer rounded-xl px-3 py-2 shadow-sm border border-gray-200 flex flex-col justify-between transition-all">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider whitespace-nowrap">Chờ xử</span>
+                  <span className="text-blue-500 text-sm">⏳</span>
+                </div>
+                <p className="text-xl font-black text-blue-600">{pendingCases.length}</p>
+              </div>
 
-       <div className="p-4 md:p-12 flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
+              <div onClick={() => handleStatCardClick('urgent')} className="flex-1 min-w-[120px] bg-red-50 hover:bg-red-100 cursor-pointer rounded-xl px-3 py-2 shadow-sm border border-red-100 flex flex-col justify-between transition-all">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-black text-red-700 uppercase tracking-wider whitespace-nowrap">Sắp xử</span>
+                  <span className="text-red-500 text-sm">🔥</span>
+                </div>
+                <p className={`text-xl font-black text-red-600 ${urgentCount > 0 ? 'animate-pulse' : ''}`}>{urgentCount}</p>
+              </div>
+
+              <div onClick={() => handleStatCardClick('suspended')} className="flex-1 min-w-[120px] bg-amber-50 hover:bg-amber-100 cursor-pointer rounded-xl px-3 py-2 shadow-sm border border-amber-100 flex flex-col justify-between transition-all">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-black text-amber-700 uppercase tracking-wider whitespace-nowrap">Tạm ngừng</span>
+                  <span className="text-amber-500 text-sm">⏸️</span>
+                </div>
+                <p className="text-xl font-black text-amber-600">{schedule.filter(i => i.status === 'suspended').length}</p>
+              </div>
+
+              <div onClick={() => handleStatCardClick('completed')} className="flex-1 min-w-[120px] bg-green-50 hover:bg-green-100 cursor-pointer rounded-xl px-3 py-2 shadow-sm border border-green-100 flex flex-col justify-between transition-all">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-black text-green-700 uppercase tracking-wider whitespace-nowrap">Đã xong</span>
+                  <span className="text-green-500 text-sm">✅</span>
+                </div>
+                <p className="text-xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p>
+              </div>
+
+              <div onClick={() => handleStatCardClick('overdue_publish')} className="flex-1 min-w-[120px] bg-rose-50 hover:bg-rose-100 cursor-pointer rounded-xl px-3 py-2 shadow-sm border border-rose-100 flex flex-col justify-between transition-all">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-black text-rose-700 uppercase tracking-wider whitespace-nowrap">Chưa PH</span>
+                  <span className="text-rose-500 text-sm">📜</span>
+                </div>
+                <p className="text-xl font-black text-rose-600">{overduePublishCount}</p>
+              </div>
+
+              <div onClick={() => handleStatCardClick('effective')} className="flex-1 min-w-[120px] bg-teal-50 hover:bg-teal-100 cursor-pointer rounded-xl px-3 py-2 shadow-sm border border-teal-100 flex flex-col justify-between transition-all">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-black text-teal-700 uppercase tracking-wider whitespace-nowrap">Hiệu lực</span>
+                  <span className="text-teal-500 text-sm">⚖️</span>
+                </div>
+                <p className="text-xl font-black text-teal-600">{effectiveCount}</p>
+              </div>
+
+              <div onClick={() => handleStatCardClick('all')} className="flex-1 min-w-[120px] bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-xl px-3 py-2 shadow-sm border border-gray-200 flex flex-col justify-between transition-all">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-black text-gray-600 uppercase tracking-wider whitespace-nowrap">Tổng vụ</span>
+                  <span className="text-gray-500 text-sm">📁</span>
+                </div>
+                <p className="text-xl font-black text-gray-700">{schedule.length}</p>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* 3. KHU VỰC CUỘN ĐỘC LẬP TỰ ĐỘNG (Là 1 thẻ div bao bọc toàn bộ nội dung) */}
+        {/* ============================================================== */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar w-full relative z-0 p-4 md:p-8 pb-24">
+          
           {/* --- CHỈ HIỆN PORTAL KHI VIEWMODE LÀ PORTAL --- */}
           {viewMode === "portal" ? (
-    <>
-      {readingLink ? (
-        /* GIAO DIỆN ĐỌC TIN TẠI CHỖ */
-        <div className="animate-fadeIn flex flex-col h-[80vh] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
-          <div className="p-4 bg-gray-100 border-b flex justify-between items-center">
-            <button 
-              onClick={() => setReadingLink(null)} 
-              className="bg-white border px-4 py-2 rounded-lg font-bold text-sm text-red-600 hover:bg-red-50 transition-all flex items-center gap-2"
-            >
-              ⬅️ TRỞ VỀ DANH SÁCH
-            </button>
-            <p className="text-xs font-bold text-gray-500 truncate max-w-md italic">Đang xem: {readingLink}</p>
-          </div>
-          
-          <div className="flex-1 w-full bg-white">
-            <iframe 
-              src={readingLink} 
-              className="w-full h-full border-none"
-              title="News Reader"
-            />
-          </div>
-        </div>
-      ) : (
-            <CourtPortal />
-      )}
-    </>
-  ) : (
+            <>
+              {readingLink ? (
+                /* GIAO DIỆN ĐỌC TIN TẠI CHỖ */
+                <div className="animate-fadeIn flex flex-col h-[80vh] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+                  <div className="p-4 bg-gray-100 border-b flex justify-between items-center">
+                    <button onClick={() => setReadingLink(null)} className="bg-white border px-4 py-2 rounded-lg font-bold text-sm text-red-600 hover:bg-red-50 transition-all flex items-center gap-2">
+                      ⬅️ TRỞ VỀ DANH SÁCH
+                    </button>
+                    <p className="text-xs font-bold text-gray-500 truncate max-w-md italic">Đang xem: {readingLink}</p>
+                  </div>
+                  <div className="flex-1 w-full bg-white">
+                    <iframe src={readingLink} className="w-full h-full border-none" title="News Reader" 
+                    />
+                  </div>
+                </div>
+              ) : (
+                    <CourtPortal />
+              )}
+            </>
+          ) : (
             /* --- NẾU KHÔNG PHẢI PORTAL THÌ HIỆN CÁC TAB NGHIỆP VỤ --- */
             <>
               {activeTab === "trial" && (
                 <div className="animate-fadeIn">
-                  {/* Dưới đây là phần Thống kê (Stat Cards) của Ní */}
-                  <div className="bg-white shadow-xl rounded-xl mb-8 border border-gray-200 overflow-hidden">
-                    <div className="grid grid-cols-2 md:grid-cols-7 divide-x divide-y md:divide-y-0 divide-gray-200">
-                      <div onClick={() => handleStatCardClick('pending')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-blue-50 transition-colors">
-                        <p className="text-gray-500 text-[9px] font-black uppercase mb-1">Chờ xử</p><p className="text-2xl font-black text-blue-950">{pendingCases.length}</p>
-                      </div>
-                      {/* ... Các ô Stat Card khác giữ nguyên ... */}
-                      <div onClick={() => handleStatCardClick('urgent')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-red-100 bg-red-50 transition-colors relative">
-                        <p className="text-red-600 text-[9px] font-black uppercase mb-1">Sắp xử</p><p className={`text-2xl font-black text-red-600 ${urgentCount > 0 ? 'animate-pulse' : ''}`}>{urgentCount}</p>
-                      </div>
-                      <div onClick={() => handleStatCardClick('suspended')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-purple-50 transition-colors">
-                        <p className="text-gray-500 text-[9px] font-black uppercase mb-1">Tạm ngừng</p><p className="text-2xl font-black text-purple-600">{schedule.filter(i => i.status === 'suspended').length}</p>
-                      </div>
-                      <div onClick={() => handleStatCardClick('completed')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-green-50 transition-colors">
-                        <p className="text-gray-500 text-[9px] font-black uppercase mb-1">Đã xong</p><p className="text-2xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p>
-                      </div>
-                      <div onClick={() => handleStatCardClick('overdue_publish')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-red-50 transition-colors">
-                        <p className="text-red-700 text-[9px] font-black uppercase mb-1">Chưa PH ({'>'}5n)</p><p className="text-2xl font-black text-red-700">{overduePublishCount}</p>
-                      </div>
-                      <div onClick={() => handleStatCardClick('effective')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-teal-50 transition-colors">
-                        <p className="text-teal-700 text-[9px] font-black uppercase mb-1">Hiệu lực ({'>'}30n)</p><p className="text-2xl font-black text-teal-700">{effectiveCount}</p>
-                      </div>
-                      <div onClick={() => handleStatCardClick('all')} className="cursor-pointer p-4 flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-colors">
-                        <p className="text-gray-500 text-[9px] font-black uppercase mb-1">Tổng vụ</p><p className="text-2xl font-black text-gray-500">{schedule.length}</p>
-                      </div>
-                    </div>
-                  </div>
 
           {user && (
         <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200 animate-fadeIn relative z-10 mb-8">
@@ -2659,7 +2699,7 @@ useEffect(() => {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
-                </div>
+               </div>
 
                <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-200 flex flex-col">
                   <h3 className="text-center font-black text-[13px] text-gray-500 uppercase tracking-widest mb-4">Án đang chờ xử theo Thẩm phán</h3>
