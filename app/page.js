@@ -1504,8 +1504,8 @@ useEffect(() => {
         )}
       </aside>
 
-      <main className={`${user ? (isCollapsed ? 'xl:ml-[70px]' : 'xl:ml-64') : ''} transition-all duration-300 ease-in-out flex flex-col min-h-screen relative z-10 flex-1 w-full overflow-x-hidden`}>
-        <header className="bg-red-700 h-24 shadow-md flex items-center justify-between px-4 md:px-8 xl:px-12 sticky top-0 z-30 border-b border-red-800 w-full">
+     <main className={`${user ? (isCollapsed ? 'xl:ml-[70px]' : 'xl:ml-64') : ''} transition-all duration-300 ease-in-out flex flex-col h-screen relative z-10 flex-1 w-full`}>
+        <header className="flex-shrink-0 bg-red-700 h-24 shadow-md flex items-center justify-between px-4 md:px-8 xl:px-12 z-30 border-b border-red-800 w-full">
   
   <div className="flex-1 flex justify-start items-center gap-2">
     {!user ? (
@@ -1540,7 +1540,7 @@ useEffect(() => {
 
 </header>
 
-       <div className="p-4 md:p-12 flex-1">
+       <div className="p-4 md:p-12 flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
           {/* --- CHỈ HIỆN PORTAL KHI VIEWMODE LÀ PORTAL --- */}
           {viewMode === "portal" ? (
     <>
