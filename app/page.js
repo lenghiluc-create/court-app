@@ -502,71 +502,107 @@ useEffect(() => {
   const handleSubmit = async () => {
     if (!canEditSchedule) return showToast("Không có quyền!", "error");
     if (!form.datetime || !form.caseName || !form.room) return showToast("Vui lòng nhập đủ thông tin!", "error");
-    if (!editingId) { 
-    const duplicateCase = schedule.find(item => 
-      (form.plaintiff && item.plaintiff === form.plaintiff) || 
-      (form.defendant && item.defendant === form.defendant)
-    );
-
-    if (duplicateCase) {
-      const trungTen = duplicateCase.plaintiff === form.plaintiff ? duplicateCase.plaintiff : duplicateCase.defendant;
-      const ngayXu = duplicateCase.datetime ? moment(duplicateCase.datetime).format("DD/MM/YYYY") : "Chưa có ngày";
-      
-      const confirmSave = window.confirm(
-        `⚠️ PHÁT HIỆN TRÙNG ĐƯƠNG SỰ!\n\n` +
-        `Đương sự: ${trungTen}\n` +
-        `Đã có trong vụ: "${duplicateCase.caseName}"\n` +
-        `Ngày xử: ${ngayXu}\n\n` +
-        `Bạn có chắc chắn đây là vụ án mới và muốn tiếp tục lưu không?`
-      );
-      
-      if (!confirmSave) return; 
-    }
-  }
-  const conflicts = schedule.filter(item => {
-    // Bỏ qua chính vụ án đang sửa (nếu là update)
-    if (editingId && item.id === editingId) return false;
     
-    // Bỏ qua nếu chưa chọn giờ
-    if (!item.datetime || !form.datetime) return false; 
+    if (!editingId) { 
+      const duplicateCase = schedule.find(item => 
+        (form.plaintiff && item.plaintiff === form.plaintiff) || 
+        (form.defendant && item.defendant === form.defendant)
+      );
 
-    // Kiểm tra xem có bị trùng cùng 1 thời điểm không (cùng ngày, cùng giờ)
-    const isSameTime = item.datetime === form.datetime;
-
-    if (isSameTime) {
-      // 1. Quét trùng Thẩm phán, Thư ký, Phòng xử
-      const trungTP = form.judge && form.judge !== "---" && item.judge === form.judge;
-      const trungTK = form.clerk && form.clerk !== "---" && item.clerk === form.clerk;
-      const trungPhong = form.room && form.room !== "---" && item.room === form.room;
-      
-      // 2. Quét chéo Hội thẩm 1 và Hội thẩm 2
-      const formHT1 = form.juror1;
-      const formHT2 = form.juror2;
-      const itemHT1 = item.juror1;
-      const itemHT2 = item.juror2;
-      
-      const trungHT1 = formHT1 && formHT1 !== "---" && (formHT1 === itemHT1 || formHT1 === itemHT2);
-      const trungHT2 = formHT2 && formHT2 !== "---" && (formHT2 === itemHT1 || formHT2 === itemHT2);
-
-      // Trả về true nếu trùng BẤT KỲ thành phần nào
-      if (trungTP || trungTK || trungPhong || trungHT1 || trungHT2) {
-         item.loiTrung = [];
-         if (trungPhong) item.loiTrung.push(`Phòng ${form.room}`);
-         if (trungTP) item.loiTrung.push(`Thẩm phán ${form.judge}`);
-         if (trungTK) item.loiTrung.push(`Thư ký ${form.clerk}`);
-         if (trungHT1) item.loiTrung.push(`Hội thẩm ${formHT1}`);
-         if (trungHT2) item.loiTrung.push(`Hội thẩm ${formHT2}`);
-         return true;
+      if (duplicateCase) {
+        const trungTen = duplicateCase.plaintiff === form.plaintiff ? duplicateCase.plaintiff : duplicateCase.defendant;
+        const ngayXu = duplicateCase.datetime ? moment(duplicateCase.datetime).format("DD/MM/YYYY") : "Chưa có ngày";
+        
+        const confirmSave = window.confirm(
+          `⚠️ PHÁT HIỆN TRÙNG ĐƯƠNG SỰ!\n\n` +
+          `Đương sự: ${trungTen}\n` +
+          `Đã có trong vụ: "${duplicateCase.caseName}"\n` +
+          `Ngày xử: ${ngayXu}\n\n` +
+          `Bạn có chắc chắn đây là vụ án mới và muốn tiếp tục lưu không?`
+        );
+        
+        if (!confirmSave) return; 
       }
     }
-    return false;
-  });
 
-  // NẾU CÓ TRÙNG -> CHẶN LẠI VÀ BÁO LỖI CHI TIẾT
-  if (conflicts.length > 0) {
-    const canhBao = conflicts.map(c => `• Vụ "${c.caseName}": Trùng ${c.loiTrung.join(", ")}`).join("\n");
-    return showToast(`⚠️ KHÔNG THỂ LƯU! Phát hiện TRÙNG LỊCH tại thời điểm này:\n\n${canhBao}`, "error"); 
-  }
+    // ==============================================================
+    // 🛡️ CHẶN THƯ KÝ SỬA NGÀY GIỜ SAI QUY TRÌNH (BYPASS NÚT HOÃN)
+    // ==============================================================
+    if (editingId) {
+      const oldItem = schedule.find(item => item.id === editingId);
+      
+      // Nếu hồ sơ cũ đã có ngày, form nhập cũng có ngày, và 2 ngày này khác nhau
+      if (oldItem && oldItem.datetime && form.datetime && oldItem.datetime !== form.datetime) {
+        
+        // Kiểm tra xem tên vụ án hoặc Lần xử có dấu vết của việc dùng nút [🔄 Hoãn] hợp lệ không
+        const laDungQuyTrinhHoan = form.caseName.includes("Hoãn từ ngày") || form.trialCount !== oldItem.trialCount;
+
+        // Nếu không phải đang dùng nút Hoãn mà lại đi đổi ngày
+        if (!laDungQuyTrinhHoan) {
+          const xacNhan = window.confirm(
+            `🚨 HỆ THỐNG CẢNH BÁO QUY TRÌNH!\n\n` +
+            `Hệ thống phát hiện bạn đang TỰ Ý ĐỔI NGÀY XÉT XỬ (từ ${moment(oldItem.datetime).format("DD/MM/YYYY")} sang ${moment(form.datetime).format("DD/MM/YYYY")}) thông qua nút [Sửa hồ sơ] thay vì dùng tính năng Hoãn.\n\n` +
+            `👉 NẾU PHIÊN TÒA BỊ HOÃN:\nBấm [Cancel / Hủy] ngay! Sau đó ra ngoài, dùng nút [🔄 Hoãn] để hệ thống tự động tăng Lần xử và ghi chú lý lịch.\n\n` +
+            `👉 NẾU CHỈ LÀ NHẬP SAI/GÕ NHẦM NGÀY:\nBấm [OK] để xác nhận là lỗi đánh máy và tiếp tục lưu.`
+          );
+          
+          if (!xacNhan) {
+            // Trả về không cho lưu, bắt Thư ký làm lại
+            return showToast("❌ Đã hủy cập nhật! Vui lòng dùng nút [🔄 Hoãn] ở ngoài danh sách.", "error");
+          } else {
+            // Bổ sung cờ đánh dấu để Lãnh đạo biết Thư ký tự đổi tay
+            form.ghiChuQuyTrinh = `⚠️ Tự đổi ngày bằng nút Sửa (từ ${moment(oldItem.datetime).format("DD/MM")})`;
+          }
+        }
+      }
+    }
+    // ==============================================================
+
+    const conflicts = schedule.filter(item => {
+      // Bỏ qua chính vụ án đang sửa (nếu là update)
+      if (editingId && item.id === editingId) return false;
+      
+      // Bỏ qua nếu chưa chọn giờ
+      if (!item.datetime || !form.datetime) return false; 
+
+      // Kiểm tra xem có bị trùng cùng 1 thời điểm không (cùng ngày, cùng giờ)
+      const isSameTime = item.datetime === form.datetime;
+
+      if (isSameTime) {
+        // 1. Quét trùng Thẩm phán, Thư ký, Phòng xử
+        const trungTP = form.judge && form.judge !== "---" && item.judge === form.judge;
+        const trungTK = form.clerk && form.clerk !== "---" && item.clerk === form.clerk;
+        const trungPhong = form.room && form.room !== "---" && item.room === form.room;
+        
+        // 2. Quét chéo Hội thẩm 1 và Hội thẩm 2
+        const formHT1 = form.juror1;
+        const formHT2 = form.juror2;
+        const itemHT1 = item.juror1;
+        const itemHT2 = item.juror2;
+        
+        const trungHT1 = formHT1 && formHT1 !== "---" && (formHT1 === itemHT1 || formHT1 === itemHT2);
+        const trungHT2 = formHT2 && formHT2 !== "---" && (formHT2 === itemHT1 || formHT2 === itemHT2);
+
+        // Trả về true nếu trùng BẤT KỲ thành phần nào
+        if (trungTP || trungTK || trungPhong || trungHT1 || trungHT2) {
+           item.loiTrung = [];
+           if (trungPhong) item.loiTrung.push(`Phòng ${form.room}`);
+           if (trungTP) item.loiTrung.push(`Thẩm phán ${form.judge}`);
+           if (trungTK) item.loiTrung.push(`Thư ký ${form.clerk}`);
+           if (trungHT1) item.loiTrung.push(`Hội thẩm ${formHT1}`);
+           if (trungHT2) item.loiTrung.push(`Hội thẩm ${formHT2}`);
+           return true;
+        }
+      }
+      return false;
+    });
+
+    // NẾU CÓ TRÙNG -> CHẶN LẠI VÀ BÁO LỖI CHI TIẾT
+    if (conflicts.length > 0) {
+      const canhBao = conflicts.map(c => `• Vụ "${c.caseName}": Trùng ${c.loiTrung.join(", ")}`).join("\n");
+      return showToast(`⚠️ KHÔNG THỂ LƯU! Phát hiện TRÙNG LỊCH tại thời điểm này:\n\n${canhBao}`, "error"); 
+    }
+    
     const isConflict = await isConflictServerSide(form.datetime, form.room, editingId, form.duration);
     if(isConflict) return showToast("⚠️ Xin lỗi, phòng này vừa được đặt. Vui lòng chọn giờ khác!", "error");
 
