@@ -526,7 +526,7 @@ useEffect(() => {
     }
 
     // ==============================================================
-    // 🛡️ CHẶN THƯ KÝ SỬA NGÀY GIỜ SAI QUY TRÌNH (BYPASS NÚT HOÃN)
+    // 🛡️ 1. CHẶN THƯ KÝ SỬA NGÀY GIỜ SAI QUY TRÌNH (BYPASS NÚT HOÃN)
     // ==============================================================
     if (editingId) {
       const oldItem = schedule.find(item => item.id === editingId);
@@ -541,7 +541,7 @@ useEffect(() => {
         if (!laDungQuyTrinhHoan) {
           const xacNhan = window.confirm(
             `🚨 HỆ THỐNG CẢNH BÁO QUY TRÌNH!\n\n` +
-            `Hệ thống phát hiện bạn đang TỰ Ý ĐỔI NGÀY XÉT XỬ (từ ${moment(oldItem.datetime).format("DD/MM/YYYY")} sang ${moment(form.datetime).format("DD/MM/YYYY")}) thông qua nút [Sửa hồ sơ] thay vì dùng tính năng Hoãn.\n\n` +
+            `Hệ thống phát hiện bạn đang TỰ Ý ĐỔI NGÀY XẾT XỬ (từ ${moment(oldItem.datetime).format("DD/MM/YYYY")} sang ${moment(form.datetime).format("DD/MM/YYYY")}) thông qua nút [Sửa hồ sơ] thay vì dùng tính năng Hoãn.\n\n` +
             `👉 NẾU PHIÊN TÒA BỊ HOÃN:\nBấm [Cancel / Hủy] ngay! Sau đó ra ngoài, dùng nút [🔄 Hoãn] để hệ thống tự động tăng Lần xử và ghi chú lý lịch.\n\n` +
             `👉 NẾU CHỈ LÀ NHẬP SAI/GÕ NHẦM NGÀY:\nBấm [OK] để xác nhận là lỗi đánh máy và tiếp tục lưu.`
           );
@@ -611,6 +611,18 @@ useEffect(() => {
       updatedAt: moment().toISOString(), 
       updatedBy: user.email 
     };
+
+    // ==============================================================
+    // 💡 2. TẨY NÃO CỜ EXCEL KHI ĐỔI NGÀY (FIX LỖI MẤT ÁN HOÃN LẦN 2)
+    // ==============================================================
+    if (editingId) {
+      const oldItem = schedule.find(item => item.id === editingId);
+      if (oldItem && oldItem.datetime !== form.datetime) {
+        logData.daXuatExcel = false; // Ép về false để lần hoãn mới lọt vào danh sách xuất Excel tiếp
+      }
+    }
+    // ==============================================================
+
     try {
       if (editingId) {
         await updateDoc(doc(db, "schedule", editingId), logData);
