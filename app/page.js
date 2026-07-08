@@ -651,6 +651,29 @@ useEffect(() => {
       ghiNhatKy("Đổi trạng thái", `Chuyển vụ "${caseName}" sang: ${newStatus}`);
     } catch (err) { showToast("Lỗi cập nhật trạng thái", "error"); }
   };
+  // HÀM XỬ LÝ ĐÌNH CHỈ VỤ ÁN / RÚT ĐƠN
+  const handleDinhChi = async (item) => {
+    const lyDo = window.prompt(`🛑 ĐÌNH CHỈ VỤ ÁN: ${item.caseName}\n\nNhập lý do đình chỉ (VD: Rút đơn khởi kiện, Nguyên đơn vắng mặt 2 lần...):`);
+    
+    // Nếu Thư ký bấm Hủy (Cancel) thì không làm gì cả
+    if (lyDo === null) return; 
+
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      await updateDoc(doc(db, "schedule", item.id), { 
+        status: 'dinh_chi', 
+        lyDoDinhChi: lyDo || "Không ghi rõ lý do", // Nếu để trống thì ghi mặc định
+        ngayDinhChi: moment().toISOString(),
+        updatedBy: user.email,
+        updatedAt: moment().toISOString()
+      });
+      
+      showToast("✅ Đã cập nhật trạng thái ĐÌNH CHỈ thành công!", "success");
+      ghiNhatKy("Đình chỉ án", `Vụ: ${item.caseName} - Lý do: ${lyDo}`);
+    } catch (e) {
+      showToast("Lỗi cập nhật đình chỉ: " + e.message, "error");
+    }
+  };
   // HÀM CẬP NHẬT TRẠNG THÁI NGHỊ ÁN 
   const updateCaseStatus = async (id, status) => {
     let extraData = {};
@@ -1951,6 +1974,8 @@ useEffect(() => {
               <td className={`px-2 py-2 w-[15%] align-top text-center border-r border-gray-300 ${isRowUrgent ? 'border-l-4 border-l-red-500' : isForgotten ? 'border-l-4 border-l-orange-500' : ''}`}>
                 {item.status === 'suspended' ? (
                   <div className="text-purple-600 font-bold uppercase text-[10px]">⏸ Tạm ngừng</div>
+                  ) : item.status === 'dinh_chi' ? (  /* <--- THÊM DÒNG NÀY ---> */
+                  <div className="text-red-600 font-bold uppercase text-[10px]">🛑 ĐÌNH CHỈ</div>
                 ) : (
                   <>
                     <div className="font-bold text-[12px] text-gray-900">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
@@ -2107,6 +2132,7 @@ useEffect(() => {
             <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-green-100 text-green-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">✅ Xét xử xong</button>
             <button onClick={() => handleReschedule(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-gray-200 text-gray-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">🔄 Hoãn</button>
             <button onClick={() => toggleStatus(item.id, 'suspended', item.caseName)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-purple-100 text-purple-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">⏸ Tạm ngừng</button>
+            <button onClick={() => handleDinhChi(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-red-100 text-red-700 font-bold uppercase text-[9px] rounded border border-red-100 shadow-sm transition-all flex items-center gap-1.5">🛑 Đình chỉ (Rút đơn)</button>
             <button onClick={() => updateCaseStatus(item.id, 'nghi_an')} className="w-full text-left px-2 py-1.5 bg-white hover:bg-indigo-100 text-indigo-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5 animate-pulse">⚖️ Nghị án</button>
           </>
         )}
