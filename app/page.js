@@ -1718,7 +1718,7 @@ useEffect(() => {
                   </div>
                 </div>
               ) : (
-                    <CourtPortal />
+                    CourtPortal()
               )}
             </>
           ) : (
