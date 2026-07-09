@@ -77,6 +77,7 @@ export default function PremiumCourtApp() {
 
   const calendarSectionRef = useRef(null);
   const tableSectionRef = useRef(null); 
+  const tvScrollRef = useRef(null);
 
   const initialForm = {
     datetime: "", room: "Trụ sở", caseType: "Hình sự", duration: 120, trialCount: "Lần 1", caseName: "", 
@@ -135,7 +136,7 @@ const getLabelBenBi = (loaiAn) => {
     case 'Hình sự':
       return 'Bị cáo:';
     case 'cainghien':
-    case 'Cai nghiện': // Dựa theo option Ní đang dùng trong form
+    case 'Cai nghiện': 
     case 'Hành chính':
       return 'Người bị đề nghị:';
     case 'Dân sự':
@@ -171,7 +172,7 @@ const goiYThamPhan = () => {
     if (!danhSachChoAI || danhSachChoAI.length === 0) return null;
 
     const calculations = danhSachChoAI.map(j => {
-      // AI CŨNG CHỈ ĐẾM NHỮNG ÁN MỚI PHÂN (Chưa có datetime)
+    // (Chưa có datetime)
       const soAnDangCho = schedule.filter(a => a.judge === j.name && a.status === 'pending' && !a.datetime).length;
       
       const tongAnThucTe = (parseInt(j.tonCu) || 0) + soAnDangCho;
@@ -196,7 +197,7 @@ const goiYThamPhan = () => {
         await addDoc(collection(db, "schedule"), {
           caseName: phanAnForm.caseName, plaintiff: phanAnForm.plaintiff,
           defendant: phanAnForm.defendant, caseType: phanAnForm.caseType,
-          status: "cho_phan_an", // Trạng thái đặc biệt dành cho án chờ
+          status: "cho_phan_an", 
           createdAt: moment().toISOString(), createdBy: user?.email || "Hệ thống"
         });
       }
@@ -210,7 +211,6 @@ const goiYThamPhan = () => {
     if (!isChanHan && !isAdmin) return showToast("⛔ Chỉ Chánh án mới có quyền phê duyệt giao án!", "error");
     if (!phanAnForm.caseName) return showToast("Vui lòng nhập trích yếu!", "error");
     
-    // Trở lại logic kết hợp: Ưu tiên chọn tay, nếu không chọn thì lấy AI
     const targetJudge = manualJudge || goiYThamPhan(); 
     
     if (!targetJudge) return showToast("Không tìm thấy Thẩm phán phù hợp (hoặc chưa có ai ngoài Chánh án)!", "error");
@@ -237,7 +237,7 @@ const goiYThamPhan = () => {
       showToast(`⚖️ Đã giao án thành công cho ${targetJudge.name}!`, "success");
       setPhanAnForm({ caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự" });
       setChoPhanAnId(null);
-      setManualJudge(null); // Giao xong thì reset cái chọn tay
+      setManualJudge(null); 
     } catch (e) { showToast("Lỗi phân án: " + e.message, "error"); }
   };
 // 1. HÀM ĐỔI NHANH THẨM PHÁN TRÊN THẺ
@@ -260,14 +260,13 @@ const goiYThamPhan = () => {
     }));
 
     return dsChoPhanAn.map(item => {
-        // NẾU LÃNH ĐẠO ĐÃ CHỌN TAY TRÊN THẺ -> Tôn trọng ý Lãnh đạo
+        // NẾU LÃNH ĐẠO ĐÃ CHỌN TAY TRÊN THẺ 
         if (item.judge) { 
            const target = tempLoads.find(j => j.name === item.judge);
            if (target) target.soAnDangCho += 1;
            return { ...item, suggestedJudge: item.judge, isManual: true };
         }
 
-        // NẾU KHÔNG CHỌN -> Để AI tự gán cho người rảnh nhất
         tempLoads.sort((a, b) => ((a.tonCu + a.soAnDangCho) / a.weight) - ((b.tonCu + b.soAnDangCho) / b.weight));
         const target = tempLoads[0];
         if(target) target.soAnDangCho += 1; 
@@ -292,9 +291,9 @@ const goiYThamPhan = () => {
       }));
 
       for (let item of dsChoPhanAn) {
-          let targetJudgeName = item.judge; // Ưu tiên lấy người đã bị "Chỉ định cứng"
+          let targetJudgeName = item.judge; 
 
-          if (!targetJudgeName) { // Nếu chưa chỉ định thì AI tính toán
+          if (!targetJudgeName) { 
               tempLoads.sort((a, b) => ((a.tonCu + a.soAnDangCho) / a.weight) - ((b.tonCu + b.soAnDangCho) / b.weight));
               const targetJudge = tempLoads[0];
               if (targetJudge) {
@@ -308,7 +307,6 @@ const goiYThamPhan = () => {
 
           if (!targetJudgeName) continue;
 
-          // Xốt lệnh cập nhật sang Chờ xét xử
           await updateDoc(doc(db, "schedule", item.id), {
               judge: targetJudgeName,
               status: "pending",
@@ -423,6 +421,24 @@ useEffect(() => {
   };
     }
   }, []);
+  useEffect(() => {
+  if (!showTVMode) return; // Chỉ chạy khi mở Tivi
+
+  const scrollContainer = tvScrollRef.current;
+  if (!scrollContainer) return;
+
+  const scrollInterval = setInterval(() => {
+    // Nếu cuộn chạm đáy thì giật ngược lại lên đầu
+    if (scrollContainer.scrollTop + scrollContainer.clientHeight >= scrollContainer.scrollHeight) {
+      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      // Cuộn xuống từ từ (mỗi 50 mili-giây cuộn 1 pixel)
+      scrollContainer.scrollBy({ top: 1, behavior: 'smooth' });
+    }
+  }, 50); 
+
+  return () => clearInterval(scrollInterval); // Dọn dẹp khi tắt Tivi
+}, [showTVMode]);
   useEffect(() => {
     // Lấy danh sách Thẩm phán & Định mức tồn cũ
     const qJudges = query(collection(db, "judges"));
@@ -1114,7 +1130,6 @@ useEffect(() => {
       });
     }
 
-    // 💡 TÍNH NĂNG MỚI: LỌC BỎ ÁN ĐÃ XUẤT NẾU CÓ TICK
     if (exportUnexportedOnly) {
       dataToExport = dataToExport.filter(i => !i.daXuatExcel);
     }
@@ -3051,65 +3066,118 @@ useEffect(() => {
 </main>
 
       {selectedEvent && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onClick={() => setSelectedEvent(null)}>
-           <div className="w-full max-w-lg flex flex-col overflow-hidden bg-white rounded-[28px] shadow-2xl" onClick={e => e.stopPropagation()}>
-              <div className="p-8 bg-red-600 text-white">
-                <p className="text-xs font-black uppercase opacity-80 mb-2 tracking-widest">{selectedEvent.caseType} - {selectedEvent.trialCount}</p>
-                <h3 className="text-2xl font-black uppercase leading-tight">{selectedEvent.caseName}</h3>
-              </div>
-              <div className="p-8 space-y-5 text-gray-900 font-bold">
-                <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-2xl">🕒</div><p className="text-lg font-black text-blue-950">{moment(selectedEvent.datetime).format("HH:mm - DD/MM/YYYY")}</p></div>
-                <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-  <div className="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center text-2xl flex-shrink-0">👥</div>
-  <div>
-    <p className="text-xs text-gray-500 uppercase mb-1">Thông tin đương sự:</p>
-    {selectedEvent.caseType?.includes("Hình sự") ? (
-      <p className="text-base text-red-700 font-black">
-        Bị cáo: {selectedEvent.plaintiff || selectedEvent.defendant || "---"}
-      </p>
-    ) : (
-      <div className="space-y-1">
-        <p className="text-sm font-black text-gray-800">NĐ: {selectedEvent.plaintiff || "---"}</p>
-        <p className="text-sm font-black text-gray-800">BĐ: {selectedEvent.defendant || "---"}</p>
-      </div>
-    )}
-  </div>
-</div>
-
-  <div className="flex items-center gap-4">
-    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-2xl">👨‍⚖️</div>
-    <p className="text-lg">Thẩm phán: {selectedEvent.judge}</p>
-  </div>
-
-  <div className="flex items-center gap-4">
-    <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-2xl">📝</div>
-    <p className="text-lg">Thư ký: {selectedEvent.clerk}</p>
-  </div>
-
-  <div className="flex items-center gap-4">
-    <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-2xl">🛡️</div>
-    <p className="text-lg text-red-700">KSV: {selectedEvent.prosecutor}</p>
-  </div>
-                
-                <div className="p-5 bg-amber-50 rounded-2xl border border-amber-200 space-y-2 mt-4">
-                  <p className="text-amber-700 font-black uppercase text-[10px] mb-2 tracking-widest flex items-center gap-2">
-                    <span className="w-2 h-2 bg-amber-400 rounded-full animate-ping"></span> 📜 Nhật ký hệ thống
-                  </p>
-                  <div className="text-[11px] font-bold text-gray-600 space-y-1">
-                    <p>👤 Khởi tạo: <span className="text-blue-600">{selectedEvent.createdBy || "Hệ thống cũ"}</span></p>
-                    <p>🕒 Lúc: {selectedEvent.createdAt ? moment(selectedEvent.createdAt).format("HH:mm - DD/MM/YYYY") : "---"}</p>
-                    <div className="my-2 border-t border-amber-200 border-dashed"></div>
-                    <p>👤 Sửa cuối: <span className="text-red-600">{selectedEvent.updatedBy || "Chưa có thay đổi"}</span></p>
-                    <p>🕒 Lúc: {selectedEvent.updatedAt ? moment(selectedEvent.updatedAt).format("HH:mm - DD/MM/YYYY") : "---"}</p>
-                  </div>
-                </div>
-
-                <button onClick={() => setSelectedEvent(null)} className="w-full bg-blue-900 text-white py-4 font-black uppercase rounded-xl mt-4">ĐÓNG</button>
-              </div>
-           </div>
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4 py-10" onClick={() => setSelectedEvent(null)}>
+     
+     {/* KHUNG MODAL CHÍNH - Ép max-h-full để nó không bao giờ chui ra khỏi màn hình */}
+     <div className="w-full max-w-lg flex flex-col bg-white rounded-[28px] shadow-2xl max-h-full overflow-hidden" onClick={e => e.stopPropagation()}>
+        
+        {/* ========================================= */}
+        {/* 1. HEADER (Màu đỏ) - Đứng im (shrink-0) */}
+        {/* ========================================= */}
+        <div className="p-6 md:p-8 bg-red-600 text-white shrink-0">
+          <p className="text-xs font-black uppercase opacity-80 mb-2 tracking-widest">{selectedEvent.caseType} - {selectedEvent.trialCount}</p>
+          <h3 className="text-xl md:text-2xl font-black uppercase leading-tight">{selectedEvent.caseName}</h3>
         </div>
-      )}
+        
+        {/* ========================================= */}
+        {/* 2. NỘI DUNG (Khúc này sẽ được cuộn) */}
+        {/* ========================================= */}
+        <div className="p-6 md:p-8 space-y-5 text-gray-900 font-bold overflow-y-auto custom-scrollbar flex-1">
+          
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-2xl shrink-0">🕒</div>
+            <p className="text-lg font-black text-blue-950">{moment(selectedEvent.datetime).format("HH:mm - DD/MM/YYYY")}</p>
+          </div>
+          
+          <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+            <div className="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center text-2xl shrink-0">👥</div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase mb-1">Thông tin đương sự:</p>
+              {selectedEvent.caseType?.includes("Hình sự") ? (
+                <p className="text-base text-red-700 font-black">
+                  Bị cáo: {selectedEvent.plaintiff || selectedEvent.defendant || "---"}
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  <p className="text-sm font-black text-gray-800">NĐ: {selectedEvent.plaintiff || "---"}</p>
+                  <p className="text-sm font-black text-gray-800">BĐ: {selectedEvent.defendant || "---"}</p>
+                </div>
+              )}
+            </div>
+          </div>
 
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-2xl shrink-0">👨‍⚖️</div>
+            <p className="text-lg">Thẩm phán: {selectedEvent.judge}</p>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-2xl shrink-0">📝</div>
+            <p className="text-lg">Thư ký: {selectedEvent.clerk}</p>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-2xl shrink-0">🛡️</div>
+            <p className="text-lg text-red-700">KSV: {selectedEvent.prosecutor}</p>
+          </div>
+          
+          {/* KHUNG DẤU VẾT VỤ ÁN DẠNG TIMELINE */}
+          <div className="p-6 bg-slate-50 rounded-2xl border border-gray-200 mt-6">
+            <p className="text-blue-900 font-black uppercase text-xs mb-4 tracking-widest flex items-center gap-2">
+              <span className="text-lg">🕵️‍♂️</span> Diễn biến hồ sơ
+            </p>
+            <div className="relative border-l-2 border-blue-200 ml-3 space-y-5">
+               
+               <div className="relative pl-6">
+                  <span className="absolute -left-[7px] top-1 bg-green-500 w-3 h-3 rounded-full shadow-[0_0_0_4px_#f8fafc]"></span>
+                  <p className="text-xs font-black text-gray-800 uppercase">Khởi tạo lịch xét xử</p>
+                  <p className="text-[10px] text-gray-500 mt-1">🕒 {selectedEvent.createdAt ? moment(selectedEvent.createdAt).format("HH:mm - DD/MM/YYYY") : "---"} • 👤 {selectedEvent.createdBy}</p>
+               </div>
+
+               {selectedEvent.isKhangCao && (
+                 <div className="relative pl-6">
+                    <span className="absolute -left-[7px] top-1 bg-orange-500 w-3 h-3 rounded-full shadow-[0_0_0_4px_#f8fafc]"></span>
+                    <p className="text-xs font-black text-gray-800 uppercase">Ghi nhận Kháng cáo</p>
+                    <p className="text-[10px] text-gray-500 mt-1">👤 Hệ thống • {selectedEvent.nguoiKhangCao}</p>
+                 </div>
+               )}
+
+               {selectedEvent.status === 'completed' && (
+                 <div className="relative pl-6">
+                    <span className="absolute -left-[7px] top-1 bg-blue-600 w-3 h-3 rounded-full shadow-[0_0_0_4px_#f8fafc]"></span>
+                    <p className="text-xs font-black text-blue-700 uppercase">Đã xét xử xong</p>
+                    <p className="text-[10px] text-gray-500 mt-1">🕒 {selectedEvent.completedAt ? moment(selectedEvent.completedAt).format("HH:mm - DD/MM/YYYY") : "---"}</p>
+                 </div>
+               )}
+
+               {selectedEvent.status === 'dinh_chi' && (
+                 <div className="relative pl-6">
+                    <span className="absolute -left-[7px] top-1 bg-red-600 w-3 h-3 rounded-full shadow-[0_0_0_4px_#f8fafc]"></span>
+                    <p className="text-xs font-black text-red-700 uppercase">Đã Đình chỉ vụ án</p>
+                    <p className="text-[10px] text-gray-500 mt-1">Lý do: {selectedEvent.lyDoDinhChi}</p>
+                 </div>
+               )}
+               
+               <div className="relative pl-6">
+                  <span className="absolute -left-[7px] top-1 bg-gray-400 w-3 h-3 rounded-full shadow-[0_0_0_4px_#f8fafc]"></span>
+                  <p className="text-xs font-black text-gray-600 uppercase">Cập nhật cuối</p>
+                  <p className="text-[10px] text-gray-500 mt-1">🕒 {selectedEvent.updatedAt ? moment(selectedEvent.updatedAt).format("HH:mm - DD/MM/YYYY") : "---"} • 👤 {selectedEvent.updatedBy || "Chưa có thay đổi"}</p>
+               </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* ========================================= */}
+        {/* 3. FOOTER (Nút Đóng) - Đứng im dưới cùng */}
+        {/* ========================================= */}
+        <div className="p-4 bg-white border-t border-gray-100 shrink-0">
+           <button onClick={() => setSelectedEvent(null)} className="w-full bg-blue-900 hover:bg-black text-white py-4 font-black uppercase rounded-xl transition-colors">ĐÓNG</button>
+        </div>
+        
+     </div>
+  </div>
+)}
       {showLoginModal && !user && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="relative z-10 w-full max-w-[480px] p-8 md:p-10 text-center animate-popIn" style={{ background: 'rgba(20, 30, 70, 0.95)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '16px', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)' }}>
@@ -3205,7 +3273,7 @@ useEffect(() => {
       </button>
     </div>
 
-    <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-4 custom-scrollbar">
+    <div ref={tvScrollRef} className="flex-1 overflow-y-auto p-4 md:p-10 space-y-4 custom-scrollbar">
       {schedule
         .filter(i => moment(i.datetime).isSame(moment(), 'day'))
         .sort((a,b) => moment(a.datetime).diff(moment(b.datetime)))
