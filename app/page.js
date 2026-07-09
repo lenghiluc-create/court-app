@@ -1274,7 +1274,21 @@ useEffect(() => {
                     </div>
                     
                     <h4 className="font-bold text-gray-800 text-base mb-3 leading-tight">{item.caseName}</h4>
-                    
+
+                    <div className="flex flex-col gap-1 mb-4 text-[13px] text-gray-700">
+  {item.plaintiff && (
+    <div className="flex items-start">
+      <span className="font-bold w-[70px] flex-shrink-0">NĐ/Bị hại:</span>
+      <span className="uppercase">{item.plaintiff}</span>
+    </div>
+  )}
+  {item.defendant && (
+    <div className="flex items-start">
+      <span className="font-bold w-[70px] flex-shrink-0">BĐ/Bị cáo:</span>
+      <span className="uppercase">{item.defendant}</span>
+    </div>
+  )}
+</div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs mt-2">
                        <div className="bg-white p-2.5 rounded-lg border border-gray-100 col-span-2">
                          <span className="text-gray-400 text-[10px] font-bold uppercase block mb-1">Thẩm phán</span>
