@@ -57,6 +57,7 @@ export default function PremiumCourtApp() {
   const [tuKhoa, setTuKhoa] = useState("");
   const [ketQuaTraCuu, setKetQuaTraCuu] = useState(null);
   const [selectedStatType, setSelectedStatType] = useState(null);
+  const [statMonth, setStatMonth] = useState(moment().format('YYYY-MM'));
   // Modal States
   const [showPwdModal, setShowPwdModal] = useState(false);
   const [newPwd, setNewPwd] = useState("");
@@ -538,15 +539,18 @@ useEffect(() => {
   };
   // HÀM XUẤT EXCEL DANH SÁCH ÁN THEO LOẠI
   const handleExportChiTietAn = () => {
-    // 1. Lấy đúng danh sách đang hiển thị trên Modal
-    const dataToExport = schedule.filter(item => item.caseType === selectedStatType && item.judge && item.judge !== "---");
+    const dataToExport = schedule.filter(item => {
+      if (item.caseType !== selectedStatType || !item.judge || item.judge === "---") return false;
+      const itemMonth = moment(item.createdAt || item.updatedAt || new Date()).format('YYYY-MM');
+      if (statMonth !== "all" && itemMonth !== statMonth) return false;
+      return true;
+    });
     
     if (dataToExport.length === 0) {
       alert("Không có dữ liệu để xuất!");
       return;
     }
 
-    // 2. Tạo nội dung file CSV (thêm \uFEFF để Excel đọc không bị lỗi font tiếng Việt)
     let csvContent = "\uFEFF";
     csvContent += "STT,SỐ THỤ LÝ,TRÍCH YẾU VỤ ÁN,LOẠI ÁN,NGUYÊN ĐƠN / BỊ HẠI,BỊ ĐƠN / BỊ CÁO,THẨM PHÁN THỤ LÝ\n";
 
@@ -558,16 +562,15 @@ useEffect(() => {
       const nNguyenDon = item.plaintiff ? `"${item.plaintiff.replace(/"/g, '""')}"` : '""';
       const nBiDon = item.defendant ? `"${item.defendant.replace(/"/g, '""')}"` : '""';
       const thamPhan = item.judge ? `"${item.judge}"` : '""';
-
       csvContent += `${stt},${soThuLy},${tenVu},${loai},${nNguyenDon},${nBiDon},${thamPhan}\n`;
     });
 
-    // 3. Kích hoạt tải file về máy
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Danh_Sach_An_${selectedStatType}_${moment().format('DDMMYYYY')}.csv`);
+    link.setAttribute("href", URL.createObjectURL(blob));
+    // Tên file có thêm tháng
+    const monthSuffix = statMonth === "all" ? "TatCa" : statMonth.replace('-', '');
+    link.setAttribute("download", `Danh_Sach_${selectedStatType}_${monthSuffix}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1601,17 +1604,21 @@ useEffect(() => {
   // =========================================================
   // HÀM TÍNH TOÁN THỐNG KÊ ÁN ĐÃ PHÂN CÔNG
 const thongKeLoaiAn = schedule.reduce((acc, item) => {
-  // Chỉ đếm những vụ án ĐÃ CÓ Thẩm phán (đã được phân công)
-  if (item.judge && item.judge !== "---" && item.judge !== "") {
-    const loai = item.caseType || 'Chưa xác định';
-    acc[loai] = (acc[loai] || 0) + 1;
-    acc.tongSo = (acc.tongSo || 0) + 1;
-  }
-  return acc;
-}, { tongSo: 0 });
+    if (item.judge && item.judge !== "---" && item.judge !== "") {
+      // Lấy ngày phân án (ưu tiên ngày tạo, nếu không có lấy ngày cập nhật)
+      const itemMonth = moment(item.createdAt || item.updatedAt || new Date()).format('YYYY-MM');
+      
+      // Chỉ đếm những vụ nằm trong tháng được chọn (hoặc nếu chọn 'all' thì đếm hết)
+      if (statMonth === "all" || itemMonth === statMonth) {
+        const loai = item.caseType || 'Chưa xác định';
+        acc[loai] = (acc[loai] || 0) + 1;
+        acc.tongSo = (acc.tongSo || 0) + 1;
+      }
+    }
+    return acc;
+  }, { tongSo: 0 });
 
-const danhSachCacLoaiAn = ['Hình sự', 'Dân sự', 'Hành chính', 'Hôn nhân & GĐ', 'Kinh tế', 'Lao động', 'Cai nghiện'];
-    // ... Khối giao diện của Ní ở bên dưới ...
+  const danhSachCacLoaiAn = ['Hình sự', 'Dân sự', 'Hành chính', 'Hôn nhân & GĐ', 'Kinh tế', 'Lao động', 'Cai nghiện'];
   return (
     <div className="min-h-screen bg-gray-100 flex font-sans antialiased tracking-tight relative">
       <div className="absolute inset-0 bg-black/30 z-0"></div>
@@ -2903,10 +2910,29 @@ const danhSachCacLoaiAn = ['Hình sự', 'Dân sự', 'Hành chính', 'Hôn nhâ
     <div className="mt-10 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden relative">
       <div className="absolute top-0 right-0 p-2 opacity-5 text-6xl">📈</div>
       
-      <div className="bg-emerald-50 px-5 py-4 border-b border-emerald-100">
+     {/* HEADER CỦA KHU VỰC THỐNG KÊ KÈM BỘ LỌC THÁNG */}
+      <div className="bg-emerald-50 px-5 py-4 border-b border-emerald-100 flex flex-col md:flex-row justify-between md:items-center gap-3">
         <h3 className="text-sm font-black text-emerald-900 uppercase flex items-center gap-2">
           📊 Thống kê nhanh: Án đã phân công theo loại
         </h3>
+        
+        {/* THANH CÔNG CỤ CHỌN THÁNG */}
+        <div className="flex items-center gap-2 relative z-10">
+          <label className="text-[11px] font-black uppercase text-emerald-700 tracking-widest">Thời gian:</label>
+          <input 
+            type="month" 
+            value={statMonth !== "all" ? statMonth : ""}
+            onChange={(e) => setStatMonth(e.target.value || "all")}
+            disabled={statMonth === "all"}
+            className="px-3 py-1.5 border-2 border-emerald-200 rounded-lg text-sm font-bold text-emerald-900 outline-none focus:border-emerald-500 bg-white shadow-sm disabled:bg-gray-100 disabled:text-gray-400"
+          />
+          <button 
+            onClick={() => setStatMonth(statMonth === "all" ? moment().format('YYYY-MM') : "all")}
+            className={`px-3 py-1.5 text-[11px] uppercase font-black tracking-widest rounded-lg border-2 shadow-sm transition-all active:scale-95 ${statMonth === "all" ? "bg-emerald-600 text-white border-emerald-700" : "bg-white text-emerald-600 border-emerald-200 hover:bg-emerald-50"}`}
+          >
+            {statMonth === "all" ? "Trở về từng tháng" : "Xem tất cả"}
+          </button>
+        </div>
       </div>
       
       <div className="p-6">
@@ -2957,7 +2983,11 @@ const danhSachCacLoaiAn = ['Hình sự', 'Dân sự', 'Hành chính', 'Hôn nhâ
       <div className="p-6 overflow-y-auto custom-scrollbar flex-1 bg-slate-50">
         <div className="space-y-4">
           {schedule
-            .filter(item => item.caseType === selectedStatType && item.judge && item.judge !== "---")
+            .filter(item => {
+               if (item.caseType !== selectedStatType || !item.judge || item.judge === "---") return false;
+               const itemMonth = moment(item.createdAt || item.updatedAt || new Date()).format('YYYY-MM');
+               return statMonth === "all" || itemMonth === statMonth;
+            })
             .map((item, index) => (
               <div key={item.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row md:justify-between md:items-center gap-4 hover:border-emerald-300 transition-colors">
                 <div className="flex-1">
