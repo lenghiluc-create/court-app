@@ -14,6 +14,54 @@ import { db, auth } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence, browserSessionPersistence, updatePassword } from 'firebase/auth';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, where, onSnapshot } from 'firebase/firestore';
 
+const DANH_MUC_QUAN_HE = {
+  "Dân sự": [
+    "Tranh chấp hợp đồng vay tài sản",
+    "Tranh chấp quyền sử dụng đất",
+    "Tranh chấp hợp đồng tín dụng",
+    "Tranh chấp về bồi thường thiệt hại ngoài hợp đồng",
+    "Tranh chấp thừa kế tài sản",
+    "Tranh chấp hợp đồng đặt cọc",
+    "Tranh chấp hợp đồng mua bán tài sản"
+  ],
+  "Hôn nhân & GĐ": [
+    "Ly hôn",
+    "Ly hôn, tranh chấp về nuôi con",
+    "Ly hôn, tranh chấp về nuôi con, chia tài sản khi ly hôn",
+    "Tranh chấp về chia tài sản chung của vợ chồng sau khi ly hôn",
+    "Tranh chấp về thay đổi người trực tiếp nuôi con sau khi ly hôn",
+    "Yêu cầu cấp dưỡng",
+    "Yêu cầu xác định cha, mẹ cho con"
+  ],
+  "Hình sự": [
+    "Trộm cắp tài sản",
+    "Cố ý gây thương tích",
+    "Lừa đảo chiếm đoạt tài sản",
+    "Vi phạm quy định về tham gia giao thông đường bộ",
+    "Mua bán trái phép chất ma túy",
+    "Tàng trữ trái phép chất ma túy"
+  ],
+  "Kinh tế": [
+    "Tranh chấp hợp đồng mua bán hàng hóa",
+    "Tranh chấp hợp đồng dịch vụ",
+    "Tranh chấp giữa các thành viên công ty",
+    "Tranh chấp hợp đồng tín dụng doanh nghiệp"
+  ],
+  "Lao động": [
+    "Tranh chấp về đơn phương chấm dứt hợp đồng lao động",
+    "Tranh chấp về đòi tiền lương, trợ cấp thôi việc",
+    "Tranh chấp kỷ luật lao động theo hình thức sa thải"
+  ],
+  "Hành chính": [
+    "Khiếu kiện quyết định hành chính về quản lý đất đai",
+    "Khiếu kiện quyết định xử phạt vi phạm hành chính",
+    "Khiếu kiện hành vi hành chính"
+  ],
+  "Cai nghiện": [
+    "Đề nghị áp dụng biện pháp đưa vào cơ sở cai nghiện bắt buộc",
+    "Đề nghị áp dụng biện pháp đưa vào trường giáo dưỡng"
+  ]
+};
 const localizer = typeof window !== 'undefined' ? momentLocalizer(moment) : null;
 const DnDCalendar = withDragAndDrop(Calendar);
 
@@ -80,7 +128,7 @@ export default function PremiumCourtApp() {
   const calendarSectionRef = useRef(null);
   const tableSectionRef = useRef(null); 
   const tvScrollRef = useRef(null);
-
+  
   const initialForm = {
     datetime: "", room: "Trụ sở", caseType: "Hình sự", duration: 120, trialCount: "Lần 1", caseName: "", 
     plaintiff: "", defendant: "", judge: "", clerk: "", juror1: "", juror2: "", 
@@ -242,6 +290,7 @@ const goiYThamPhan = () => {
         plaintiff: phanAnForm.plaintiff || "",
         defendant: phanAnForm.defendant || "",
         caseType: phanAnForm.caseType,
+        quanHePhapLuat: phanAnForm.quanHePhapLuat || "",
         judge: targetJudge.name, 
         status: "pending",
         room: "Chưa phân phòng",
@@ -256,7 +305,7 @@ const goiYThamPhan = () => {
       }
 
       showToast(`⚖️ Đã giao án thành công cho ${targetJudge.name}!`, "success");
-      setPhanAnForm({ soThuLy: "", caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự" });
+      setPhanAnForm({ soThuLy: "", caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự", quanHePhapLuat: "" });
       setChoPhanAnId(null);
       setManualJudge(null); 
     } catch (e) { showToast("Lỗi phân án: " + e.message, "error"); }
@@ -374,7 +423,7 @@ const goiYThamPhan = () => {
       }
 
       showToast(`✅ Đã phân án đồng loạt thành công!`, "success");
-      setPhanAnForm({ soThuLy: "", caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự" });
+      setPhanAnForm({ soThuLy: "", caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự", quanHePhapLuat: "" });
       setChoPhanAnId(null);
     } catch (e) {
       showToast("Lỗi phân án đồng loạt: " + e.message, "error");
@@ -1619,6 +1668,15 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
   }, { tongSo: 0 });
 
   const danhSachCacLoaiAn = ['Hình sự', 'Dân sự', 'Hành chính', 'Hôn nhân & GĐ', 'Kinh tế', 'Lao động', 'Cai nghiện'];
+  const myCases = schedule.filter(item => 
+    item.judge === userFullName || item.clerk === userFullName || item.createdBy === user?.email
+  );
+
+  const myPendingCases = myCases.filter(item => item.status === 'pending' || !item.datetime);
+  
+  const myUpcomingTrials = myCases.filter(item => item.datetime && item.status !== 'completed' && item.status !== 'done')
+                                  .sort((a, b) => new Date(a.datetime) - new Date(b.datetime))
+                                  .slice(0, 5);
   return (
     <div className="min-h-screen bg-gray-100 flex font-sans antialiased tracking-tight relative">
       <div className="absolute inset-0 bg-black/30 z-0"></div>
@@ -1755,6 +1813,50 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                 <div onClick={() => setActiveTab("logs")} className="px-3 py-2 text-[13px] text-slate-500 cursor-pointer hover:text-blue-700">Nhật ký thao tác</div>
               </div> 
             )}
+          </div>
+        )}
+        {/* ========================================================= */}
+        {/* KHU VỰC THÔNG TIN TÀI KHOẢN & ĐĂNG XUẤT (DƯỚI CÙNG MENU) */}
+        {/* ========================================================= */}
+        {user && (
+          <div className="mt-auto border-t border-gray-200 p-4 bg-gray-50">
+            <div className="flex items-center gap-3 mb-3">
+              {/* Cục Avatar tự lấy chữ cái đầu của tên hoặc email */}
+              <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-black text-lg shrink-0 shadow-md">
+                {userFullName ? userFullName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || "U"}
+              </div>
+              
+              {/* Thông tin tên và email */}
+              <div className="overflow-hidden flex-1">
+                <p className="text-sm font-black text-gray-800 truncate" title={userFullName || "Cán bộ Tòa án"}>
+                  {userFullName || "Cán bộ Tòa án"}
+                </p>
+                <p className="text-xs text-gray-500 font-medium truncate" title={user.email}>
+                  {user.email}
+                </p>
+              </div>
+            </div>
+
+            {/* Nút Đăng Xuất */}
+            <button
+              onClick={() => {
+                if (window.confirm("👋 Ní có chắc chắn muốn đăng xuất khỏi hệ thống?")) {
+                  signOut(auth).then(() => {
+                    showToast("Đã đăng xuất thành công!", "success");
+                    // Chuyển view về trang public hoặc reset state tùy logic của Ní
+                    setIsPublicView(true); 
+                  }).catch((error) => {
+                    showToast("Lỗi đăng xuất: " + error.message, "error");
+                  });
+                }
+              }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-100 hover:bg-red-600 hover:text-white transition-all duration-300"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              ĐĂNG XUẤT
+            </button>
           </div>
         )}
       </aside>
@@ -2565,6 +2667,108 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
     {activeTab === "config_judges" && (
   <QuanLyThamPhan db={db} showToast={showToast} />
 )}
+{activeTab === "dashboard" && (
+  <div className="bg-white p-8 rounded-2xl shadow-xl border-t-8 border-blue-600 max-w-6xl mx-auto animate-fadeIn relative overflow-hidden">
+    
+    {/* TRANG TRÍ BACKGROUND NHẸ NHÀNG */}
+    <div className="absolute top-[-50px] right-[-50px] text-[200px] opacity-5">👋</div>
+
+    {/* LỜI CHÀO & TÓM TẮT TRẠNG THÁI */}
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 relative z-10 border-b border-gray-100 pb-6">
+      <div>
+        <h2 className="text-3xl md:text-4xl font-black text-blue-900 tracking-tight mb-2">
+          Chào ngày mới, <span className="text-blue-600">{userFullName || user?.email?.split('@')[0]}</span>!
+        </h2>
+        <p className="text-gray-500 font-medium text-sm">
+          Hôm nay Ní có <span className="text-red-600 font-black text-lg mx-1">{myPendingCases.length}</span> vụ án đang chờ xử lý. Chúc một ngày làm việc hiệu quả!
+        </p>
+      </div>
+      <div className="mt-4 md:mt-0 text-right">
+        <p className="text-3xl font-black text-gray-800 tracking-tighter">{moment().format('HH:mm')}</p>
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{moment().format('dddd, DD/MM/YYYY')}</p>
+      </div>
+    </div>
+
+    {/* 3 THẺ SỐ LIỆU TỔNG QUAN (METRICS) */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 relative z-10">
+      
+      <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-2xl border border-blue-200 shadow-sm hover:-translate-y-1 transition-transform">
+        <div className="flex justify-between items-start">
+          <p className="text-xs font-black text-blue-800 uppercase tracking-widest">Tổng án đang ôm</p>
+          <span className="p-2 bg-blue-200 text-blue-700 rounded-lg text-xl">📁</span>
+        </div>
+        <p className="text-5xl font-black text-blue-900 mt-4">{myCases.length}</p>
+      </div>
+
+      <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-6 rounded-2xl border border-amber-200 shadow-sm hover:-translate-y-1 transition-transform">
+        <div className="flex justify-between items-start">
+          <p className="text-xs font-black text-amber-800 uppercase tracking-widest">Chờ xếp lịch</p>
+          <span className="p-2 bg-amber-200 text-amber-700 rounded-lg text-xl">⏳</span>
+        </div>
+        <p className="text-5xl font-black text-amber-600 mt-4">{myPendingCases.length}</p>
+      </div>
+
+      <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 rounded-2xl border border-emerald-200 shadow-sm hover:-translate-y-1 transition-transform">
+        <div className="flex justify-between items-start">
+          <p className="text-xs font-black text-emerald-800 uppercase tracking-widest">Sắp xét xử (Sắp tới)</p>
+          <span className="p-2 bg-emerald-200 text-emerald-700 rounded-lg text-xl">⚖️</span>
+        </div>
+        <p className="text-5xl font-black text-emerald-600 mt-4">{myUpcomingTrials.length}</p>
+      </div>
+
+    </div>
+
+    {/* DANH SÁCH LỊCH SẮP XỬ CỦA RIÊNG MÌNH */}
+    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 relative z-10">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+          <span>📅</span> Lịch xét xử sắp tới của bạn
+        </h3>
+        <button onClick={() => setActiveTab("trial")} className="text-xs font-bold text-blue-600 hover:text-blue-800 underline">
+          Xem toàn bộ lịch &rarr;
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        {myUpcomingTrials.length > 0 ? (
+          myUpcomingTrials.map(item => (
+            <div key={item.id} className="flex flex-col md:flex-row md:items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm gap-4 hover:border-blue-300 transition-colors">
+              
+              {/* Lốc ngày giờ nổi bật */}
+              <div className="bg-blue-600 text-white rounded-lg p-3 text-center shrink-0 w-24">
+                <p className="text-[10px] font-black uppercase mb-1 opacity-80">{moment(item.datetime).format('MMM')}</p>
+                <p className="text-2xl font-black leading-none mb-1">{moment(item.datetime).format('DD')}</p>
+                <p className="text-[11px] font-bold bg-blue-800 rounded py-0.5">{moment(item.datetime).format('HH:mm')}</p>
+              </div>
+
+              {/* Thông tin án */}
+              <div className="flex-1">
+                <div className="flex gap-2 items-center mb-1.5">
+                  <span className="text-[10px] font-black uppercase bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
+                    {item.caseType}
+                  </span>
+                  <span className="text-[10px] font-black uppercase bg-amber-100 text-amber-700 px-2 py-0.5 rounded border border-amber-200">
+                    Phòng: {item.room}
+                  </span>
+                </div>
+                <p className="font-bold text-blue-900 text-sm uppercase leading-tight mb-1">{item.caseName}</p>
+                <p className="text-xs text-gray-500 font-medium">
+                  👥 Đương sự: {item.plaintiff || "---"} {item.defendant ? ` - ${item.defendant}` : ""}
+                </p>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="text-center py-10 bg-white rounded-xl border border-dashed border-slate-300">
+            <p className="text-3xl mb-2">🏝️</p>
+            <p className="text-slate-500 font-bold text-sm">Bạn chưa có lịch xét xử nào sắp tới. Thật thảnh thơi!</p>
+          </div>
+        )}
+      </div>
+    </div>
+
+  </div>
+)}
     {activeTab === "nhap_an" && (
   <div className="bg-white p-8 rounded-2xl shadow-2xl border-t-8 border-indigo-900 animate-fadeIn max-w-6xl mx-auto">
     <div className="flex justify-between items-center mb-6">
@@ -2764,6 +2968,26 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
             <option value="Hôn nhân & GĐ">Hôn nhân & Gia đình</option>
           </select>
         </div>
+        <div>
+          <label className="block text-xs font-black text-gray-500 mb-2 uppercase">
+            Quan hệ pháp luật / Tội danh <span className="text-red-500">*</span>
+          </label>
+          <input 
+            list="quan-he-goy-list" 
+            type="text"
+            value={phanAnForm.quanHePhapLuat || ""}
+            onChange={e => setPhanAnForm({...phanAnForm, quanHePhapLuat: e.target.value})}
+            className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:border-indigo-500 outline-none transition-all"
+            placeholder="Gõ hoặc chọn từ danh sách gợi ý..."
+          />
+          
+          {/* Datalist tự động thay đổi danh mục dựa vào Loại án đang chọn */}
+          <datalist id="quan-he-goy-list">
+            {(DANH_MUC_QUAN_HE[phanAnForm.caseType] || []).map((qh, idx) => (
+              <option key={idx} value={qh} />
+            ))}
+          </datalist>
+        </div>
         
      {/* ========================================================================= */}
         {/* ĐÃ ÉP CÂN CHO NÚT LÙN LẠI BẰNG LỆNH max-h-[56px]                        */}
@@ -2785,7 +3009,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                     await deleteDoc(doc(db, "schedule", choPhanAnId));
                     showToast("Đã xóa hồ sơ chờ thành công!", "success");
                     
-                    setPhanAnForm({ soThuLy: "", caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự" });
+                    setPhanAnForm({ soThuLy: "", caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự", quanHePhapLuat: "" });
                     setChoPhanAnId(null);
                   } catch(e) {
                     showToast("Lỗi xóa: " + e.message, "error");
