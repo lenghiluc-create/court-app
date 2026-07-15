@@ -2858,7 +2858,6 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
         )}
       </div>
     </div>
-
   </div>
 )}
     {activeTab === "nhap_an" && (
@@ -2949,7 +2948,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
             </thead>
             
             <tbody>
-            {listJudges.filter(j => j.role !== "Chánh án").map(judge => {
+            {listJudges.map(judge => {
               // HỆ THỐNG LẤY SỐ TỔNG (ĐÃ BAO GỒM GỐC CẤU HÌNH + ÁN MỚI PHÂN)
               const statsCuaJudge = bangMaTranPhanAn.stats[judge.name] || {};
               const tongTatCa = Object.values(statsCuaJudge).reduce((acc, val) => acc + (val || 0), 0);
@@ -4564,7 +4563,7 @@ function QuanLyThamPhan({ db, showToast }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {listJudges.filter(j => j.role !== "Chánh án").map(j => (
+        {listJudges.map(j => (
           <div key={j.id} className="p-4 border border-gray-200 rounded-xl flex justify-between items-center bg-gray-50 group hover:border-blue-300 transition-all">
             <div className="flex-1">
               <p className="font-black text-blue-900 text-sm uppercase">{j.name}</p>
