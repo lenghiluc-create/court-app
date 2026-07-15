@@ -586,7 +586,9 @@ useEffect(() => {
       showToast("⚡ Đã tự động điền thông tin vụ án!", "success");
     }
   };
-  // HÀM XUẤT EXCEL DANH SÁCH ÁN THEO LOẠI
+  // =========================================================
+  // 📊 HÀM XUẤT EXCEL CHI TIẾT ÁN THEO LOẠI (BẢN ĐẸP TOÀN DIỆN)
+  // =========================================================
   const handleExportChiTietAn = () => {
     const dataToExport = schedule.filter(item => {
       if (item.caseType !== selectedStatType || !item.judge || item.judge === "---") return false;
@@ -600,26 +602,116 @@ useEffect(() => {
       return;
     }
 
-    let csvContent = "\uFEFF";
-    csvContent += "STT,SỐ THỤ LÝ,TRÍCH YẾU VỤ ÁN,LOẠI ÁN,NGUYÊN ĐƠN / BỊ HẠI,BỊ ĐƠN / BỊ CÁO,THẨM PHÁN THỤ LÝ\n";
+    // Thiết lập nhãn thời gian hiển thị trên tiêu đề Excel
+    const formattedMonth = statMonth === "all" ? "TẤT CẢ CÁC THỜI KỲ" : `THÁNG ${moment(statMonth, 'YYYY-MM').format('MM/YYYY')}`;
 
+    // Khởi tạo chuỗi HTML vẽ bảng Excel chuẩn .5pt viền mảnh
+    let tableHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+      <meta charset="utf-8" />
+      <style>
+        table { border-collapse: collapse; width: 100%; font-family: 'Times New Roman', Times, serif; font-size: 12pt; } 
+        td, th { border: .5pt solid windowtext; padding: 6px; vertical-align: top; } 
+        .no-border { border: none !important; } 
+        .text-center { text-align: center; vertical-align: middle; } 
+        .text-left { text-align: left; }
+        .font-bold { font-weight: bold; }
+        .bg-header { background-color: #f2f2f2; }
+      </style>
+    </head>
+    <body>
+      <table>
+        {/* PHẦN TIÊU ĐỀ QUỐC HIỆU QUỐC NGỮ */}
+        <tr>
+          <td colspan="3" class="no-border text-center font-bold" style="font-size: 11pt;">
+            TÒA ÁN NHÂN DÂN<br/>KHU VỰC 9 - CẦN THƠ
+          </td>
+          <td colspan="5" class="no-border text-center font-bold" style="font-size: 11pt;">
+            CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/>Độc lập - Tự do - Hạnh Phúc
+          </td>
+        </tr>
+        <tr>
+          <td colspan="8" class="no-border text-center" style="font-size: 11pt;">
+            <i>Cần Thơ, ngày ${moment().format("DD")} tháng ${moment().format("MM")} năm ${moment().format("YYYY")}</i>
+          </td>
+        </tr>
+        <tr><td colspan="8" class="no-border"></td></tr>
+        
+        {/* TÊN BÁO CÁO */}
+        <tr>
+          <td colspan="8" class="no-border text-center font-bold" style="font-size: 15pt; text-transform: uppercase; color: #1e3a8a;">
+            DANH SÁCH CHI TIẾT ÁN ${selectedStatType} ĐÃ PHÂN CÔNG
+          </td>
+        </tr>
+        <tr>
+          <td colspan="8" class="no-border text-center font-bold" style="font-size: 11pt; color: #555; text-transform: uppercase;">
+            (${formattedMonth})
+          </td>
+        </tr>
+        <tr><td colspan="8" class="no-border"></td></tr>
+        
+        {/* TIÊU ĐỀ CỘT BẢNG */}
+        <thead>
+          <tr class="bg-header">
+            <th class="text-center font-bold" style="width: 50px;">STT</th>
+            <th class="text-center font-bold" style="width: 140px;">SỐ THỤ LÝ</th>
+            <th class="text-center font-bold" style="width: 280px;">TRÍCH YẾU VỤ ÁN</th>
+            <th class="text-center font-bold" style="width: 240px;">QUAN HỆ PHÁP LUẬT / TỘI DANH</th>
+            <th class="text-center font-bold" style="width: 180px;">NGUYÊN ĐƠN / BÌ HẠI</th>
+            <th class="text-center font-bold" style="width: 180px;">BỊ ĐƠN / BỊ CÁO</th>
+            <th class="text-center font-bold" style="width: 160px;">THẨM PHÁN THỤ LÝ</th>
+            <th class="text-center font-bold" style="width: 110px;">TRẠNG THÁI</th>
+          </tr>
+        </thead>
+        
+        <tbody>
+    `;
+
+    // Đổ dữ liệu vào các dòng
     dataToExport.forEach((item, index) => {
       const stt = index + 1;
-      const soThuLy = item.soThuLy ? `"${item.soThuLy}"` : '"Chưa cập nhật"';
-      const tenVu = item.caseName ? `"${item.caseName.replace(/"/g, '""')}"` : '""';
-      const loai = item.caseType ? `"${item.caseType}"` : '""';
-      const nNguyenDon = item.plaintiff ? `"${item.plaintiff.replace(/"/g, '""')}"` : '""';
-      const nBiDon = item.defendant ? `"${item.defendant.replace(/"/g, '""')}"` : '""';
-      const thamPhan = item.judge ? `"${item.judge}"` : '""';
-      csvContent += `${stt},${soThuLy},${tenVu},${loai},${nNguyenDon},${nBiDon},${thamPhan}\n`;
+      const soThuLy = item.soThuLy || "Chưa cập nhật";
+      const caseName = item.caseName || "---";
+      const quanHe = item.quanHePhapLuat || "---";
+      const plaintiff = item.plaintiff || "---";
+      const defendant = item.defendant || "---";
+      const judge = item.judge || "---";
+      
+      // Việt hóa trạng thái hiển thị
+      let statusStr = "Chờ xếp lịch";
+      if (item.status === 'completed') statusStr = "Đã giải quyết";
+      else if (item.status === 'suspended') statusStr = "Tạm ngừng";
+      else if (item.status === 'dinh_chi') statusStr = "Đình chỉ";
+      else if (item.status === 'nghi_an') statusStr = "Nghị án";
+
+      tableHtml += `
+        <tr>
+          <td class="text-center">${stt}</td>
+          <td class="text-center" style="mso-number-format:'\\@';">${soThuLy}</td>
+          <td><b>${caseName}</b></td>
+          <td>${quanHe}</td>
+          <td class="text-left">${plaintiff}</td>
+          <td class="text-left">${defendant}</td>
+          <td class="text-center">${judge}</td>
+          <td class="text-center font-bold" style="color: ${item.status === 'completed' ? '#10b981' : '#4b5563'}">${statusStr}</td>
+        </tr>
+      `;
     });
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    tableHtml += `
+        </tbody>
+      </table>
+    </body>
+    </html>`;
+
+    // Đóng gói và tải file định dạng .xls
+    const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
     const link = document.createElement("a");
-    link.setAttribute("href", URL.createObjectURL(blob));
-    // Tên file có thêm tháng
+    link.href = URL.createObjectURL(blob);
+    
     const monthSuffix = statMonth === "all" ? "TatCa" : statMonth.replace('-', '');
-    link.setAttribute("download", `Danh_Sach_${selectedStatType}_${monthSuffix}.csv`);
+    link.download = `Danh_Sach_Chi_Tiet_An_${selectedStatType.replace(/\s+/g, '_')}_${monthSuffix}.xls`;
+    
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
