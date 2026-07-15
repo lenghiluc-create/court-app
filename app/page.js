@@ -370,7 +370,7 @@ const goiYThamPhan = () => {
     if (!isChanHan && !isAdmin) return showToast("⛔ Chỉ Chánh án mới có quyền phê duyệt giao án!", "error");
     if (dsChoPhanAn.length === 0) return;
 
-    if (!window.confirm(`🚀 Ní có chắc muốn HỆ THỐNG GIAO ĐỒNG LOẠT ${dsChoPhanAn.length} hồ sơ này không?`)) return;
+    if (!window.confirm(`🚀 Bạn có chắc muốn HỆ THỐNG GIAO ĐỒNG LOẠT ${dsChoPhanAn.length} hồ sơ này không?`)) return;
 
     try {
       const { doc, updateDoc } = await import('firebase/firestore');
@@ -1932,7 +1932,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
             {/* Nút Đăng Xuất */}
             <button
               onClick={() => {
-                if (window.confirm("👋 Ní có chắc chắn muốn đăng xuất khỏi hệ thống?")) {
+                if (window.confirm("👋 Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?")) {
                   signOut(auth).then(() => {
                     showToast("Đã đăng xuất thành công!", "success");
                     // Chuyển view về trang public hoặc reset state tùy logic của Ní
@@ -2772,7 +2772,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
           Chào ngày mới, <span className="text-blue-600">{userFullName || user?.email?.split('@')[0]}</span>!
         </h2>
         <p className="text-gray-500 font-medium text-sm">
-          Hôm nay Ní có <span className="text-red-600 font-black text-lg mx-1">{myPendingCases.length}</span> vụ án đang chờ xử lý. Chúc một ngày làm việc hiệu quả!
+          Hôm nay bạn có <span className="text-red-600 font-black text-lg mx-1">{myPendingCases.length}</span> vụ án đang chờ xử lý. Chúc một ngày làm việc hiệu quả!
         </p>
       </div>
       <div className="mt-4 md:mt-0 text-right">
@@ -2929,7 +2929,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
       <div className="mb-8 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         <div className="bg-indigo-50 px-4 py-3 border-b border-indigo-100 flex items-center justify-between">
           <h3 className="text-[12px] font-black text-indigo-900 uppercase flex items-center gap-2">
-            📊 Bảng theo dõi khối lượng công việc hiện tại của Thẩm phán
+            📊  commit 
           </h3>
           <span className="text-[10px] text-indigo-500 font-bold italic">* Số liệu án đang thụ lý</span>
         </div>
@@ -4026,7 +4026,7 @@ function QuanLyPhanQuyen() {
 
   const handleAddUser = async (e) => {
     e.preventDefault();
-    if (!newInfo.email || !newInfo.hoTen) return alert("Điền đủ tên và email nhé Ní!");
+    if (!newInfo.email || !newInfo.hoTen) return alert("Điền đủ tên và email nhé bạn!");
 
     try {
       const { setDoc, doc } = await import('firebase/firestore');
@@ -4069,7 +4069,7 @@ function QuanLyPhanQuyen() {
   };
 
   const handleSaveName = async (idNhanVien) => {
-    if (!editingName.trim()) return alert("Tên không được để trống Ní ơi!");
+    if (!editingName.trim()) return alert("Tên không được để trống bạn ơi!");
     try {
       const { doc, updateDoc } = await import('firebase/firestore');
       const { db } = await import('./firebase');
@@ -4086,7 +4086,7 @@ function QuanLyPhanQuyen() {
   if (loading) return <div className="p-10 text-center text-blue-600 font-bold">⏳ Đang đồng bộ...</div>;
 
 const handleResetUserPassword = async (emailCanBo) => {
-    const xacNhan = window.confirm(`Ní có chắc muốn gửi Email đặt lại mật khẩu cho tài khoản: ${emailCanBo} không?`);
+    const xacNhan = window.confirm(`Bạn có chắc muốn gửi Email đặt lại mật khẩu cho tài khoản: ${emailCanBo} không?`);
     if (!xacNhan) return;
 
     try {
@@ -4321,7 +4321,7 @@ function QuanLyPortal({ db, userEmail, showToast }) {
 
   // HÀM XÓA DỮ LIỆU CHUNG
   const handleDelete = async (collectionName, id) => {
-    if (window.confirm("⚠️ Ní có chắc chắn muốn xóa mục này không? Xóa xong không lấy lại được đâu nhé!")) {
+    if (window.confirm("⚠️ Bạn có chắc chắn muốn xóa mục này không? Xóa xong không lấy lại được đâu nhé!")) {
       try {
         const { doc, deleteDoc } = await import('firebase/firestore');
         await deleteDoc(doc(db, collectionName, id));
@@ -4461,7 +4461,7 @@ function QuanLyThamPhan({ db, showToast }) {
   };
 
   const handleSaveJudge = async () => {
-    if (!name) return showToast("Nhập tên Thẩm phán Ní ơi!", "error");
+    if (!name) return showToast("Nhập tên Thẩm phán bạn ơi!", "error");
     if (weight <= 0 || weight > 100) return showToast("Định mức phải từ 1 đến 100%!", "error");
 
     const tongTonCu = Object.values(tonCuChiTiet).reduce((acc, val) => acc + (parseInt(val) || 0), 0);
@@ -4491,7 +4491,7 @@ function QuanLyThamPhan({ db, showToast }) {
   };
 
   const handleDeleteJudge = async (id, judgeName) => {
-    if (window.confirm(`⚠️ Ní có chắc muốn xóa Thẩm phán ${judgeName} không?`)) {
+    if (window.confirm(`⚠️ Bạn có chắc muốn xóa Thẩm phán ${judgeName} không?`)) {
       try {
         const { doc, deleteDoc } = await import('firebase/firestore');
         await deleteDoc(doc(db, "judges", id));
