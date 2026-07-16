@@ -3303,30 +3303,58 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                const itemMonth = moment(item.createdAt || item.updatedAt || new Date()).format('YYYY-MM');
                return statMonth === "all" || itemMonth === statMonth;
             })
-            .map((item, index) => (
-              <div key={item.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row md:justify-between md:items-center gap-4 hover:border-emerald-300 transition-colors">
-                <div className="flex-1">
-                  {/* BỔ SUNG SỐ THỤ LÝ VÀO ĐÂY */}
-                  <div className="flex gap-3 items-center mb-1.5">
-                    <span className="bg-slate-100 text-slate-700 text-[10px] font-black px-2 py-0.5 rounded border border-slate-200">
-                      Số TL: {item.soThuLy || "Chưa cập nhật"}
-                    </span>
-                    <p className="font-bold text-blue-900 text-sm uppercase leading-tight">{index + 1}. {item.caseName}</p>
+            .map((item, index) => {
+              // ==============================================================
+              // ⚡ LOGIC TỰ ĐỘNG NHẬN DIỆN TRẠNG THÁI VỤ ÁN (REAL-TIME)
+              // ==============================================================
+              let trangThaiBadge = <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-[10px] font-black uppercase shadow-sm whitespace-nowrap">⏳ Chờ xếp lịch</span>;
+              
+              if (item.status === 'completed' || item.status === 'done') {
+                  trangThaiBadge = <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-black uppercase shadow-sm whitespace-nowrap">✅ Đã giải quyết</span>;
+              } else if (item.status === 'dinh_chi') {
+                  trangThaiBadge = <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-[10px] font-black uppercase shadow-sm whitespace-nowrap">🛑 Đình chỉ</span>;
+              } else if (item.status === 'suspended') {
+                  trangThaiBadge = <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-black uppercase shadow-sm whitespace-nowrap">⏸️ Tạm ngừng</span>;
+              } else if (item.status === 'nghi_an') {
+                  trangThaiBadge = <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-[10px] font-black uppercase shadow-sm whitespace-nowrap">⚖️ Đang nghị án</span>;
+              } else if (item.datetime) {
+                  trangThaiBadge = <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-black uppercase shadow-sm border border-blue-200 whitespace-nowrap">
+                      ⏰ Đã lên lịch: {moment(item.datetime).format("DD/MM/YYYY")}
+                  </span>;
+              }
+              // ==============================================================
+
+              return (
+                <div key={item.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row md:justify-between md:items-center gap-4 hover:border-emerald-300 transition-colors">
+                  <div className="flex-1">
+                    
+                    {/* HÀNG 1: SỐ THỤ LÝ + NHÃN TRẠNG THÁI */}
+                    <div className="flex gap-3 items-center mb-2 flex-wrap">
+                      <span className="bg-slate-100 text-slate-700 text-[10px] font-black px-2 py-0.5 rounded border border-slate-200">
+                        Số TL: {item.soThuLy || "Chưa cập nhật"}
+                      </span>
+                      {trangThaiBadge}
+                    </div>
+                    
+                    {/* HÀNG 2: TÊN VỤ ÁN */}
+                    <p className="font-bold text-blue-900 text-sm uppercase leading-tight mb-1">
+                      {index + 1}. {item.caseName}
+                    </p>
+                    
+                    {/* HÀNG 3: ĐƯƠNG SỰ */}
+                    <p className="text-xs text-gray-600 font-medium ml-1">
+                      👥 Đương sự: <span className="font-bold">{item.plaintiff || "---"}</span> {item.defendant ? ` - ${item.defendant}` : ""}
+                    </p>
                   </div>
-                  
-                  <p className="text-xs text-gray-600 font-medium ml-1">
-                    👥 Đương sự: <span className="font-bold">{item.plaintiff || "---"}</span> {item.defendant ? ` - ${item.defendant}` : ""}
-                  </p>
+
+                  {/* CỘT BÊN PHẢI: THÔNG TIN THẨM PHÁN */}
+                  <div className="text-left md:text-right shrink-0 bg-slate-50 md:bg-transparent p-3 md:p-0 rounded-lg">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Thẩm phán thụ lý</p>
+                    <p className="text-sm font-black text-teal-800">🧑‍⚖️ {item.judge || "---"}</p>
+                  </div>
                 </div>
-                
-                <div className="text-left md:text-right shrink-0 bg-emerald-50 md:bg-transparent p-3 md:p-0 rounded-lg">
-                  <p className="text-[10px] font-black uppercase text-gray-500 mb-1">Thẩm phán thụ lý</p>
-                  <p className="text-sm font-black text-emerald-700 flex items-center md:justify-end gap-1">
-                    👨‍⚖️ {item.judge}
-                  </p>
-                </div>
-              </div>
-          ))}
+              );
+            })}
 
           {/* Báo lỗi nếu trống */}
           {schedule.filter(item => item.caseType === selectedStatType && item.judge && item.judge !== "---").length === 0 && (
