@@ -1907,29 +1907,30 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
             )}
           </div>
         )}
-        {/* ========================================================= */}
+{/* ========================================================= */}
         {/* KHU VỰC THÔNG TIN TÀI KHOẢN & ĐĂNG XUẤT (DƯỚI CÙNG MENU) */}
         {/* ========================================================= */}
         {user && (
-          <div className="mt-auto border-t border-gray-200 p-4 bg-gray-50">
-            <div className="flex items-center gap-3 mb-3">
-              {/* Cục Avatar tự lấy chữ cái đầu của tên hoặc email */}
-              <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-black text-lg shrink-0 shadow-md">
+          <div className="p-3 border-t border-gray-200 mt-auto bg-gray-50/50">
+            <div className="flex items-center gap-2.5 mb-2.5">
+              
+              {/* Avatar thu nhỏ (w-8 h-8) giữ nguyên logic lấy tên của Ní */}
+              <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">
                 {userFullName ? userFullName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || "U"}
               </div>
               
-              {/* Thông tin tên và email */}
+              {/* Text thông tin mỏng lại */}
               <div className="overflow-hidden flex-1">
-                <p className="text-sm font-black text-gray-800 truncate" title={userFullName || "Cán bộ Tòa án"}>
+                <p className="text-[13px] font-semibold text-gray-700 truncate leading-tight" title={userFullName || "Cán bộ Tòa án"}>
                   {userFullName || "Cán bộ Tòa án"}
                 </p>
-                <p className="text-xs text-gray-500 font-medium truncate" title={user.email}>
+                <p className="text-[11px] text-gray-500 truncate mt-0.5" title={user.email}>
                   {user.email}
                 </p>
               </div>
             </div>
 
-            {/* Nút Đăng Xuất */}
+            {/* Nút đăng xuất style viền mỏng, chữ nhỏ, nền nhạt - Giữ nguyên hàm onClick xịn của Ní */}
             <button
               onClick={() => {
                 if (window.confirm("👋 Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?")) {
@@ -1942,12 +1943,12 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                   });
                 }
               }}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-100 hover:bg-red-600 hover:text-white transition-all duration-300"
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 text-[12px] font-medium text-red-600 bg-red-50 border border-red-100 hover:bg-red-100 hover:text-red-700 rounded transition-all duration-200"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
               </svg>
-              ĐĂNG XUẤT
+              Đăng xuất
             </button>
           </div>
         )}
