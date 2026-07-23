@@ -3010,8 +3010,8 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
    {/* Ép chữ và màu chữ về chung 1 kiểu ngẫu nhiên */}
    <p className="text-[9px] uppercase font-black mb-1.5 tracking-wider text-indigo-500">
      🤖 PHÂN CÔNG NGẪU NHIÊN:
-   </p> //chuẩn chưa ta
-   
+   </p>
+
    <select 
       value={item.judge || ""} 
       onChange={(e) => {
