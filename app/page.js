@@ -1302,15 +1302,33 @@ useEffect(() => {
           if (itemTime < start || itemTime > end) matchDate = false;
         }
       }
-      return matchSearch && matchStatus && matchDate && matchCreator && matchJudge && matchClerk && matchUrgent;
+
+      // ⚡ CHỐT CHẶN: Ép buộc án lên lịch phải có ngày giờ và thẩm phán hợp lệ
+      const hasDateTime = Boolean(i.datetime); 
+      const hasValidJudge = Boolean(i.judge && i.judge !== "---");
+
+      // Gộp tất cả các điều kiện lại (nếu false ở bất kỳ cái nào, vụ án sẽ bị ẩn đi)
+      return matchSearch && matchStatus && matchDate && matchCreator && matchJudge && matchClerk && matchUrgent && hasDateTime && hasValidJudge;
+      
     }).sort((a, b) => {
+      // Sắp xếp theo ngày giờ xét xử tăng dần (án nào ngày gần nhất sẽ nằm trên cùng)
       const dateA = a.datetime ? new Date(a.datetime).getTime() : 0;
       const dateB = b.datetime ? new Date(b.datetime).getTime() : 0;
-      if (a.status === 'pending' && b.status === 'pending') return dateA - dateB;
-      if (a.status !== 'pending' && b.status !== 'pending') return dateB - dateA;
-      return a.status === 'pending' ? -1 : 1;
+      
+      return dateA - dateB; 
     });
-  }, [schedule, searchQuery, statusFilter, showOnlyUrgent, creatorFilter, judgeFilter, clerkFilter, startDate, endDate, dateFilterType]); // <-- Đã chèn thêm dateFilterType ở cuối dòng này
+  }, [
+    schedule, 
+    searchQuery, 
+    statusFilter, 
+    creatorFilter, 
+    judgeFilter, 
+    clerkFilter, 
+    showOnlyUrgent, 
+    startDate, 
+    endDate, 
+    dateFilterType 
+  ]);
   
   // THUẬT TOÁN ĐÁNH GIÁ CHẤT LƯỢNG XÉT XỬ (ĐÃ NÂNG CẤP LỌC THEO THÁNG)
   const chatLuongXetXu = useMemo(() => {
@@ -2978,7 +2996,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
       <div className="mb-8 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         <div className="bg-indigo-50 px-4 py-3 border-b border-indigo-100 flex items-center justify-between">
           <h3 className="text-[12px] font-black text-indigo-900 uppercase flex items-center gap-2">
-            📊  commit 
+            📊 Tổng hợp
           </h3>
           <span className="text-[10px] text-indigo-500 font-bold italic">* Số liệu án đang thụ lý</span>
         </div>
