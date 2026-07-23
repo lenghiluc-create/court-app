@@ -373,10 +373,10 @@ const goiYThamPhan = () => {
     try {
       const anRef = doc(db, "schedule", idVuAn);
       
-      // Xóa tên thẩm phán và nhãn phân án để nó văng ngược lại khay chờ
+      // Xóa hẳn tên thẩm phán và nhãn phân án để nó văng ngược lại khay chờ
       await updateDoc(anRef, {
-        judge: "", 
-        phuongThucPhanAn: "", 
+        judge: deleteField(), 
+        phuongThucPhanAn: deleteField(), 
         status: "pending" 
       });
       
