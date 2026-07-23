@@ -225,7 +225,7 @@ const goiYThamPhan = () => {
     // (Chưa có datetime)
       const soAnDangCho = schedule.filter(a => a.judge === j.name && a.status === 'pending' && !a.datetime).length;
       
-      const tongAnThucTe = (parseInt(j.tonCu) || 0) + soAnDangCho;
+      const tongAnThucTe = (parseInt(j.tonCu, 10) || 0) + soAnDangCho;
       const heSo = j.weight && j.weight > 0 ? j.weight : 1; 
       const chiSoTai = tongAnThucTe / heSo;
 
@@ -292,6 +292,7 @@ const goiYThamPhan = () => {
         caseType: phanAnForm.caseType,
         quanHePhapLuat: phanAnForm.quanHePhapLuat || "",
         judge: targetJudge.name, 
+        phuongThucPhanAn: "Hệ thống phân ngẫu nhiên",
         status: "pending",
         room: "Chưa phân phòng",
         updatedAt: moment().toISOString(),
@@ -314,7 +315,8 @@ const goiYThamPhan = () => {
   // 1.5. HÀM ĐỔI NHANH THẨM PHÁN TRÊN THẺ
   const handleChangeJudgeDirectly = async (id, judgeName) => {
     try {
-      await updateDoc(doc(db, "schedule", id), { judge: judgeName });
+      await updateDoc(doc(db, "schedule", id), { judge: judgeName,
+        phuongThucPhanAn: "Hệ thống phân ngẫu nhiên" });
     } catch (e) {
       showToast("Lỗi: " + e.message, "error");
     }
@@ -415,6 +417,7 @@ const goiYThamPhan = () => {
 
           await updateDoc(doc(db, "schedule", item.id), {
               judge: targetJudgeName,
+              phuongThucPhanAn: "Hệ thống phân ngẫu nhiên",
               status: "pending",
               room: "Chưa phân phòng",
               updatedAt: moment().toISOString(),
@@ -463,24 +466,33 @@ useEffect(() => {
     });
     return () => unsubCho();
   }, []);
-  useEffect(() => {
+ useEffect(() => {
     if (typeof window !== 'undefined') {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('mode') === 'tv') {
-      setIsPublicView(true);
-      setShowTVMode(true);
-      setActiveTab("trial"); 
-    }
-    setIsMounted(true);
-    const qIns = query(collection(db, "inspections"), orderBy("date", "asc"));
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('mode') === 'tv') {
+        setIsPublicView(true);
+        setShowTVMode(true);
+        setActiveTab("trial"); 
+      }
+      setIsMounted(true);
+      
+      // 1. Lắng nghe Inspections
+      const qIns = query(collection(db, "inspections"), orderBy("date", "asc"));
       const unsubscribeIns = onSnapshot(qIns, (snapshot) => {
         setInspections(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       });
-      const threeMonthsAgo = moment().subtract(3, 'months').toISOString();
-      const qSchedule = query(collection(db, "schedule"), where("datetime", ">=", threeMonthsAgo), orderBy("datetime", "desc"));
+
+      // ==============================================================
+      // ⚡ 2. Lắng nghe Schedule (ĐÃ SỬA CHỖ NÀY) ⚡
+      // Bỏ cái where datetime đi để nó lấy được cả những án ĐANG CHỜ phân công
+      // Sắp xếp theo ngày tạo hoặc ngày cập nhật mới nhất
+      // ==============================================================
+      const qSchedule = query(collection(db, "schedule")); // Lấy toàn bộ để hệ thống tự lọc
       const unsubscribeSchedule = onSnapshot(qSchedule, (snapshot) => {
         setSchedule(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       });
+
+      // 3. Lắng nghe Auth & Phân quyền
       const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
         if (currentUser) {
           setUser(currentUser);
@@ -520,11 +532,12 @@ useEffect(() => {
         }
         setLoading(false);
       });
-    return () => {
+
+      return () => {
         unsubscribeIns();
         unsubscribeSchedule();
         unsubscribeAuth();
-  };
+      };
     }
   }, []);
   useEffect(() => {
@@ -626,29 +639,31 @@ useEffect(() => {
           <td colspan="3" class="no-border text-center font-bold" style="font-size: 11pt;">
             TÒA ÁN NHÂN DÂN<br/>KHU VỰC 9 - CẦN THƠ
           </td>
-          <td colspan="5" class="no-border text-center font-bold" style="font-size: 11pt;">
+          {/* ⚡ Đã sửa colspan="5" thành "6" để cân bằng 9 cột */}
+          <td colspan="6" class="no-border text-center font-bold" style="font-size: 11pt;">
             CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/>Độc lập - Tự do - Hạnh Phúc
           </td>
         </tr>
         <tr>
-          <td colspan="8" class="no-border text-center" style="font-size: 11pt;">
+          {/* ⚡ Đã sửa colspan="8" thành "9" */}
+          <td colspan="9" class="no-border text-center" style="font-size: 11pt;">
             <i>Cần Thơ, ngày ${moment().format("DD")} tháng ${moment().format("MM")} năm ${moment().format("YYYY")}</i>
           </td>
         </tr>
-        <tr><td colspan="8" class="no-border"></td></tr>
+        <tr><td colspan="9" class="no-border"></td></tr>
         
         {/* TÊN BÁO CÁO */}
         <tr>
-          <td colspan="8" class="no-border text-center font-bold" style="font-size: 15pt; text-transform: uppercase; color: #1e3a8a;">
+          <td colspan="9" class="no-border text-center font-bold" style="font-size: 15pt; text-transform: uppercase; color: #1e3a8a;">
             DANH SÁCH CHI TIẾT ÁN ${selectedStatType} ĐÃ PHÂN CÔNG
           </td>
         </tr>
         <tr>
-          <td colspan="8" class="no-border text-center font-bold" style="font-size: 11pt; color: #555; text-transform: uppercase;">
+          <td colspan="9" class="no-border text-center font-bold" style="font-size: 11pt; color: #555; text-transform: uppercase;">
             (${formattedMonth})
           </td>
         </tr>
-        <tr><td colspan="8" class="no-border"></td></tr>
+        <tr><td colspan="9" class="no-border"></td></tr>
         
         {/* TIÊU ĐỀ CỘT BẢNG */}
         <thead>
@@ -660,6 +675,8 @@ useEffect(() => {
             <th class="text-center font-bold" style="width: 180px;">NGUYÊN ĐƠN / BÌ HẠI</th>
             <th class="text-center font-bold" style="width: 180px;">BỊ ĐƠN / BỊ CÁO</th>
             <th class="text-center font-bold" style="width: 160px;">THẨM PHÁN THỤ LÝ</th>
+            {/* ⚡ CHÈN THÊM TIÊU ĐỀ CỘT NÀY ⚡ */}
+            <th class="text-center font-bold" style="width: 180px;">PHƯƠNG THỨC</th>
             <th class="text-center font-bold" style="width: 110px;">TRẠNG THÁI</th>
           </tr>
         </thead>
@@ -677,6 +694,9 @@ useEffect(() => {
       const defendant = item.defendant || "---";
       const judge = item.judge || "---";
       
+      // ⚡ CHÈN THÊM BIẾN LẤY DỮ LIỆU PHƯƠNG THỨC ⚡
+      const phuongThuc = item.phuongThucPhanAn || "---";
+      
       // Việt hóa trạng thái hiển thị
       let statusStr = "Chờ xếp lịch";
       if (item.status === 'completed') statusStr = "Đã giải quyết";
@@ -693,6 +713,8 @@ useEffect(() => {
           <td class="text-left">${plaintiff}</td>
           <td class="text-left">${defendant}</td>
           <td class="text-center">${judge}</td>
+          {/* ⚡ CHÈN THÊM Ô DỮ LIỆU NÀY VÀO DÒNG ⚡ */}
+          <td class="text-center" style="color: #059669; font-style: italic;">${phuongThuc}</td>
           <td class="text-center font-bold" style="color: ${item.status === 'completed' ? '#10b981' : '#4b5563'}">${statusStr}</td>
         </tr>
       `;
@@ -1346,6 +1368,7 @@ useEffect(() => {
   const judgeStats = {}; pendingCases.forEach(i => { if(i.judge) judgeStats[i.judge] = (judgeStats[i.judge] || 0) + 1 });
   const judgeDataList = Object.keys(judgeStats).map(key => ({ name: key, value: judgeStats[key] })).sort((a,b) => b.value - a.value); 
   const CHART_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899'];
+  const danhSachDaPhan = schedule.filter(item => item.judge && item.judge !== "");
 
   const handleExportClick = async () => {
     // 1. GIỮ NGUYÊN KIỂM TRA DỮ LIỆU CỦA NÍ
@@ -2987,6 +3010,33 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                 </tr>
               );
             })}
+            {/* ⚡ COPY TOÀN BỘ ĐOẠN <TR> NÀY THAY CHO ĐOẠN CỦA NÍ LÀ CHẠY NGON LÀNH ⚡ */}
+            <tr className="bg-emerald-50 border-t-2 border-emerald-600 font-black text-gray-800">
+              <td className="p-3 border-b border-r border-gray-200 text-center uppercase tracking-widest text-emerald-800">
+                TỔNG CỘNG
+              </td>
+              
+              {/* Tự động lặp qua các cột loại án để tính dọc xuống */}
+              {bangMaTranPhanAn.dsLoaiAn.map(type => {
+                const tongCungLoai = listJudges.reduce((sum, judge) => {
+                  return sum + (bangMaTranPhanAn.stats[judge.name]?.[type] || 0);
+                }, 0);
+                return (
+                  <td key={type} className="p-3 border-b border-r border-gray-200 text-center">
+                    {tongCungLoai > 0 ? tongCungLoai : <span className="text-gray-300">0</span>}
+                  </td>
+                );
+              })}
+              
+              {/* Ô tổng cộng màu đỏ cuối cùng */}
+              <td className="p-3 border-b border-gray-200 text-center text-red-600 text-[14px] bg-red-100/50">
+                {listJudges.reduce((tongHeThong, judge) => {
+                  const stats = bangMaTranPhanAn.stats[judge.name] || {};
+                  const tongCua1Nguoi = Object.values(stats).reduce((a, b) => a + (b || 0), 0);
+                  return tongHeThong + tongCua1Nguoi;
+                }, 0)}
+              </td>
+            </tr>
           </tbody>
           </table>
         </div>
@@ -3220,6 +3270,59 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
       </div>
 
     </div>
+    <div className="mt-8 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-emerald-50 px-5 py-4 border-b border-emerald-100 flex items-center justify-between">
+        <h3 className="text-[14px] font-black text-emerald-900 uppercase flex items-center gap-2">
+          ✅ Danh sách án đã phân công ({schedule.filter(item => item.judge && item.judge !== "").length} vụ)
+        </h3>
+      </div>
+      
+      <div className="overflow-x-auto max-h-[500px] custom-scrollbar">
+        <table className="w-full border-collapse text-[12px]">
+          <thead className="sticky top-0 z-10 bg-gray-50 shadow-sm">
+            <tr className="text-gray-500 font-black uppercase tracking-wider text-left">
+              <th className="p-4 border-b border-gray-200 w-16 text-center">STT</th>
+              <th className="p-4 border-b border-gray-200">Số thụ lý / Trích yếu</th>
+              <th className="p-4 border-b border-gray-200 w-40">Loại án</th>
+              <th className="p-4 border-b border-gray-200">Người giải quyết (Thẩm phán)</th>
+              <th className="p-4 border-b border-gray-200 text-center w-40">Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody>
+            {schedule.filter(item => item.judge && item.judge !== "").length > 0 ? (
+              schedule.filter(item => item.judge && item.judge !== "").map((an, index) => (
+                <tr key={an.id} className="hover:bg-emerald-50/50 transition-colors border-b border-gray-100 last:border-0">
+                  <td className="p-4 text-center font-bold text-gray-400">{index + 1}</td>
+                  <td className="p-4">
+                    <p className="font-black text-blue-900 text-[13px]">{an.soThuLy || "Chưa có số thụ lý"}</p>
+                    <p className="text-gray-600 font-medium mt-1 line-clamp-2" title={an.caseName}>{an.caseName}</p>
+                  </td>
+                  <td className="p-4 font-bold text-gray-700">
+                    <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-[10px] uppercase">
+                      {an.caseType}
+                    </span>
+                  </td>
+                  <td className="p-4 font-black text-emerald-700">
+                    👨‍⚖️ {an.judge}
+                  </td>
+                  <td className="p-4 text-center">
+                    <span className="inline-block bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold px-3 py-1 rounded-full text-[10px] uppercase">
+                       Đã phân án 🎲
+                    </span>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5" className="p-8 text-center text-gray-400 font-medium italic">
+                  Chưa có dữ liệu vụ án nào được phân.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
     {/* ========================================================= */}
     {/* KHU VỰC BÁO CÁO THỐNG KÊ NHANH                            */}
     {/* ========================================================= */}
@@ -3325,7 +3428,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
               }
               // ==============================================================
 
-              return (
+             return (
                 <div key={item.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row md:justify-between md:items-center gap-4 hover:border-emerald-300 transition-colors">
                   <div className="flex-1">
                     
@@ -3352,6 +3455,15 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                   <div className="text-left md:text-right shrink-0 bg-slate-50 md:bg-transparent p-3 md:p-0 rounded-lg">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Thẩm phán thụ lý</p>
                     <p className="text-sm font-black text-teal-800">🧑‍⚖️ {item.judge || "---"}</p>
+                    
+                    {/* ⚡ ĐÂY NÈ NÍ: MÁC HỆ THỐNG PHÂN NGẪU NHIÊN ⚡ */}
+                    {item.phuongThucPhanAn && (
+                      <div className="mt-1.5">
+                        <span className="bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase px-2 py-1 rounded-md border border-emerald-200 shadow-sm inline-block">
+                          🎲 {item.phuongThucPhanAn}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -3387,7 +3499,8 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
     </div>
   </div>
 )}
-{/* ========================================================= */}  {activeTab === "report" && (
+{/* ========================================================= */} 
+ {activeTab === "report" && (
     <div className="animate-fadeIn space-y-8">
       <div className="bg-blue-900 p-8 rounded-2xl text-white shadow-lg flex justify-between items-center">
         <div>
