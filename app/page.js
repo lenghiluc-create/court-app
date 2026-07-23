@@ -1311,11 +1311,32 @@ useEffect(() => {
       return matchSearch && matchStatus && matchDate && matchCreator && matchJudge && matchClerk && matchUrgent && hasDateTime && hasValidJudge;
       
     }).sort((a, b) => {
-      // Sắp xếp theo ngày giờ xét xử tăng dần (án nào ngày gần nhất sẽ nằm trên cùng)
+      // 1. NHÓM TRẠNG THÁI: Ní phải điền CHÍNH XÁC cái mã status lưu trong Database vào đây nha!
+      // Tui thêm sẵn vài mã dự đoán dựa trên giao diện của Ní (hieu_luc, da_xong,...)
+      const doneStatuses = [
+        'dinh_chi', 
+        'da_xet_xu', 
+        'tam_dinh_chi', 
+        'tam_ngung', 
+        'da_xong', 
+        'hieu_luc', // <-- Chắc chắn phải có mã này (Ní check lại DB xem viết chính xác là gì nhé)
+        'completed'
+      ];
+      
+      const doneA = doneStatuses.includes(a.status) ? 1 : 0;
+      const doneB = doneStatuses.includes(b.status) ? 1 : 0;
+
+      // Nếu 1 cái chưa xử (0) và 1 cái đã xử xong/hiệu lực/đình chỉ (1)
+      // -> Đẩy cái đã xử (1) chìm xuống dưới
+      if (doneA !== doneB) {
+         return doneA - doneB; 
+      }
+
+      // 2. NHÓM NGÀY GIỜ: Cùng loại (cùng chưa xử hoặc cùng đã xử) thì đọ ngày với nhau
       const dateA = a.datetime ? new Date(a.datetime).getTime() : 0;
       const dateB = b.datetime ? new Date(b.datetime).getTime() : 0;
       
-      return dateA - dateB; 
+      return dateA - dateB; // Án cũ/đến hạn xử sẽ nổi lên trên
     });
   }, [
     schedule, 
