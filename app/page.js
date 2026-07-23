@@ -3005,9 +3005,11 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
               <p className="font-bold text-[13px] text-blue-900 line-clamp-2 mb-3 leading-tight" title={item.caseName}>{item.caseName}</p>
               
              {/* KHUNG HIỂN THỊ VÀ CHO PHÉP ĐỔI TRỰC TIẾP THẨM PHÁN */}
-<div className={`p-2.5 rounded-lg border mb-3 shadow-sm transition-all ${item.isManual ? 'bg-green-50 border-green-200' : 'bg-indigo-50 border-indigo-100'}`}>
-   <p className={`text-[9px] uppercase font-black mb-1.5 tracking-wider ${item.isManual ? 'text-green-600' : 'text-indigo-500'}`}>
-     {item.isManual ? "📌 CHỈ ĐỊNH RIÊNG:" : "🤖 AI ĐỀ XUẤT CHO:"}
+<div className="p-2.5 rounded-lg border mb-3 shadow-sm transition-all bg-indigo-50 border-indigo-100">
+   
+   {/* Ép chữ và màu chữ về chung 1 kiểu ngẫu nhiên */}
+   <p className="text-[9px] uppercase font-black mb-1.5 tracking-wider text-indigo-500">
+     🤖 PHÂN CÔNG NGẪU NHIÊN:
    </p>
    
    <select 
