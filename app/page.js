@@ -106,6 +106,24 @@ export default function PremiumCourtApp() {
   const [ketQuaTraCuu, setKetQuaTraCuu] = useState(null);
   const [selectedStatType, setSelectedStatType] = useState(null);
   const [statMonth, setStatMonth] = useState(moment().format('YYYY-MM'));
+  const [searchAssigned, setSearchAssigned] = useState("");
+  const filteredAssignedCases = useMemo(() => {
+    // 1. Lấy danh sách án đã phân (có thẩm phán)
+    const assigned = schedule.filter(item => item.judge && item.judge !== "");
+    
+    // 2. Nếu không gõ tìm kiếm thì trả về nguyên danh sách
+    if (!searchAssigned) return assigned; 
+    
+    // 3. Nếu có gõ tìm kiếm thì lọc tiếp
+    const searchLower = searchAssigned.toLowerCase().trim();
+    return assigned.filter(item => {
+      const matchTrichYeu = (item.caseName || item.soThuLy || "").toLowerCase().includes(searchLower);
+      const matchLoaiAn = (item.caseType || "").toLowerCase().includes(searchLower);
+      const matchThamPhan = (item.judge || "").toLowerCase().includes(searchLower);
+      
+      return matchTrichYeu || matchLoaiAn || matchThamPhan; 
+    });
+  }, [schedule, searchAssigned]);
   // Modal States
   const [showPwdModal, setShowPwdModal] = useState(false);
   const [newPwd, setNewPwd] = useState("");
@@ -377,7 +395,7 @@ const goiYThamPhan = () => {
       await updateDoc(anRef, {
         judge: deleteField(), 
         phuongThucPhanAn: deleteField(), 
-        status: "pending" 
+        status: "cho_phan_an" 
       });
       
       if (typeof showToast === "function") {
@@ -506,7 +524,7 @@ useEffect(() => {
       const unsubscribeIns = onSnapshot(qIns, (snapshot) => {
         setInspections(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       });
-
+      
       // ==============================================================
       // ⚡ 2. Lắng nghe Schedule (ĐÃ SỬA CHỖ NÀY) ⚡
       // Bỏ cái where datetime đi để nó lấy được cả những án ĐANG CHỜ phân công
@@ -3335,10 +3353,21 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
 
     </div>
     <div className="mt-8 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-      <div className="bg-emerald-50 px-5 py-4 border-b border-emerald-100 flex items-center justify-between">
+      <div className="bg-emerald-50 px-5 py-4 border-b border-emerald-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h3 className="text-[14px] font-black text-emerald-900 uppercase flex items-center gap-2">
-          ✅ Danh sách án đã phân công ({schedule.filter(item => item.judge && item.judge !== "").length} vụ)
+          ✅ Danh sách án đã phân công ({filteredAssignedCases.length} vụ)
         </h3>
+        
+        {/* Ô TÌM KIẾM MỚI ĐƯỢC THÊM VÀO ĐÂY */}
+        <div className="relative w-full sm:w-72">
+          <input 
+            type="text" 
+            placeholder="🔍 Tìm số thụ lý, trích yếu, thẩm phán..." 
+            className="w-full text-[13px] border border-emerald-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+            value={searchAssigned}
+            onChange={(e) => setSearchAssigned(e.target.value)}
+          />
+        </div>
       </div>
       
       <div className="overflow-x-auto max-h-[500px] custom-scrollbar">
@@ -3354,8 +3383,9 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
             </tr>
           </thead>
           <tbody>
-            {schedule.filter(item => item.judge && item.judge !== "").length > 0 ? (
-              schedule.filter(item => item.judge && item.judge !== "").map((an, index) => (
+            {/* SỬ DỤNG MẢNG ĐÃ LỌC filteredAssignedCases THAY VÌ filter TRỰC TIẾP */}
+            {filteredAssignedCases.length > 0 ? (
+              filteredAssignedCases.map((an, index) => (
                 <tr key={an.id} className="hover:bg-emerald-50/50 transition-colors border-b border-gray-100 last:border-0">
                   <td className="p-4 text-center font-bold text-gray-400">{index + 1}</td>
                   <td className="p-4">
@@ -3390,8 +3420,8 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
               ))
             ) : (
               <tr>
-                <td colSpan="5" className="p-8 text-center text-gray-400 font-medium italic">
-                  Chưa có dữ liệu vụ án nào được phân.
+                <td colSpan="6" className="p-8 text-center text-gray-400 font-medium italic">
+                  Không tìm thấy vụ án nào phù hợp.
                 </td>
               </tr>
             )}
