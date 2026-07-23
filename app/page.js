@@ -2216,9 +2216,13 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
     className="w-full border border-blue-200 p-3 bg-white text-gray-800 font-bold rounded-lg outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer text-sm"
   >
     <option value="">--- Chọn vụ án chờ lên lịch ---</option>
-    {/* Lọc các vụ án trong database chưa có ngày giờ */}
+    {/* BỘ LỌC ĐÃ ĐƯỢC NÂNG CẤP */}
     {schedule
-      .filter(item => !item.datetime || item.status === 'cho_len_lich')
+      .filter(item => 
+        item.judge && item.judge.trim() !== "" && // 1. Bắt buộc phải ĐÃ PHÂN CÔNG (có thẩm phán)
+        item.status !== "cho_phan_an" &&          // 2. Chặn đứng mấy án vừa bị THU HỒI
+        (!item.datetime || item.status === 'cho_len_lich') // 3. Giữ lại điều kiện gốc: chưa có ngày hoặc đang chờ lên lịch
+      )
       .map(item => (
         <option key={item.id} value={item.id}>
           {item.caseName} ({item.plaintiff || item.defendant})
