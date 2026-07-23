@@ -333,8 +333,11 @@ const goiYThamPhan = () => {
   // 1.5. HÀM ĐỔI NHANH THẨM PHÁN TRÊN THẺ
   const handleChangeJudgeDirectly = async (id, judgeName) => {
     try {
-      await updateDoc(doc(db, "schedule", id), { judge: judgeName,
-        phuongThucPhanAn: "Hệ thống phân ngẫu nhiên" });
+      await updateDoc(doc(db, "schedule", id), { 
+        judge: judgeName,
+        phuongThucPhanAn: "Hệ thống phân ngẫu nhiên", 
+        isManual: true 
+      });
     } catch (e) {
       showToast("Lỗi: " + e.message, "error");
     }
@@ -738,7 +741,7 @@ useEffect(() => {
       const judge = item.judge || "---";
       
       // ⚡ CHÈN THÊM BIẾN LẤY DỮ LIỆU PHƯƠNG THỨC ⚡
-      const phuongThuc = item.phuongThucPhanAn || "---";
+      const phuongThuc = item.isManual ? "Chỉ định (Thủ công)" : "Hệ thống phân ngẫu nhiên";
       
       // Việt hóa trạng thái hiển thị
       let statusStr = "Chờ xếp lịch";
@@ -756,8 +759,9 @@ useEffect(() => {
           <td class="text-left">${plaintiff}</td>
           <td class="text-left">${defendant}</td>
           <td class="text-center">${judge}</td>
-          {/* ⚡ CHÈN THÊM Ô DỮ LIỆU NÀY VÀO DÒNG ⚡ */}
-          <td class="text-center" style="color: #059669; font-style: italic;">${phuongThuc}</td>
+          <td class="text-center font-bold" style="color: ${item.isManual ? '#dc2626' : '#059669'}; font-style: italic;">
+             ${phuongThuc}
+          </td>
           <td class="text-center font-bold" style="color: ${item.status === 'completed' ? '#10b981' : '#4b5563'}">${statusStr}</td>
         </tr>
       `;
