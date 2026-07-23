@@ -364,7 +364,32 @@ const goiYThamPhan = () => {
         return { ...item, suggestedJudge: target ? target.name : "Đang tính...", isManual: false };
     });
   };
+  // ==============================================================
+  // ⚡ HÀM THU HỒI ÁN VỀ LẠI DANH SÁCH CHỜ
+  // ==============================================================
+  const handleHuyPhanCong = async (idVuAn) => {
+    if (!window.confirm("⚠️ Bạn có chắc muốn thu hồi vụ án này về lại danh sách 'Chờ phân án' không?")) return;
 
+    try {
+      const anRef = doc(db, "schedule", idVuAn);
+      
+      // Xóa tên thẩm phán và nhãn phân án để nó văng ngược lại khay chờ
+      await updateDoc(anRef, {
+        judge: "", 
+        phuongThucPhanAn: "", 
+        // Nếu Ní có xài trường status để lọc, thì có thể thêm: status: "pending"
+      });
+      
+      if (typeof showToast === "function") {
+        showToast("Đã thu hồi án thành công!", "success");
+      } else {
+        alert("Đã thu hồi án thành công!");
+      }
+    } catch (error) {
+      console.error("Lỗi khi thu hồi phân công:", error);
+      alert("Lỗi hệ thống khi thu hồi án.");
+    }
+  };
   // ====================================================================
   // 3. HÀM PHÂN ÁN ĐỒNG LOẠT (ĐÃ UPDATE CHIA TỰ ĐỘNG XOAY VÒNG < 10 VỤ)
   // ====================================================================
@@ -3286,6 +3311,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
               <th className="p-4 border-b border-gray-200 w-40">Loại án</th>
               <th className="p-4 border-b border-gray-200">Người giải quyết (Thẩm phán)</th>
               <th className="p-4 border-b border-gray-200 text-center w-40">Trạng thái</th>
+              <th className="p-4 border-b border-gray-200 text-center w-32">Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -3309,6 +3335,17 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                     <span className="inline-block bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold px-3 py-1 rounded-full text-[10px] uppercase">
                        Đã phân án 🎲
                     </span>
+                  </td>
+                  <td className="p-4 text-center">
+                    {(isChanHan || isAdmin) && (
+                      <button 
+                        onClick={() => handleHuyPhanCong(an.id)}
+                        className="bg-red-50 hover:bg-red-500 text-red-600 hover:text-white border border-red-200 font-bold px-3 py-1.5 rounded-lg transition-all text-[10px] uppercase shadow-sm flex items-center justify-center gap-1 mx-auto active:scale-95"
+                        title="Thu hồi vụ án này về danh sách chờ"
+                      >
+                        ↩️ THU HỒI
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
