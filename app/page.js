@@ -12,7 +12,7 @@ import { QRCodeSVG } from 'qrcode.react';
 // Firebase Imports
 import { db, auth } from './firebase'; 
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence, browserSessionPersistence, updatePassword } from 'firebase/auth';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, where, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, where, onSnapshot, deleteField } from 'firebase/firestore';
 
 const DANH_MUC_QUAN_HE = {
   "Dân sự": [
@@ -377,7 +377,7 @@ const goiYThamPhan = () => {
       await updateDoc(anRef, {
         judge: "", 
         phuongThucPhanAn: "", 
-        // Nếu Ní có xài trường status để lọc, thì có thể thêm: status: "pending"
+        status: "pending" 
       });
       
       if (typeof showToast === "function") {
