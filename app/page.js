@@ -2213,7 +2213,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
               {/* THÀNH PHẦN CHỌN NHANH VỤ ÁN ĐÃ PHÂN CÔNG */}
 <div className="mb-6 bg-blue-50 p-4 rounded-xl border border-blue-100">
   <label className="block text-xs font-black text-blue-900 uppercase mb-2">
-    ⚡ Chọn nhanh vụ án đã phân công (Không cần gõ lại):
+    ⚡ Chọn nhanh vụ án đã phân công:
   </label>
   <select 
     onChange={(e) => handleSelectPendingCase(e.target.value)}
@@ -2229,7 +2229,9 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
       )
       .map(item => (
         <option key={item.id} value={item.id}>
-          {item.caseName} ({item.plaintiff || item.defendant})
+          {item.soThuLy ? `Số ${item.soThuLy} | ` : ""} {item.caseName} 
+          {item.plaintiff ? ` - NĐ: ${item.plaintiff}` : ""} 
+          {item.defendant ? ` - BĐ: ${item.defendant}` : ""}
         </option>
       ))
     }
@@ -2434,7 +2436,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                      <option value="has_appeal">📜 Án có Kháng cáo</option>
                   </select>
                   <label className="flex items-center gap-2 text-sm font-bold text-red-600 bg-red-50 px-4 py-2.5 rounded-md border border-red-200 cursor-pointer">
-                    <input type="checkbox" checked={showOnlyUrgent} onChange={e => setShowOnlyUrgent(e.target.checked)} className="w-4 h-4 accent-red-600" /> Sắp xử (24h)
+                    <input type="checkbox" checked={showOnlyUrgent} onChange={e => setShowOnlyUrgent(e.target.checked)} className="w-4 h-4 accent-red-600" /> Sắp xử
                   </label>
                   <input type="text" placeholder="Tìm kiếm tự do..." onChange={e => setSearchQuery(e.target.value)} className={`${filterStyle} flex-1 min-w-[150px]`} />
                   <button onClick={handleExportClick} className="bg-green-600 text-white px-6 py-2.5 font-bold uppercase rounded-md shadow-sm hover:bg-green-700 text-[14px]">📊 Xuất Excel</button>
@@ -3271,7 +3273,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
         {/* BỘ LỌC TỰ CHỌN BỔ SUNG (GHI ĐÈ AI) */}
         <div className="mb-6 relative z-10 bg-slate-800/50 p-4 rounded-xl border border-slate-700">
           <label className="block text-[11px] uppercase font-black text-gray-400 mb-2 tracking-widest">
-            Thay đổi Thẩm phán thủ công:
+            Thay đổi Thẩm phán:
           </label>
           <select 
             value={manualJudge ? manualJudge.name : ""} 
@@ -3286,7 +3288,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
             }}
             className="w-full bg-slate-800 border border-slate-600 text-yellow-400 text-sm font-black p-3 rounded-lg outline-none focus:border-indigo-500 transition-all cursor-pointer shadow-inner"
           >
-            <option value="" className="text-white">🤖 Cho phép Hệ thống AI tự tính toán</option>
+            <option value="" className="text-white">Hệ thống AI tự tính toán</option>
             {listJudges.map(j => (
               <option key={j.id} value={j.name} className="text-white">
                 👨‍⚖️ {j.name} (Đang thụ lý: {parseInt(j.tonCu) || 0} vụ)
@@ -3300,7 +3302,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
           <div className="space-y-6 relative z-10">
             <div className="text-center">
               <p className="text-gray-400 text-xs uppercase font-bold mb-1">
-                {manualJudge ? "Thẩm phán được đích danh chọn:" : "Đề xuất Thẩm phán thụ lý:"}
+                {manualJudge ? "Thẩm phán được đích danh chọn:" : "Đề xuất Thẩm phán giải quyết:"}
               </p>
               <h4 className={`text-3xl md:text-4xl font-black tracking-tight ${manualJudge ? 'text-green-400' : 'text-yellow-400'}`}>
                 {manualJudge ? manualJudge.name : goiYThamPhan()?.name}
@@ -3313,7 +3315,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
             {/* BẢNG THỐNG KÊ SỐ LIỆU ĐANG ÔM */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white/5 p-4 rounded-xl border border-white/10 text-center shadow-inner">
-                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Số án đang ôm</p>
+                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Số án tồn</p>
                 <div className="flex items-end justify-center gap-1">
                   <span className={`text-2xl font-black ${manualJudge ? 'text-green-300' : 'text-indigo-300'}`}>
                     {manualJudge 
