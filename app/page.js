@@ -290,6 +290,26 @@ const goiYThamPhan = () => {
     }).length;
   };
 
+  const thongKeChiTietThamPhan = listJudges
+    .filter(j => j.role !== "Chánh án")
+    .map(j => {
+      // Tìm tất cả án của thẩm phán này trong hệ thống
+      const cacAnCuaTP = schedule.filter(a => a.judge === j.name);
+      
+      // Án đã giải quyết xong
+      const anDaXong = cacAnCuaTP.filter(a => a.status === 'completed' || a.status === 'dinh_chi').length;
+      
+      // Án đang ôm (pending, chờ lịch...)
+      const anTon = cacAnCuaTP.length - anDaXong;
+      
+      return {
+        tenThamPhan: j.name,
+        tongAn: cacAnCuaTP.length,
+        anDaXong: anDaXong,
+        anTon: anTon + (parseInt(j.tonCu) || 0), // Cộng thêm tồn cũ từ tháng trước nếu có
+        anThangNay: countCasesThisMonth(j.name) // Số án nhận trong tháng
+      };
+    });
   // ====================================================================
   // 1. HÀM LƯU PHÂN ÁN (1 VỤ)
   // ====================================================================
@@ -3061,19 +3081,29 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                 {bangMaTranPhanAn.dsLoaiAn.map(type => (
                   <th key={type} className="p-3 border-b border-r border-gray-200 text-center">{type}</th>
                 ))}
+                {/* 👉 THÊM CỘT ĐÃ GIẢI QUYẾT */}
+                <th className="p-3 border-b border-r border-gray-200 text-center bg-blue-50 text-blue-800">Đã giải quyết</th>
+                <th className="p-3 border-b border-r border-gray-200 text-center bg-orange-50 text-orange-800">Án tồn</th>
                 <th className="p-3 border-b border-gray-200 text-center bg-indigo-100 text-indigo-900">Tổng cộng</th>
               </tr>
             </thead>
             
             <tbody>
             {listJudges.map(judge => {
-              // HỆ THỐNG LẤY SỐ TỔNG (ĐÃ BAO GỒM GỐC CẤU HÌNH + ÁN MỚI PHÂN)
               const statsCuaJudge = bangMaTranPhanAn.stats[judge.name] || {};
-              const tongTatCa = Object.values(statsCuaJudge).reduce((acc, val) => acc + (val || 0), 0);
+
+// 1. Kéo số liệu án mới phân (Cộng dồn từ các cột Hình sự, Dân sự...)
+const tongAnMoi = Object.values(statsCuaJudge).reduce((acc, val) => acc + (val || 0), 0);
+
+// 2. Kéo số liệu nhập tay từ Cấu hình
+const soDaGiaiQuyet = parseInt(judge.daGiaiQuyet) || 0; 
+const soAnTon = parseInt(judge.tonCu) || 0; 
+
+// 3. 👉 CÔNG THỨC CHUẨN: Phải cộng cả 3 thằng lại với nhau!
+const tongTatCa = soDaGiaiQuyet + soAnTon;
               
               return (
                 <tr key={judge.id} className="hover:bg-gray-50 transition-colors">
-                  {/* CỘT TÊN THẨM PHÁN VÀ CHỌN THỦ CÔNG */}
                   <td 
                     className={`p-3 border-b border-r border-gray-200 font-bold uppercase cursor-pointer transition-all ${manualJudge?.name === judge.name ? 'bg-indigo-600 text-white shadow-inner scale-95' : 'text-blue-900 hover:bg-indigo-50'}`}
                     onClick={() => {
@@ -3088,33 +3118,38 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                     <p className={`text-[9px] font-normal mt-0.5 ${manualJudge?.name === judge.name ? 'text-indigo-200' : 'text-gray-400'}`}>{judge.role}</p>
                   </td>
                   
-                  {/* CÁC CỘT CHI TIẾT LOẠI ÁN (Số cấu hình + Số án mới) */}
                   {bangMaTranPhanAn.dsLoaiAn.map(type => (
                     <td key={type} className="p-3 border-b border-r border-gray-200 text-center font-bold text-gray-600">
-                      {statsCuaJudge[type] > 0 
-                        ? statsCuaJudge[type] 
-                        : <span className="text-gray-300">0</span>}
+                      {statsCuaJudge[type] > 0 ? statsCuaJudge[type] : <span className="text-gray-300">0</span>}
                     </td>
                   ))}
                   
-                  {/* CỘT TỔNG CỘNG ĐÃ ĐƯỢC FIX LỖI: HIỆN CHÍNH XÁC SỐ CỘNG NGANG (GỐC + MỚI) */}
+                  {/* 👉 CỘT ĐÃ GIẢI QUYẾT TỪNG NGƯỜI */}
+                  <td className="p-3 border-b border-r border-gray-200 text-center font-bold text-blue-600 bg-blue-50/30">
+                    {soDaGiaiQuyet > 0 ? soDaGiaiQuyet : <span className="text-gray-300">0</span>}
+                  </td>
+
+                  {/* 👉 CỘT ÁN TỒN TỪNG NGƯỜI */}
+                  <td className="p-3 border-b border-r border-gray-200 text-center font-bold text-orange-600 bg-orange-50/30">
+                    {soAnTon > 0 ? soAnTon : <span className="text-gray-300">0</span>}
+                  </td>
+
+                  {/* CỘT TỔNG CỘNG TỪNG NGƯỜI */}
                   <td className="p-3 border-b border-gray-200 text-center font-black text-red-600 bg-red-50/20 text-[13px]">
                     {tongTatCa}
                   </td>
                 </tr>
               );
             })}
-            {/* ⚡ COPY TOÀN BỘ ĐOẠN <TR> NÀY THAY CHO ĐOẠN CỦA NÍ LÀ CHẠY NGON LÀNH ⚡ */}
+            
+            {/* DÒNG TỔNG CỘNG HÀNG DƯỚI CÙNG CỦA CẢ HỆ THỐNG */}
             <tr className="bg-emerald-50 border-t-2 border-emerald-600 font-black text-gray-800">
               <td className="p-3 border-b border-r border-gray-200 text-center uppercase tracking-widest text-emerald-800">
                 TỔNG CỘNG
               </td>
               
-              {/* Tự động lặp qua các cột loại án để tính dọc xuống */}
               {bangMaTranPhanAn.dsLoaiAn.map(type => {
-                const tongCungLoai = listJudges.reduce((sum, judge) => {
-                  return sum + (bangMaTranPhanAn.stats[judge.name]?.[type] || 0);
-                }, 0);
+                const tongCungLoai = listJudges.reduce((sum, judge) => sum + (bangMaTranPhanAn.stats[judge.name]?.[type] || 0), 0);
                 return (
                   <td key={type} className="p-3 border-b border-r border-gray-200 text-center">
                     {tongCungLoai > 0 ? tongCungLoai : <span className="text-gray-300">0</span>}
@@ -3122,20 +3157,31 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                 );
               })}
               
-              {/* Ô tổng cộng màu đỏ cuối cùng */}
-              <td className="p-3 border-b border-gray-200 text-center text-red-600 text-[14px] bg-red-100/50">
-                {listJudges.reduce((tongHeThong, judge) => {
-                  const stats = bangMaTranPhanAn.stats[judge.name] || {};
-                  const tongCua1Nguoi = Object.values(stats).reduce((a, b) => a + (b || 0), 0);
-                  return tongHeThong + tongCua1Nguoi;
-                }, 0)}
+              {/* TỔNG ĐÃ GIẢI QUYẾT DỌC */}
+              <td className="p-3 border-b border-r border-gray-200 text-center text-blue-700 bg-blue-100/50">
+                {listJudges.reduce((sum, judge) => sum + (parseInt(judge.daGiaiQuyet) || 0), 0)}
               </td>
+
+              {/* TỔNG ÁN TỒN DỌC */}
+              <td className="p-3 border-b border-r border-gray-200 text-center text-orange-700 bg-orange-100/50">
+                {listJudges.reduce((sum, judge) => sum + (parseInt(judge.tonCu) || 0), 0)}
+              </td>
+
+              <td className="p-3 border-b border-gray-200 text-center text-red-600 text-[14px] bg-red-100/50">
+  {listJudges.reduce((tongHeThong, judge) => {
+    // Chỉ lôi 2 thông số này ra tính
+    const daGiaiQuyet = parseInt(judge.daGiaiQuyet) || 0;
+    const tonCu = parseInt(judge.tonCu) || 0;
+    
+    // Cộng dồn 2 món
+    return tongHeThong + daGiaiQuyet + tonCu;
+  }, 0)}
+</td>
             </tr>
           </tbody>
           </table>
         </div>
-        {/* ĐẾN ĐÂY */}
-        
+        {/* ĐẾN ĐÂY THÔI */}
       </div>
 
     {/* 3. KHU VỰC NHẬP LIỆU & AI PHÂN TÍCH */}
@@ -3315,7 +3361,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
             {/* BẢNG THỐNG KÊ SỐ LIỆU ĐANG ÔM */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white/5 p-4 rounded-xl border border-white/10 text-center shadow-inner">
-                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Số án tồn</p>
+                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Tổng số án</p>
                 <div className="flex items-end justify-center gap-1">
                   <span className={`text-2xl font-black ${manualJudge ? 'text-green-300' : 'text-indigo-300'}`}>
                     {manualJudge 
@@ -4688,6 +4734,8 @@ function QuanLyThamPhan({ db, showToast }) {
   const [name, setName] = React.useState("");
   const [role, setRole] = React.useState("Thẩm phán");
   const [weight, setWeight] = React.useState(100); // Thêm state quản lý % định mức
+  const [tonCu, setTonCu] = useState(0);
+  const [daGiaiQuyet, setDaGiaiQuyet] = useState(0);
   const [listJudges, setListJudges] = React.useState([]);
   const [editingJudgeId, setEditingJudgeId] = React.useState(null); 
 
@@ -4720,6 +4768,8 @@ function QuanLyThamPhan({ db, showToast }) {
     setName(judge.name);
     setRole(judge.role || "Thẩm phán");
     setWeight(judge.weight ? Math.round(judge.weight * 100) : 100); // Phục hồi số %
+    setTonCu(judge.tonCu || 0);
+    setDaGiaiQuyet(judge.daGiaiQuyet || 0);
     setTonCuChiTiet(judge.tonCuChiTiet || {
       "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "Cai nghiện": 0
     });
@@ -4731,6 +4781,8 @@ function QuanLyThamPhan({ db, showToast }) {
     setName("");
     setRole("Thẩm phán");
     setWeight(100); // Trả về mặc định
+    setTonCu(0);
+    setDaGiaiQuyet(0);
     setTonCuChiTiet({ "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "Cai nghiện": 0 });
   };
 
@@ -4748,7 +4800,8 @@ function QuanLyThamPhan({ db, showToast }) {
         role,
         weight: parseFloat(weight) / 100, // Đổi % ra số thập phân cho AI tính toán (vd: 60 -> 0.6)
         tonCuChiTiet,
-        tonCu: tongTonCu,
+        tonCu: Number(tonCu),
+        daGiaiQuyet: Number(daGiaiQuyet),
         updatedAt: new Date().toISOString()
       };
 
@@ -4789,27 +4842,54 @@ function QuanLyThamPhan({ db, showToast }) {
       <div className={`mb-8 p-6 rounded-xl border shadow-inner transition-all ${editingJudgeId ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-100'}`}>
         
         {/* THÊM CỘT NHẬP % ĐỊNH MỨC VÀO ĐÂY */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <div>
-            <label className="block text-xs font-black uppercase text-blue-800 mb-2">Tên Thẩm phán</label>
-            <input type="text" placeholder="Nhập họ tên..." value={name} onChange={e => setName(e.target.value)} className="w-full border p-3 rounded-lg font-bold outline-none focus:border-blue-500" />
-          </div>
-          <div>
-            <label className="block text-xs font-black uppercase text-blue-800 mb-2">Chức vụ</label>
-            <select value={role} onChange={handleRoleChange} className="w-full border p-3 rounded-lg font-bold outline-none focus:border-blue-500">
-              <option value="Chánh án">Chánh án</option>
-              <option value="Phó Chánh án">Phó Chánh án</option>
-              <option value="Thẩm phán">Thẩm phán</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-black uppercase text-blue-800 mb-2">Định mức giải quyết (%)</label>
-            <div className="flex items-center gap-2">
-              <input type="number" min="1" max="100" value={weight} onChange={e => setWeight(e.target.value)} className="w-full border p-3 rounded-lg font-black text-blue-900 outline-none focus:border-blue-500 text-center" />
-              <span className="font-black text-blue-800">%</span>
-            </div>
-          </div>
-        </div>
+       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+  {/* Ô 1: Tên Thẩm phán */}
+  <div>
+    <label className="block text-xs font-black uppercase text-blue-800 mb-2">Tên Thẩm phán</label>
+    <input type="text" placeholder="Nhập họ tên..." value={name} onChange={e => setName(e.target.value)} className="w-full border p-3 rounded-lg font-bold outline-none focus:border-blue-500" />
+  </div>
+
+  {/* Ô 2: Chức vụ */}
+  <div>
+    <label className="block text-xs font-black uppercase text-blue-800 mb-2">Chức vụ</label>
+    <select value={role} onChange={handleRoleChange} className="w-full border p-3 rounded-lg font-bold outline-none focus:border-blue-500">
+      <option value="Chánh án">Chánh án</option>
+      <option value="Phó Chánh án">Phó Chánh án</option>
+      <option value="Thẩm phán">Thẩm phán</option>
+    </select>
+  </div>
+
+  {/* Ô 3: Định mức giải quyết */}
+  <div>
+    <label className="block text-xs font-black uppercase text-blue-800 mb-2">Định mức giải quyết (%)</label>
+    <div className="flex items-center gap-2">
+      <input type="number" min="1" max="100" value={weight} onChange={e => setWeight(e.target.value)} className="w-full border p-3 rounded-lg font-black text-blue-900 outline-none focus:border-blue-500 text-center" />
+      <span className="font-black text-blue-800">%</span>
+    </div>
+  </div>
+
+  {/* Ô 4: Án tồn cũ (MỚI THÊM) */}
+  <div>
+    <label className="block text-xs font-black uppercase text-orange-800 mb-2">Án tồn cũ</label>
+    <div className="flex items-center gap-2">
+      <input type="number" min="0" value={tonCu} onChange={e => setTonCu(e.target.value)} className="w-full border p-3 rounded-lg font-black text-orange-700 outline-none focus:border-orange-500 text-center bg-orange-50" placeholder="0" />
+      <span className="font-black text-orange-800">Vụ</span>
+    </div>
+  </div>
+  <div>
+  <label className="block text-xs font-black uppercase text-blue-800 mb-2">Đã giải quyết</label>
+  <div className="flex items-center gap-2">
+    <input 
+      type="number" 
+      min="0" 
+      value={daGiaiQuyet} 
+      onChange={e => setDaGiaiQuyet(e.target.value)} 
+      className="w-full bg-blue-50 border-2 border-blue-200 rounded-lg px-3 py-2 text-sm font-bold text-blue-700 text-center focus:border-blue-500 outline-none transition-colors" 
+    />
+    <span className="font-black text-blue-800">Vụ</span>
+  </div>
+</div>
+</div>
 
         <div className="bg-white p-4 rounded-lg border border-gray-200">
           <div className="flex justify-between items-center mb-4">
