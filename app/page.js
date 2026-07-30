@@ -8,6 +8,7 @@ import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { QRCodeSVG } from 'qrcode.react';
+import NotificationBell from '../components/NotificationBell';
 
 // Firebase Imports
 import { db, auth } from './firebase'; 
@@ -96,11 +97,11 @@ export default function PremiumCourtApp() {
   const [legalDocs, setLegalDocs] = useState([]);
   const [quickLinks, setQuickLinks] = useState([]);
   const [readingLink, setReadingLink] = useState(null);
-  const [listJudges, setListJudges] = useState([]); // Chứa danh sách 14 thẩm phán để máy tính toán
+  const [listJudges, setListJudges] = useState([]); 
   const [phanAnForm, setPhanAnForm] = useState({ caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự" });
   const [dsChoPhanAn, setDsChoPhanAn] = useState([]);
   const [choPhanAnId, setChoPhanAnId] = useState(null);
-  const [manualJudge, setManualJudge] = useState(null); // Thẩm phán được chọn thủ công
+  const [manualJudge, setManualJudge] = useState(null); 
   const [newsForm, setNewsForm] = useState({ title: "", content: "", date: moment().format("YYYY-MM-DD") });
   const [tuKhoa, setTuKhoa] = useState("");
   const [ketQuaTraCuu, setKetQuaTraCuu] = useState(null);
@@ -299,7 +300,7 @@ const goiYThamPhan = () => {
       // Án đã giải quyết xong
       const anDaXong = cacAnCuaTP.filter(a => a.status === 'completed' || a.status === 'dinh_chi').length;
       
-      // Án đang ôm (pending, chờ lịch...)
+      // Án tồn (pending, chờ lịch...)
       const anTon = cacAnCuaTP.length - anDaXong;
       
       return {
@@ -2113,7 +2114,11 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
             </h1>
           </div>
 
-          <div className="flex-1 flex items-center justify-end">
+          <div className="flex-1 flex items-center justify-end gap-3">
+            
+            {/* BƯỚC 4: GẮN CHUÔNG VÀO ĐÂY NÈ NÍ! */}
+            {user && <NotificationBell currentUser={user} />}
+
             <div className="bg-yellow-400 text-red-800 px-3 py-2 md:px-6 md:py-3 font-black text-[10px] md:text-sm border border-yellow-500 uppercase tracking-widest text-center w-max rounded-lg shadow-md">
               Cần Thơ: {moment().format("DD/MM/YYYY")}
             </div>
@@ -2479,7 +2484,12 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
       </thead>
 
       <tbody className="divide-y divide-gray-200 bg-white">
-        {processedSchedule.map((item, index) => {
+        {processedSchedule
+    // ⚡️ CHÈN THÊM DÒNG LỌC NÀY VÀO ĐÂY NHÉ NÍ ⚡️
+    .filter(item => item.status !== 'dinh_chi' && item.status !== 'completed')
+    
+    // ĐOẠN DƯỚI GIỮ NGUYÊN KHÔNG ĐỔI
+    .map((item, index) => {
           const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
           const isForgotten = item.status === 'pending' && 
                               moment(item.datetime).isBefore(moment().subtract(4, 'hours'));
@@ -3181,7 +3191,6 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
           </tbody>
           </table>
         </div>
-        {/* ĐẾN ĐÂY THÔI */}
       </div>
 
     {/* 3. KHU VỰC NHẬP LIỆU & AI PHÂN TÍCH */}
