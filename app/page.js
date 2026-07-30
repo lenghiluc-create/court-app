@@ -273,6 +273,7 @@ const goiYThamPhan = () => {
       showToast("✅ Đã lưu hồ sơ vào hàng chờ thành công!", "success");
       setPhanAnForm({ caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự" });
       setChoPhanAnId(null);
+      layDuLieuBangTongHop();
     } catch (e) { showToast("Lỗi: " + e.message, "error"); }
   };
 
@@ -348,6 +349,7 @@ const goiYThamPhan = () => {
       setPhanAnForm({ soThuLy: "", caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự", quanHePhapLuat: "" });
       setChoPhanAnId(null);
       setManualJudge(null); 
+      layDuLieuBangTongHop();
     } catch (e) { showToast("Lỗi phân án: " + e.message, "error"); }
   };
 
@@ -495,6 +497,7 @@ const goiYThamPhan = () => {
       showToast(`✅ Đã phân án đồng loạt thành công!`, "success");
       setPhanAnForm({ soThuLy: "", caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự", quanHePhapLuat: "" });
       setChoPhanAnId(null);
+      layDuLieuBangTongHop();
     } catch (e) {
       showToast("Lỗi phân án đồng loạt: " + e.message, "error");
     }
