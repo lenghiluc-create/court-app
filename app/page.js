@@ -1385,9 +1385,9 @@ useEffect(() => {
       }
 
       // ⚡ CHỐT CHẶN: Ép buộc án lên lịch phải có ngày giờ và thẩm phán hợp lệ
-      const isDone = i.status === 'completed' || i.status === 'dinh_chi' || i.status === 'done';
-      const hasDateTime = isDone ? true : Boolean(i.datetime); 
-      const hasValidJudge = Boolean(i.judge && i.judge !== "---");
+      const isDone = item.status === 'completed' || item.status === 'dinh_chi' || item.status === 'done';
+      const hasDateTime = isDone ? true : Boolean(item.datetime); 
+      const hasValidJudge = Boolean(item.judge && item.judge !== "---");
 
       // Gộp tất cả các điều kiện lại
       return matchSearch && matchStatus && matchDate && matchCreator && matchJudge && matchClerk && matchUrgent && hasDateTime && hasValidJudge;
