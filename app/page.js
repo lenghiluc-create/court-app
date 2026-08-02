@@ -108,6 +108,9 @@ export default function PremiumCourtApp() {
   const [selectedStatType, setSelectedStatType] = useState(null);
   const [statMonth, setStatMonth] = useState(moment().format('YYYY-MM'));
   const [searchAssigned, setSearchAssigned] = useState("");
+  const [thangLoc, setThangLoc] = useState(""); // Lưu tháng lọc (định dạng YYYY-MM)
+  const [editingSoThuLy, setEditingSoThuLy] = useState(null); // Lưu ID của án đang được sửa STL
+  const [tempSoThuLy, setTempSoThuLy] = useState("")
   const filteredAssignedCases = useMemo(() => {
     // 1. Lấy danh sách án đã phân (có thẩm phán)
     const assigned = schedule.filter(item => item.judge && item.judge !== "");
@@ -277,6 +280,23 @@ const goiYThamPhan = () => {
     } catch (e) { showToast("Lỗi: " + e.message, "error"); }
   };
 
+  const handleLuuSoThuLy = async (anId) => {
+    if (!anId) return;
+    try {
+      // Nhớ đảm bảo Ní đã import doc, updateDoc từ "firebase/firestore" và db nha
+      const anRef = doc(db, "schedule", anId);
+      await updateDoc(anRef, {
+        soThuLy: tempSoThuLy
+      });
+      
+      // Xong thì ẩn ô nhập liệu đi
+      setEditingSoThuLy(null);
+      setTempSoThuLy("");
+    } catch (error) {
+      console.error("Lỗi cập nhật số thụ lý:", error);
+      alert("Có lỗi xảy ra khi lưu số thụ lý!");
+    }
+  };
   // ====================================================================
   // 0. HÀM TRỢ THỦ: ĐẾM SỐ ÁN TRONG THÁNG CỦA THẨM PHÁN
   // ====================================================================
@@ -291,6 +311,21 @@ const goiYThamPhan = () => {
       return itemDate.month() + 1 === currentMonth && itemDate.year() === currentYear;
     }).length;
   };
+
+  const danhSachAnPhanTuDong = schedule.filter((an) => {
+    // 1. Phải là án phân tự động
+    const isAuto = an.phuongThucPhanAn === "Hệ thống phân ngẫu nhiên";
+    if (!isAuto) return false;
+
+    // 2. Nếu có chọn tháng thì lọc theo tháng (dựa vào updatedAt hoặc createdAt)
+    if (thangLoc && an.updatedAt) {
+      // thangLoc của thẻ input type="month" sẽ có dạng "YYYY-MM" (VD: "2026-08")
+      const anMonth = moment(an.updatedAt).format("YYYY-MM");
+      return anMonth === thangLoc;
+    }
+    
+    return true; // Nếu chưa chọn tháng thì hiện tất cả
+  });
 
   const thongKeChiTietThamPhan = listJudges
     .filter(j => j.role !== "Chánh án")
@@ -2003,6 +2038,12 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
             </div>
           )}
 
+          {!isPublicView && (
+    <div onClick={() => { setActiveTab("giam_sat"); setViewMode("app"); }} className={`flex items-center px-3 py-3 rounded-lg cursor-pointer transition-colors ${activeTab === 'giam_sat' ? 'bg-amber-50 text-amber-800 font-extrabold border-l-4 border-amber-500' : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950 font-semibold'}`}>
+      <span className="text-[17px]">📝</span>{!isCollapsed && <span className="ml-3 text-[14px]">Giám sát phân án</span>}
+    </div>
+  )}
+
           {/* LỊCH THẨM ĐỊNH (ĐẬM HƠN) */}
           {!isPublicView && (
             <div onClick={() => { setActiveTab("inspection"); setViewMode("app"); }} className={`flex items-center px-3 py-3 rounded-lg cursor-pointer transition-colors ${activeTab === 'inspection' ? 'bg-teal-50 text-teal-800 font-extrabold border-l-4 border-teal-600' : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950 font-semibold'}`}>
@@ -3689,6 +3730,117 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
     </div>
   </div>
 )}
+
+{/* TAB GIÁM SÁT: Chỉ hiển thị khi activeTab là 'giam_sat' */}
+{activeTab === 'giam_sat' && (
+  <div className="animate-fadeIn mt-4 bg-white p-6 rounded-xl shadow-md border border-gray-100">
+    
+    {/* HEADER CÓ THÊM BỘ LỌC THÁNG */}
+    <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
+      <h2 className="text-xl font-bold text-teal-800 uppercase flex items-center gap-2">
+        🤖 Danh sách án phân tự động 
+        <span className="bg-red-100 text-red-700 text-sm py-1 px-3 rounded-full font-bold">
+          {danhSachAnPhanTuDong?.length || 0} vụ
+        </span>
+      </h2>
+
+      <div className="flex items-center gap-2">
+        <label className="text-sm font-semibold text-gray-600">Lọc theo tháng:</label>
+        <input 
+          type="month" 
+          value={thangLoc}
+          onChange={(e) => setThangLoc(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+        />
+        {thangLoc && (
+          <button 
+            onClick={() => setThangLoc("")} 
+            className="text-xs text-red-500 hover:text-red-700 font-medium underline"
+          >
+            Bỏ lọc
+          </button>
+        )}
+      </div>
+    </div>
+
+    <div className="overflow-x-auto">
+      <table className="w-full text-left border-collapse">
+        <thead>
+          <tr className="bg-teal-50 text-teal-900 text-[14px]">
+            <th className="border-b border-teal-200 p-3 font-bold text-center">STT</th>
+            <th className="border-b border-teal-200 p-3 font-bold w-1/3">Số thụ lý / Trích yếu</th>
+            <th className="border-b border-teal-200 p-3 font-bold">Loại án</th>
+            <th className="border-b border-teal-200 p-3 font-bold">Thẩm phán nhận</th>
+            <th className="border-b border-teal-200 p-3 font-bold text-center">Ngày phân</th>
+            <th className="border-b border-teal-200 p-3 font-bold text-center">Trạng thái</th>
+          </tr>
+        </thead>
+        <tbody>
+          {danhSachAnPhanTuDong && danhSachAnPhanTuDong.length > 0 ? (
+            danhSachAnPhanTuDong.map((an, index) => (
+              <tr key={an.id} className="hover:bg-gray-50 transition-colors border-b border-gray-100 text-[14px]">
+                <td className="p-3 text-center font-medium text-gray-600 align-top">{index + 1}</td>
+                
+                {/* CỘT SỐ THỤ LÝ (CÓ TÍNH NĂNG CHỈNH SỬA) */}
+                <td className="p-3 align-top">
+                  {editingSoThuLy === an.id ? (
+                    <div className="flex items-center gap-2 mb-1">
+                      <input
+                        type="text"
+                        value={tempSoThuLy}
+                        onChange={(e) => setTempSoThuLy(e.target.value)}
+                        className="border border-blue-400 p-1.5 rounded-md text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        placeholder="Nhập số thụ lý..."
+                        autoFocus
+                      />
+                      <button onClick={() => handleLuuSoThuLy(an.id)} className="text-xl hover:scale-110 transition-transform" title="Lưu">✅</button>
+                      <button onClick={() => setEditingSoThuLy(null)} className="text-xl hover:scale-110 transition-transform" title="Hủy">❌</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 mb-1 group">
+                      <span className={`font-bold ${an.soThuLy ? "text-blue-700" : "text-gray-400 italic"}`}>
+                        {an.soThuLy || "Chưa có STL"}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setEditingSoThuLy(an.id);
+                          setTempSoThuLy(an.soThuLy || "");
+                        }}
+                        className="text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Bấm để sửa Số thụ lý"
+                      >
+                        ✏️
+                      </button>
+                    </div>
+                  )}
+                  <div className="text-gray-700 text-sm">{an.caseName}</div>
+                </td>
+
+                <td className="p-3 font-medium text-gray-700 align-top">{an.caseType}</td>
+                <td className="p-3 font-bold text-red-700 align-top">{an.judge}</td>
+                <td className="p-3 text-center text-gray-500 align-top">
+                  {an.updatedAt ? moment(an.updatedAt).format("DD/MM/YYYY HH:mm") : "---"}
+                </td>
+                <td className="p-3 text-center align-top">
+                  <span className="bg-yellow-100 text-yellow-800 py-1 px-2 rounded-md text-xs font-bold whitespace-nowrap">
+                    {an.status === "pending" ? "Đang giải quyết" : (an.status === "cho_phan_an" ? "Chờ phân án" : an.status)}
+                  </span>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="6" className="text-center p-8 text-gray-500 font-medium italic">
+                Không tìm thấy vụ án nào trong khoảng thời gian này.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
+
 {/* ========================================================= */} 
  {activeTab === "report" && (
     <div className="animate-fadeIn space-y-8">
