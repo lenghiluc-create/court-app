@@ -1355,7 +1355,7 @@ useEffect(() => {
   const prosecutorsList = [...new Set(schedule.map(i => i.prosecutor).filter(Boolean))];
 
   const processedSchedule = useMemo(() => {
-    return schedule.filter(i => {
+    return schedule.filter((item) => {
       const search = (searchQuery || "").toLowerCase().trim();
       const matchSearch = search === "" || (i.caseName || "").toLowerCase().includes(search) || (i.plaintiff || "").toLowerCase().includes(search) || (i.defendant || "").toLowerCase().includes(search);
       const matchStatus = statusFilter === 'all' ? true : 
