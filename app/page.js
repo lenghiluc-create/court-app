@@ -1357,19 +1357,19 @@ useEffect(() => {
   const processedSchedule = useMemo(() => {
     return schedule.filter((item) => {
       const search = (searchQuery || "").toLowerCase().trim();
-      const matchSearch = search === "" || (i.caseName || "").toLowerCase().includes(search) || (i.plaintiff || "").toLowerCase().includes(search) || (i.defendant || "").toLowerCase().includes(search);
+      const matchSearch = search === "" || (item.caseName || "").toLowerCase().includes(search) || (item.plaintiff || "").toLowerCase().includes(search) || (item.defendant || "").toLowerCase().includes(search);
       const matchStatus = statusFilter === 'all' ? true : 
-                    statusFilter === 'has_appeal' ? i.isKhangCao === true : 
-                    i.status === statusFilter;
-      const matchCreator = creatorFilter === 'all' ? true : (i.createdBy === creatorFilter);
-      const matchJudge = judgeFilter === 'all' ? true : (i.judge === judgeFilter);
-      const matchClerk = clerkFilter === 'all' ? true : (i.clerk === clerkFilter);
-      const matchUrgent = showOnlyUrgent ? isUrgent(i.datetime) : true;
+                    statusFilter === 'has_appeal' ? item.isKhangCao === true : 
+                    item.status === statusFilter;
+      const matchCreator = creatorFilter === 'all' ? true : (item.createdBy === creatorFilter);
+      const matchJudge = judgeFilter === 'all' ? true : (item.judge === judgeFilter);
+      const matchClerk = clerkFilter === 'all' ? true : (item.clerk === clerkFilter);
+      const matchUrgent = showOnlyUrgent ? isUrgent(item.datetime) : true;
       
       let matchDate = true;
       if (startDate || endDate) {
         // NÂNG CẤP: Cho phép chọn trường dữ liệu để lọc
-        const targetDate = dateFilterType === 'createdAt' ? i.createdAt : i.datetime;
+        const targetDate = dateFilterType === 'createdAt' ? item.createdAt : item.datetime;
         
         // Cắt bỏ phần giờ phút, chỉ lấy ngày (YYYY-MM-DD)
         const itemDateStr = targetDate ? (targetDate.includes('T') ? targetDate.split('T')[0] : targetDate) : null;
@@ -1394,14 +1394,13 @@ useEffect(() => {
       
     }).sort((a, b) => {
       // 1. NHÓM TRẠNG THÁI: Ní phải điền CHÍNH XÁC cái mã status lưu trong Database vào đây nha!
-      // Tui thêm sẵn vài mã dự đoán dựa trên giao diện của Ní (hieu_luc, da_xong,...)
       const doneStatuses = [
         'dinh_chi', 
         'da_xet_xu', 
         'tam_dinh_chi', 
         'tam_ngung', 
         'da_xong', 
-        'hieu_luc', // <-- Chắc chắn phải có mã này (Ní check lại DB xem viết chính xác là gì nhé)
+        'hieu_luc', // <-- Chắc chắn phải có mã này
         'completed'
       ];
       
@@ -1409,7 +1408,6 @@ useEffect(() => {
       const doneB = doneStatuses.includes(b.status) ? 1 : 0;
 
       // Nếu 1 cái chưa xử (0) và 1 cái đã xử xong/hiệu lực/đình chỉ (1)
-      // -> Đẩy cái đã xử (1) chìm xuống dưới
       if (doneA !== doneB) {
          return doneA - doneB; 
       }
@@ -1418,7 +1416,7 @@ useEffect(() => {
       const dateA = a.datetime ? new Date(a.datetime).getTime() : 0;
       const dateB = b.datetime ? new Date(b.datetime).getTime() : 0;
       
-      return dateA - dateB; // Án cũ/đến hạn xử sẽ nổi lên trên
+      return dateA - dateB; 
     });
   }, [
     schedule, 
