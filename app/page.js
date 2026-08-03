@@ -1368,10 +1368,7 @@ useEffect(() => {
       
       let matchDate = true;
       if (startDate || endDate) {
-        // NÂNG CẤP: Cho phép chọn trường dữ liệu để lọc
         const targetDate = dateFilterType === 'createdAt' ? item.createdAt : item.datetime;
-        
-        // Cắt bỏ phần giờ phút, chỉ lấy ngày (YYYY-MM-DD)
         const itemDateStr = targetDate ? (targetDate.includes('T') ? targetDate.split('T')[0] : targetDate) : null;
         
         if (!itemDateStr) { 
@@ -1385,51 +1382,36 @@ useEffect(() => {
       }
 
       // ⚡ CHỐT CHẶN: Ép buộc án lên lịch phải có ngày giờ và thẩm phán hợp lệ
-      const isDone = item.status === 'completed' || item.status === 'dinh_chi' || item.status === 'done';
+      const doneStatuses = [
+        'dinh_chi', 'da_xet_xu', 'tam_dinh_chi', 'tam_ngung', 'da_xong', 'hieu_luc', 'completed', 'suspended'
+      ];
+      const isDone = doneStatuses.includes(item.status);
+      
       const hasDateTime = isDone ? true : Boolean(item.datetime); 
-      const hasValidJudge = Boolean(item.judge && item.judge !== "---");
+      
+      // 🌟 QUAN TRỌNG: Miễn kiểm tra Thẩm phán đối với án Đã xong/Đình chỉ
+      const hasValidJudge = isDone ? true : Boolean(item.judge && item.judge !== "---");
 
       // Gộp tất cả các điều kiện lại
       return matchSearch && matchStatus && matchDate && matchCreator && matchJudge && matchClerk && matchUrgent && hasDateTime && hasValidJudge;
       
     }).sort((a, b) => {
-      // 1. NHÓM TRẠNG THÁI: Ní phải điền CHÍNH XÁC cái mã status lưu trong Database vào đây nha!
+      // ⚡ Đưa hàm sắp xếp ra đúng vị trí
       const doneStatuses = [
-        'dinh_chi', 
-        'da_xet_xu', 
-        'tam_dinh_chi', 
-        'tam_ngung', 
-        'da_xong', 
-        'hieu_luc', // <-- Chắc chắn phải có mã này
-        'completed'
+        'dinh_chi', 'da_xet_xu', 'tam_dinh_chi', 'tam_ngung', 'da_xong', 'hieu_luc', 'completed', 'suspended'
       ];
       
       const doneA = doneStatuses.includes(a.status) ? 1 : 0;
       const doneB = doneStatuses.includes(b.status) ? 1 : 0;
 
-      // Nếu 1 cái chưa xử (0) và 1 cái đã xử xong/hiệu lực/đình chỉ (1)
-      if (doneA !== doneB) {
-         return doneA - doneB; 
-      }
+      if (doneA !== doneB) return doneA - doneB; 
 
-      // 2. NHÓM NGÀY GIỜ: Cùng loại (cùng chưa xử hoặc cùng đã xử) thì đọ ngày với nhau
       const dateA = a.datetime ? new Date(a.datetime).getTime() : 0;
       const dateB = b.datetime ? new Date(b.datetime).getTime() : 0;
       
       return dateA - dateB; 
     });
-  }, [
-    schedule, 
-    searchQuery, 
-    statusFilter, 
-    creatorFilter, 
-    judgeFilter, 
-    clerkFilter, 
-    showOnlyUrgent, 
-    startDate, 
-    endDate, 
-    dateFilterType 
-  ]);
+  }, [schedule, searchQuery, statusFilter, creatorFilter, judgeFilter, clerkFilter, showOnlyUrgent, startDate, endDate, dateFilterType]);
   
   // THUẬT TOÁN ĐÁNH GIÁ CHẤT LƯỢNG XÉT XỬ (ĐÃ NÂNG CẤP LỌC THEO THÁNG)
   const chatLuongXetXu = useMemo(() => {
@@ -1784,12 +1766,19 @@ useEffect(() => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {processedSchedule
-                     .filter(i => i.status !== 'completed' && i.status !== 'suspended') // Chỉ hiện án đang chờ xử
-                     .map((item, index) => {
-                      const isRowUrgent = isUrgent(item.datetime);
-                      return (
-                        <tr key={item.id} className="hover:bg-blue-50/30 transition-all">
+        {processedSchedule.map((item, index) => {
+          const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
+          const isForgotten = item.status === 'pending' && 
+                              moment(item.datetime).isBefore(moment().subtract(4, 'hours'));
+          const overduePublish = isOverduePublish(item);
+          const effective = isEffective(item);
+
+          let rowBgClass = isForgotten ? "bg-orange-50 animate-pulse" : 
+                           isRowUrgent ? "bg-red-50 hover:bg-red-100" : 
+                           index % 2 === 0 ? "bg-white hover:bg-blue-50/30" : "bg-slate-50 hover:bg-blue-50/30";
+          
+          return (
+            <tr key={item.id} className={`transition-all ${rowBgClass}`}>
                           {/* CỘT 1: THỜI GIAN */}
                           <td className="px-2 py-2 border border-gray-300 text-center">
                             <div className="font-bold text-[12px] text-gray-900">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
@@ -2527,12 +2516,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
       </thead>
 
       <tbody className="divide-y divide-gray-200 bg-white">
-        {processedSchedule
-    // ⚡️ CHÈN THÊM DÒNG LỌC NÀY VÀO ĐÂY NHÉ NÍ ⚡️
-    .filter(item => item.status !== 'dinh_chi' && item.status !== 'completed')
-    
-    // ĐOẠN DƯỚI GIỮ NGUYÊN KHÔNG ĐỔI
-    .map((item, index) => {
+        {processedSchedule.map((item, index) => {
           const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
           const isForgotten = item.status === 'pending' && 
                               moment(item.datetime).isBefore(moment().subtract(4, 'hours'));
