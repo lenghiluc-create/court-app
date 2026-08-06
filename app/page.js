@@ -274,16 +274,22 @@ const goiYThamPhan = () => {
         });
       } else {
         await addDoc(collection(db, "schedule"), {
-          caseName: phanAnForm.caseName, plaintiff: phanAnForm.plaintiff,
-          defendant: phanAnForm.defendant, caseType: phanAnForm.caseType,
+          soThuLy: phanAnForm.soThuLy || "", // 👈 ĐÃ BỔ SUNG
+          quanHePhapLuat: phanAnForm.quanHePhapLuat || "", // 👈 ĐÃ BỔ SUNG
+          caseName: phanAnForm.caseName, 
+          plaintiff: phanAnForm.plaintiff,
+          defendant: phanAnForm.defendant, 
+          caseType: phanAnForm.caseType,
           status: "cho_phan_an", 
-          createdAt: moment().toISOString(), createdBy: user?.email || "Hệ thống"
+          createdAt: moment().toISOString(), 
+          createdBy: user?.email || "Hệ thống"
         });
       }
       showToast("✅ Đã lưu hồ sơ vào hàng chờ thành công!", "success");
-      setPhanAnForm({ caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự" });
+      // 👈 RESET LẠI TOÀN BỘ Ô NHẬP LIỆU CHO SẠCH
+      setPhanAnForm({ soThuLy: "", caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự", quanHePhapLuat: "" });
       setChoPhanAnId(null);
-      layDuLieuBangTongHop();
+      // layDuLieuBangTongHop(); 
     } catch (e) { showToast("Lỗi: " + e.message, "error"); }
   };
 
@@ -391,7 +397,7 @@ const goiYThamPhan = () => {
       setPhanAnForm({ soThuLy: "", caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự", quanHePhapLuat: "" });
       setChoPhanAnId(null);
       setManualJudge(null); 
-      layDuLieuBangTongHop();
+      // layDuLieuBangTongHop();
     } catch (e) { showToast("Lỗi phân án: " + e.message, "error"); }
   };
 
@@ -539,7 +545,7 @@ const goiYThamPhan = () => {
       showToast(`✅ Đã phân án đồng loạt thành công!`, "success");
       setPhanAnForm({ soThuLy: "", caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự", quanHePhapLuat: "" });
       setChoPhanAnId(null);
-      layDuLieuBangTongHop();
+      // layDuLieuBangTongHop();
     } catch (e) {
       showToast("Lỗi phân án đồng loạt: " + e.message, "error");
     }
