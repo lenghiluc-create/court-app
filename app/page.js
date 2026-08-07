@@ -332,12 +332,16 @@ const goiYThamPhan = () => {
 
     // 2. Nếu có chọn tháng thì lọc theo tháng (dựa vào updatedAt hoặc createdAt)
     if (thangLoc && an.updatedAt) {
-      // thangLoc của thẻ input type="month" sẽ có dạng "YYYY-MM" (VD: "2026-08")
       const anMonth = moment(an.updatedAt).format("YYYY-MM");
       return anMonth === thangLoc;
     }
     
     return true; // Nếu chưa chọn tháng thì hiện tất cả
+  }).sort((a, b) => {
+    // SẮP XẾP: Lấy ngày phân án mới nhất đẩy lên trên cùng
+    const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+    const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+    return timeB - timeA; 
   });
 
   const thongKeChiTietThamPhan = listJudges
@@ -2440,15 +2444,20 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
     {/* BỘ LỌC ĐÃ ĐƯỢC NÂNG CẤP */}
     {schedule
       .filter(item => 
-        item.judge && item.judge.trim() !== "" && // 1. Bắt buộc phải ĐÃ PHÂN CÔNG (có thẩm phán)
-        item.status !== "cho_phan_an" &&          // 2. Chặn đứng mấy án vừa bị THU HỒI
-        (!item.datetime || item.status === 'cho_len_lich') // 3. Giữ lại điều kiện gốc: chưa có ngày hoặc đang chờ lên lịch
+        item.judge && item.judge.trim() !== "" && 
+        item.status !== "cho_phan_an" &&          
+        (!item.datetime || item.status === 'cho_len_lich') 
       )
       .map(item => (
         <option key={item.id} value={item.id}>
           {item.soThuLy ? `Số ${item.soThuLy} | ` : ""} {item.caseName} 
-          {item.plaintiff ? ` - NĐ: ${item.plaintiff}` : ""} 
-          {item.defendant ? ` - BĐ: ${item.defendant}` : ""}
+          {/* TỰ ĐỘNG NHẬN DIỆN LOẠI ÁN ĐỂ HIỂN THỊ ĐÚNG VAI VẾ */}
+          {item.caseType?.includes("Hình sự") 
+            ? ` - Bị cáo: ${item.defendant || "---"} | Bị hại: ${item.plaintiff || "---"}` 
+            : (item.caseType === "cainghien" || item.caseType?.includes("Cai nghiện") || item.caseType?.includes("Hành chính")) 
+              ? ` - Người bị ĐN: ${item.defendant || "---"} | CQ ĐN: ${item.plaintiff || "---"}` 
+              : ` - NĐ: ${item.plaintiff || "---"} | BĐ: ${item.defendant || "---"}`
+          }
         </option>
       ))
     }
@@ -3384,7 +3393,8 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       
       {/* CỘT TRÁI: NHẬP LIỆU */}
-      <div>
+     {/* 1. Ô NHẬP SỐ THỤ LÝ VỤ ÁN */}
+        <div>
           <label className="block text-xs font-black text-gray-500 mb-2 uppercase">Số thụ lý vụ án <span className="text-red-500">*</span></label>
           <input 
             type="text"
@@ -3407,35 +3417,13 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-black text-gray-500 mb-2 uppercase">Nguyên đơn / Bị cáo</label>
-            <input 
-              type="text"
-              value={phanAnForm.plaintiff}
-              onChange={e => setPhanAnForm({...phanAnForm, plaintiff: e.target.value})}
-              className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:border-indigo-500 outline-none transition-all"
-              placeholder="VD: Ông Nguyễn Văn A"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-black text-gray-500 mb-2 uppercase">Bị đơn / Bị hại</label>
-            <input 
-              type="text"
-              value={phanAnForm.defendant}
-              onChange={e => setPhanAnForm({...phanAnForm, defendant: e.target.value})}
-              className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:border-indigo-500 outline-none transition-all"
-              placeholder="VD: Bà Trần Thị B"
-            />
-          </div>
-        </div>
-
+        {/* 3. ĐƯA CHỌN LOẠI ÁN LÊN TRÊN ĐỂ TỰ ĐỘNG NHẢY TÊN ĐƯƠNG SỰ Ở DƯỚI */}
         <div>
           <label className="block text-xs font-black text-gray-500 mb-2 uppercase">Loại án <span className="text-red-500">*</span></label>
           <select 
             value={phanAnForm.caseType}
             onChange={e => setPhanAnForm({...phanAnForm, caseType: e.target.value})}
-            className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:border-indigo-500 outline-none"
+            className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:border-indigo-500 outline-none transition-all"
           >
             <option value="Dân sự">Dân sự</option>
             <option value="Hình sự">Hình sự</option>
@@ -3446,6 +3434,61 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
             <option value="Hôn nhân & GĐ">Hôn nhân & Gia đình</option>
           </select>
         </div>
+
+        {/* 4. TỰ ĐỘNG NHẬN DIỆN VAI VẾ ĐƯƠNG SỰ ĐỂ LƯU VÀO ĐÚNG TRƯỜNG DỮ LIỆU */}
+        {(phanAnForm.caseType === 'Hình sự' || phanAnForm.caseType === 'cainghien' || phanAnForm.caseType?.includes('Cai nghiện') || phanAnForm.caseType === 'Hành chính') ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Cột trái: BỊ CÁO / NGƯỜI BỊ ĐỀ NGHỊ -> Bắt buộc lưu vào defendant */}
+            <div>
+              <label className="block text-xs font-black text-gray-500 mb-2 uppercase">{getLabelBenBi(phanAnForm.caseType)}</label>
+              <input 
+                type="text"
+                value={phanAnForm.defendant}
+                onChange={e => setPhanAnForm({...phanAnForm, defendant: e.target.value})}
+                className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:border-indigo-500 outline-none transition-all"
+                placeholder="Nhập thông tin..."
+              />
+            </div>
+            {/* Cột phải: BỊ HẠI / CƠ QUAN ĐỀ NGHỊ -> Bắt buộc lưu vào plaintiff */}
+            <div>
+              <label className="block text-xs font-black text-gray-500 mb-2 uppercase">{getLabelBenKien(phanAnForm.caseType)}</label>
+              <input 
+                type="text"
+                value={phanAnForm.plaintiff}
+                onChange={e => setPhanAnForm({...phanAnForm, plaintiff: e.target.value})}
+                className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:border-indigo-500 outline-none transition-all"
+                placeholder="Nhập thông tin..."
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Cột trái: NGUYÊN ĐƠN -> Bắt buộc lưu vào plaintiff */}
+            <div>
+              <label className="block text-xs font-black text-gray-500 mb-2 uppercase">{getLabelBenKien(phanAnForm.caseType)}</label>
+              <input 
+                type="text"
+                value={phanAnForm.plaintiff}
+                onChange={e => setPhanAnForm({...phanAnForm, plaintiff: e.target.value})}
+                className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:border-indigo-500 outline-none transition-all"
+                placeholder="Nhập thông tin..."
+              />
+            </div>
+            {/* Cột phải: BỊ ĐƠN -> Bắt buộc lưu vào defendant */}
+            <div>
+              <label className="block text-xs font-black text-gray-500 mb-2 uppercase">{getLabelBenBi(phanAnForm.caseType)}</label>
+              <input 
+                type="text"
+                value={phanAnForm.defendant}
+                onChange={e => setPhanAnForm({...phanAnForm, defendant: e.target.value})}
+                className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:border-indigo-500 outline-none transition-all"
+                placeholder="Nhập thông tin..."
+              />
+            </div>
+          </div>
+        )}
+
+        {/* 5. QUAN HỆ PHÁP LUẬT */}
         <div>
           <label className="block text-xs font-black text-gray-500 mb-2 uppercase">
             Quan hệ pháp luật / Tội danh <span className="text-red-500">*</span>
@@ -3956,7 +3999,16 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
                       </button>
                     </div>
                   )}
-                  <div className="text-gray-700 text-sm">{an.caseName}</div>
+                  <div className="text-gray-800 text-sm font-bold mb-1 leading-tight">{an.caseName}</div>
+<div className="text-[11px] text-gray-500 font-medium">
+  {an.caseType?.includes("Hình sự") ? (
+    <span><span className="text-red-600">Bị cáo:</span> {an.defendant || "---"} <span className="mx-1">|</span> <span className="text-gray-500">Bị hại:</span> {an.plaintiff || "---"}</span>
+  ) : (an.caseType === "cainghien" || an.caseType?.includes("Cai nghiện") || an.caseType?.includes("Hành chính")) ? (
+    <span><span className="text-teal-600">Người bị ĐN:</span> {an.defendant || "---"} <span className="mx-1">|</span> <span className="text-gray-500">CQ ĐN:</span> {an.plaintiff || "---"}</span>
+  ) : (
+    <span><span className="text-gray-500">NĐ:</span> {an.plaintiff || "---"} <span className="mx-1">|</span> <span className="text-gray-500">BĐ:</span> {an.defendant || "---"}</span>
+  )}
+</div>
                 </td>
 
                 <td className="p-3 font-medium text-gray-700 align-top">{an.caseType}</td>
