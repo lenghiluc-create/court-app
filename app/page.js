@@ -1368,7 +1368,7 @@ const handleSendMessage = async () => {
     setForm({ ...item, datetime: "", trialCount: nextTrialCount, status: "pending", daXuatExcel: false,
     caseName: item.caseName.includes(oldNote) ? item.caseName : `${item.caseName} ${oldNote}`
   });
-    setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'});
+    setEditingId(item.id); document.getElementById('khu-vuc-len-lich')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     showToast(`⚠️ Đã kích hoạt Hoãn/Mở lại. ${oldNote}. Vui lòng CHỌN NGÀY GIỜ MỚI và bấm Cập nhật!`, "success");
   };
 
@@ -2424,7 +2424,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                 <div className="animate-fadeIn">
 
           {user && (
-        <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200 animate-fadeIn relative z-10 mb-8">
+        <div id="khu-vuc-len-lich" className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200 animate-fadeIn relative z-10 mb-8">
           <div className="flex items-center justify-center mb-8">
             <h2 className="text-xl md:text-2xl font-black text-blue-900 uppercase tracking-widest border-l-8 border-red-600 pl-4">
                ĐĂNG KÝ LỊCH XÉT XỬ
@@ -2905,7 +2905,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
         {/* 5. NHÓM NÚT SỬA / LOG / XÓA */}
         {canEdit && (
           <>
-            <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="w-full text-left px-2 py-1.5 bg-white hover:bg-blue-50 text-blue-600 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">✏️ Sửa hồ sơ</button>
+            <button onClick={() => {setForm(item); setEditingId(item.id); document.getElementById('khu-vuc-len-lich')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}} className="w-full text-left px-2 py-1.5 bg-white hover:bg-blue-50 text-blue-600 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">✏️ Sửa hồ sơ</button>
             <button onClick={() => setSelectedEvent(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-gray-100 text-gray-600 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">🕒 Xem Log</button>
             {canManagePortal && <button onClick={() => handleDelete(item.id, item.caseName)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-red-100 text-red-600 font-bold uppercase text-[9px] rounded border border-red-100 shadow-sm transition-all flex items-center gap-1.5">🗑️ Xóa hồ sơ</button>}
           </>
@@ -2963,13 +2963,13 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                                      <button onClick={() => togglePublish(item)} className={`flex-1 py-2.5 rounded-md text-[9px] font-bold uppercase transition-all shadow-sm ${item.publishedAt ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}>
                                        {item.publishedAt ? "✅ ĐÃ PH" : "📤 PHÁT HÀNH"}
                                      </button>
-                                     <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200 py-2.5 rounded-md text-[9px] font-bold uppercase transition-all shadow-sm">✏️ SỬA</button>
+                                     <button onClick={() => {setForm(item); setEditingId(item.id); document.getElementById('khu-vuc-len-lich')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}} className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200 py-2.5 rounded-md text-[9px] font-bold uppercase transition-all shadow-sm">✏️ SỬA</button>
                                    </div>
                                  )}
                                  
                                  {canEdit && item.status !== 'completed' && (
                                    <div className="mt-4 pt-3 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                                     <button onClick={() => {setForm(item); setEditingId(item.id); window.scrollTo({top:0, behavior:'smooth'})}} className="w-full bg-blue-500/20 hover:bg-blue-500/30 backdrop-blur-md text-gray-900 py-2.5 rounded-md text-[10px] font-medium uppercase transition-all shadow-sm">CẬP NHẬT & SỬA</button>
+                                     <button onClick={() => {setForm(item); setEditingId(item.id); document.getElementById('khu-vuc-len-lich')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}} className="w-full bg-blue-500/20 hover:bg-blue-500/30 backdrop-blur-md text-gray-900 py-2.5 rounded-md text-[10px] font-medium uppercase transition-all shadow-sm">CẬP NHẬT & SỬA</button>
                                    </div>
                                  )}
                                </div>
