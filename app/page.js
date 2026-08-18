@@ -2399,7 +2399,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
 
               <div onClick={() => handleStatCardClick('effective')} className="flex-1 min-w-[120px] bg-teal-50 hover:bg-teal-100 cursor-pointer rounded-xl px-3 py-2 shadow-sm border border-teal-100 flex flex-col justify-between transition-all">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] font-black text-teal-700 uppercase tracking-wider whitespace-nowrap">Hiệu lực</span>
+                  <span className="text-[10px] font-black text-teal-700 uppercase tracking-wider whitespace-nowrap"> Án Hiệu lực</span>
                   <span className="text-teal-500 text-sm">⚖️</span>
                 </div>
                 <p className="text-xl font-black text-teal-600">{effectiveCount}</p>
@@ -2407,7 +2407,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
 
               <div onClick={() => handleStatCardClick('all')} className="flex-1 min-w-[120px] bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-xl px-3 py-2 shadow-sm border border-gray-200 flex flex-col justify-between transition-all">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] font-black text-gray-600 uppercase tracking-wider whitespace-nowrap">Tổng vụ</span>
+                  <span className="text-[10px] font-black text-gray-600 uppercase tracking-wider whitespace-nowrap">Tổng số vụ</span>
                   <span className="text-gray-500 text-sm">📁</span>
                 </div>
                 <p className="text-xl font-black text-gray-700">{schedule.length}</p>
@@ -2711,29 +2711,38 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
       </thead>
 
       <tbody className="divide-y divide-gray-200 bg-white">
-        {processedSchedule.map((item, index) => {
-          const isRowUrgent = item.status === 'pending' && isUrgent(item.datetime);
-          const isForgotten = item.status === 'pending' && 
-                              moment(item.datetime).isBefore(moment().subtract(4, 'hours'));
+        // 1. KHỞI TẠO BỘ ĐẾM THỜI GIAN THỰC (REAL-TIME)
+          const now = moment();
+          const startTime = item.datetime ? moment(item.datetime) : null;
+          const endTime = startTime ? moment(startTime).add(item.duration || 60, 'minutes') : null;
+
+          // 2. CHIA LÀM 3 TRẠNG THÁI ĐỘC QUYỀN (Không cho hiện trùng nhau)
+          const isHappening = item.status === 'pending' && startTime && now.isSameOrAfter(startTime) && now.isBefore(endTime);
+          const isForgotten = item.status === 'pending' && endTime && now.isSameOrAfter(endTime);
+          const isRowUrgent = item.status === 'pending' && startTime && now.isBefore(startTime) && isUrgent(item.datetime);
+
           const overduePublish = isOverduePublish(item);
           const effective = isEffective(item);
 
-          let rowBgClass = isForgotten ? "bg-orange-50 animate-pulse" : 
+          // 3. TỰ ĐỘNG ĐỔI MÀU NỀN THEO TRẠNG THÁI
+          let rowBgClass = isForgotten ? "bg-orange-50" : 
+                           isHappening ? "bg-yellow-50" :
                            isRowUrgent ? "bg-red-50 hover:bg-red-100" : 
                            index % 2 === 0 ? "bg-white hover:bg-blue-50/30" : "bg-slate-50 hover:bg-blue-50/30";
           
           return (
             <tr key={item.id} className={`transition-all ${rowBgClass}`}>
               {/* CỘT 1: LỊCH & CẬP NHẬT */}
-              <td className={`px-2 py-2 w-[15%] align-top text-center border-r border-gray-300 ${isRowUrgent ? 'border-l-4 border-l-red-500' : isForgotten ? 'border-l-4 border-l-orange-500' : ''}`}>
+              <td className={`px-2 py-2 w-[15%] align-top text-center border-r border-gray-300 ${isRowUrgent ? 'border-l-4 border-l-red-500' : isForgotten ? 'border-l-4 border-l-orange-500' : isHappening ? 'border-l-4 border-l-yellow-400' : ''}`}>
                 {item.status === 'suspended' ? (
                   <div className="text-purple-600 font-bold uppercase text-[10px]">⏸ Tạm ngừng</div>
-                  ) : item.status === 'dinh_chi' ? (  /* <--- THÊM DÒNG NÀY ---> */
+                  ) : item.status === 'dinh_chi' ? (  
                   <div className="text-red-600 font-bold uppercase text-[10px]">🛑 ĐÌNH CHỈ</div>
                 ) : (
                   <>
                     <div className="font-bold text-[12px] text-gray-900">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
-                    <div className="text-blue-600 font-bold mt-0.5 text-[11px]">🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</div>
+                    {/* Hiệu ứng nhấp nháy cho giờ khi ĐANG XỬ */}
+                    <div className={`font-bold mt-0.5 text-[11px] ${isHappening ? 'text-yellow-600 animate-pulse' : 'text-blue-600'}`}>🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</div>
                   </>
                 )}
                 <div className="font-bold text-gray-500 uppercase text-[10px] mt-1.5">{item.room || "---"}</div>
@@ -2753,6 +2762,11 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                   {isForgotten && (
                     <span className="bg-orange-600 text-white text-[9px] px-2 py-1 rounded font-black uppercase animate-pulse shadow-sm">
                       ⚠️ QUÊN CẬP NHẬT
+                    </span>
+                  )}
+                  {isHappening && (
+                    <span className="bg-yellow-500 text-yellow-900 text-[9px] px-2 py-1 rounded font-black uppercase animate-pulse shadow-sm">
+                      ⚡ ĐANG XỬ
                     </span>
                   )}
                   {isRowUrgent && (
@@ -2924,7 +2938,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
         )}
 
         <button onClick={() => docTenDuongSu(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-amber-100 text-amber-700 font-bold uppercase text-[9px] rounded border border-amber-200 shadow-sm transition-all flex items-center gap-1.5">
-           📢 Phát thanh gọi tên
+           📢 Gọi tên đương sự
         </button>
         {canEdit && <div className="h-[1px] bg-gray-300 my-0.5 mx-1"></div>}
 
