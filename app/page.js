@@ -1383,6 +1383,7 @@ const handleSendMessage = async () => {
     if (type === 'urgent') { setStatusFilter('pending'); setShowOnlyUrgent(true); }
     if (type === 'overdue_publish') { setStatusFilter('completed'); setShowOnlyUrgent(false); }
     if (type === 'effective') { setStatusFilter('completed'); setShowOnlyUrgent(false); }
+    if (type === 'has_appeal') { setStatusFilter('has_appeal'); setShowOnlyUrgent(false); }
     scrollToTable();
   };
 
@@ -2371,6 +2372,16 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                 <p className="text-xl font-black text-rose-600">{overduePublishCount}</p>
               </div>
 
+              <div onClick={() => handleStatCardClick('has_appeal')} className="flex-1 min-w-[120px] bg-orange-50 hover:bg-orange-100 cursor-pointer rounded-xl px-3 py-2 shadow-sm border border-orange-200 flex flex-col justify-between transition-all">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-black text-orange-800 uppercase tracking-wider whitespace-nowrap">Phúc thẩm</span>
+                  <span className="text-orange-500 text-sm">📜</span>
+                </div>
+                <p className="text-xl font-black text-orange-600">
+                  {schedule.filter(i => i.isKhangCao).length}
+                </p>
+              </div>
+              
               <div onClick={() => handleStatCardClick('effective')} className="flex-1 min-w-[120px] bg-teal-50 hover:bg-teal-100 cursor-pointer rounded-xl px-3 py-2 shadow-sm border border-teal-100 flex flex-col justify-between transition-all">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-[10px] font-black text-teal-700 uppercase tracking-wider whitespace-nowrap">Hiệu lực</span>
