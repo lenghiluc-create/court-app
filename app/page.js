@@ -2711,7 +2711,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
       </thead>
 
       <tbody className="divide-y divide-gray-200 bg-white">
-        // 1. KHỞI TẠO BỘ ĐẾM THỜI GIAN THỰC (REAL-TIME)
+        {processedSchedule.map((item, index) => {
           const now = moment();
           const startTime = item.datetime ? moment(item.datetime) : null;
           const endTime = startTime ? moment(startTime).add(item.duration || 60, 'minutes') : null;
