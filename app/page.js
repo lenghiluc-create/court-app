@@ -1335,6 +1335,7 @@ const handleSendMessage = async () => {
     try {
       await updateDoc(doc(db, "schedule", event.id), { 
         datetime: newDatetime, 
+        daXuatExcel: false,
         updatedAt: moment().toISOString(), 
         updatedBy: user.email 
       });
