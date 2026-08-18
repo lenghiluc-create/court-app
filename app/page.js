@@ -1400,7 +1400,21 @@ const handleSendMessage = async () => {
   };
 
   const isEffective = (item) => {
+    // 1. Án chưa xử xong thì chắc chắn là không có hiệu lực
     if (item.status !== 'completed' || !item.completedAt) return false;
+
+    // 2. NẾU VỤ ÁN CÓ KHÁNG CÁO / KHÁNG NGHỊ
+    if (item.isKhangCao) {
+      // Chỉ khi nào Lãnh đạo/Thư ký đã "Chốt Kết quả Phúc thẩm" thì án mới có hiệu lực
+      if (item.ketQuaPhucTham) {
+         return true; // Án phúc thẩm có hiệu lực ngay khi tuyên
+      } else {
+         // Đang chờ chuyển, hoặc Đã chuyển mà chưa xử phúc thẩm -> KHÔNG có hiệu lực
+         return false; 
+      }
+    }
+
+    // 3. NẾU KHÔNG CÓ KHÁNG CÁO: Đếm đủ 30 ngày (luật định) mới cho có hiệu lực
     const days = moment().startOf('day').diff(moment(item.completedAt).startOf('day'), 'days');
     return days >= 30;
   };
@@ -2381,7 +2395,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                   {schedule.filter(i => i.isKhangCao).length}
                 </p>
               </div>
-              
+
               <div onClick={() => handleStatCardClick('effective')} className="flex-1 min-w-[120px] bg-teal-50 hover:bg-teal-100 cursor-pointer rounded-xl px-3 py-2 shadow-sm border border-teal-100 flex flex-col justify-between transition-all">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-[10px] font-black text-teal-700 uppercase tracking-wider whitespace-nowrap">Hiệu lực</span>
