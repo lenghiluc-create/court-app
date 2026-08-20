@@ -1373,6 +1373,33 @@ const handleSendMessage = async () => {
     showToast(`⚠️ Đã kích hoạt Hoãn/Mở lại. ${oldNote}. Vui lòng CHỌN NGÀY GIỜ MỚI và bấm Cập nhật!`, "success");
   };
 
+  // HÀM MỚI: XỬ LÝ HOÃN ÁN NHƯNG CHƯA CÓ NGÀY XỬ LẠI
+  const handleHoanChuaCoLich = async (item) => {
+    let nextTrialCount = item.trialCount === "Lần 1" ? "Lần 2" : "Mở lại";
+    const oldDate = item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "Chưa có";
+    const oldNote = `(Hoãn từ ngày ${oldDate})`;
+    const newCaseName = item.caseName.includes(oldNote) ? item.caseName : `${item.caseName} ${oldNote}`;
+
+    if (!window.confirm(`⚠️ Bạn có chắc muốn HOÃN vụ án này?\n\nHồ sơ sẽ được cất vào danh sách "Chờ xếp lịch" cho đến khi có ngày xử cụ thể.`)) return;
+
+    try {
+      // Đẩy thẳng lên Firebase: Xóa ngày, đổi trạng thái
+      const { doc, updateDoc } = await import('firebase/firestore');
+      await updateDoc(doc(db, "schedule", item.id), {
+        datetime: "", // Xóa ngày giờ cũ
+        status: "cho_len_lich", // Đẩy về trạng thái chờ
+        trialCount: nextTrialCount,
+        caseName: newCaseName,
+        daXuatExcel: false, // Tẩy não cờ Excel
+        updatedAt: moment().toISOString(),
+        updatedBy: user?.email || "Hệ thống"
+      });
+      showToast("✅ Đã hoãn và cất hồ sơ vào kho Chờ xếp lịch!", "success");
+    } catch (error) {
+      showToast("Lỗi khi hoãn: " + error.message, "error");
+    }
+  };
+
   const scrollToCalendar = () => { if(calendarSectionRef.current) calendarSectionRef.current.scrollIntoView({ behavior: 'smooth' }); };
   const scrollToTable = () => { if(tableSectionRef.current) tableSectionRef.current.scrollIntoView({ behavior: 'smooth' }); };
 
@@ -2468,14 +2495,29 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
   >
     <option value="">--- Chọn vụ án chờ lên lịch ---</option>
     {/* BỘ LỌC ĐÃ ĐƯỢC NÂNG CẤP */}
+    {/* BỘ LỌC ĐÃ ĐƯỢC NÂNG CẤP SẮP XẾP ÁN HOÃN LÊN ĐẦU */}
     {schedule
       .filter(item => 
         item.judge && item.judge.trim() !== "" && 
         item.status !== "cho_phan_an" &&          
         (!item.datetime || item.status === 'cho_len_lich') 
       )
+      .sort((a, b) => {
+        // Ưu tiên 1: Án Hoãn chờ xếp lịch đẩy lên trên cùng
+        const isAHoan = a.status === 'cho_len_lich' ? 1 : 0;
+        const isBHoan = b.status === 'cho_len_lich' ? 1 : 0;
+        if (isAHoan !== isBHoan) {
+          return isBHoan - isAHoan; 
+        }
+        // Ưu tiên 2: Cùng là án Hoãn (hoặc cùng là án Mới), thằng nào vừa cập nhật gần nhất thì xếp trên
+        const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return timeB - timeA;
+      })
       .map(item => (
         <option key={item.id} value={item.id}>
+          {/* Gắn thêm mác Cảnh báo cho án Hoãn để dễ nhìn */}
+          {item.status === 'cho_len_lich' ? "⚠️ [HOÃN CHỜ LỊCH] - " : ""}
           {item.soThuLy ? `Số ${item.soThuLy} | ` : ""} {item.caseName} 
           {/* TỰ ĐỘNG NHẬN DIỆN LOẠI ÁN ĐỂ HIỂN THỊ ĐÚNG VAI VẾ */}
           {item.caseType?.includes("Hình sự") 
@@ -2898,7 +2940,8 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
         {canEdit && (item.status === 'pending' || !item.status) && (
           <>
             <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-green-100 text-green-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">✅ Xét xử xong</button>
-            <button onClick={() => handleReschedule(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-gray-200 text-gray-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">🔄 Hoãn</button>
+            <button onClick={() => handleReschedule(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-blue-50 text-blue-700 font-bold uppercase text-[9px] rounded border border-blue-100 shadow-sm transition-all flex items-center gap-1.5">🔄 Hoãn (Có ngày ngay)</button>
+            <button onClick={() => handleHoanChuaCoLich(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-orange-100 text-orange-700 font-bold uppercase text-[9px] rounded border border-orange-100 shadow-sm transition-all flex items-center gap-1.5">⏳ Hoãn (Chưa có ngày)</button>
             <button onClick={() => toggleStatus(item.id, 'suspended', item.caseName)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-purple-100 text-purple-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">⏸ Tạm ngừng</button>
             <button onClick={() => handleDinhChi(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-red-100 text-red-700 font-bold uppercase text-[9px] rounded border border-red-100 shadow-sm transition-all flex items-center gap-1.5">🛑 Đình chỉ (Rút đơn)</button>
             <button onClick={() => updateCaseStatus(item.id, 'nghi_an')} className="w-full text-left px-2 py-1.5 bg-white hover:bg-indigo-100 text-indigo-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5 animate-pulse">⚖️ Nghị án</button>
