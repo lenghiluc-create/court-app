@@ -1489,7 +1489,7 @@ const handleSendMessage = async () => {
 
       // ⚡ CHỐT CHẶN: Ép buộc án lên lịch phải có ngày giờ và thẩm phán hợp lệ
       const doneStatuses = [
-        'dinh_chi', 'da_xet_xu', 'tam_dinh_chi', 'tam_ngung', 'da_xong', 'hieu_luc', 'completed', 'suspended'
+        'dinh_chi', 'da_xet_xu', 'tam_dinh_chi', 'tam_ngung', 'da_xong', 'hieu_luc', 'completed', 'suspended', 'cho_len_lich', 'nghi_an'
       ];
       const isDone = doneStatuses.includes(item.status);
       
@@ -1504,7 +1504,7 @@ const handleSendMessage = async () => {
     }).sort((a, b) => {
       // ⚡ Đưa hàm sắp xếp ra đúng vị trí
       const doneStatuses = [
-        'dinh_chi', 'da_xet_xu', 'tam_dinh_chi', 'tam_ngung', 'da_xong', 'hieu_luc', 'completed', 'suspended'
+        'dinh_chi', 'da_xet_xu', 'tam_dinh_chi', 'tam_ngung', 'da_xong', 'hieu_luc', 'completed', 'suspended', 'cho_len_lich', 'nghi_an'
       ];
       
       const doneA = doneStatuses.includes(a.status) ? 1 : 0;
