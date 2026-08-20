@@ -2495,39 +2495,56 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
   >
     <option value="">--- Chọn vụ án chờ lên lịch ---</option>
     {/* BỘ LỌC ĐÃ ĐƯỢC NÂNG CẤP */}
-    {/* BỘ LỌC ĐÃ ĐƯỢC NÂNG CẤP SẮP XẾP ÁN HOÃN LÊN ĐẦU */}
+    {/* BỘ LỌC ĐÃ ĐƯỢC NÂNG CẤP: ÉP ÁN HOÃN, NGHỊ ÁN, TẠM NGỪNG LÊN ĐẦU */}
     {schedule
       .filter(item => 
         item.judge && item.judge.trim() !== "" && 
         item.status !== "cho_phan_an" &&          
-        (!item.datetime || item.status === 'cho_len_lich') 
+        // CHO PHÉP HIỂN THỊ: Án chưa có lịch, HOẶC án Hoãn, Nghị án, Tạm ngừng
+        (!item.datetime || ['cho_len_lich', 'nghi_an', 'suspended'].includes(item.status)) 
       )
       .sort((a, b) => {
-        // Ưu tiên 1: Án Hoãn chờ xếp lịch đẩy lên trên cùng
-        const isAHoan = a.status === 'cho_len_lich' ? 1 : 0;
-        const isBHoan = b.status === 'cho_len_lich' ? 1 : 0;
-        if (isAHoan !== isBHoan) {
-          return isBHoan - isAHoan; 
+        // CHẤM ĐIỂM ƯU TIÊN ĐỂ XẾP HẠNG
+        const getPriority = (status) => {
+          if (status === 'cho_len_lich') return 3; // VIP 1: Hoãn chưa có ngày
+          if (status === 'nghi_an') return 2;      // VIP 2: Đang nghị án
+          if (status === 'suspended') return 1;    // VIP 3: Tạm ngừng
+          return 0;                                // Thường dân: Án mới tinh
+        };
+        
+        const priA = getPriority(a.status);
+        const priB = getPriority(b.status);
+        
+        if (priA !== priB) {
+          return priB - priA; // Thằng nào VIP hơn (điểm cao hơn) thì nổi lên trên
         }
-        // Ưu tiên 2: Cùng là án Hoãn (hoặc cùng là án Mới), thằng nào vừa cập nhật gần nhất thì xếp trên
+        
+        // Cùng cấp VIP (hoặc cùng là án mới) thì thằng nào vừa cập nhật gần nhất sẽ nằm trên
         const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
         const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
         return timeB - timeA;
       })
-      .map(item => (
-        <option key={item.id} value={item.id}>
-          {/* Gắn thêm mác Cảnh báo cho án Hoãn để dễ nhìn */}
-          {item.status === 'cho_len_lich' ? "⚠️ [HOÃN CHỜ LỊCH] - " : ""}
-          {item.soThuLy ? `Số ${item.soThuLy} | ` : ""} {item.caseName} 
-          {/* TỰ ĐỘNG NHẬN DIỆN LOẠI ÁN ĐỂ HIỂN THỊ ĐÚNG VAI VẾ */}
-          {item.caseType?.includes("Hình sự") 
-            ? ` - Bị cáo: ${item.defendant || "---"} | Bị hại: ${item.plaintiff || "---"}` 
-            : (item.caseType === "cainghien" || item.caseType?.includes("Cai nghiện") || item.caseType?.includes("Hành chính")) 
-              ? ` - Người bị ĐN: ${item.defendant || "---"} | CQ ĐN: ${item.plaintiff || "---"}` 
-              : ` - NĐ: ${item.plaintiff || "---"} | BĐ: ${item.defendant || "---"}`
-          }
-        </option>
-      ))
+      .map(item => {
+        // GẮN MÁC CẢNH BÁO CHO TỪNG LOẠI VIP
+        let prefix = "";
+        if (item.status === 'cho_len_lich') prefix = "⚠️ [HOÃN CHỜ LỊCH] - ";
+        else if (item.status === 'nghi_an') prefix = "⚖️ [ĐANG NGHỊ ÁN] - ";
+        else if (item.status === 'suspended') prefix = "⏸️ [TẠM NGỪNG] - ";
+
+        return (
+          <option key={item.id} value={item.id}>
+            {prefix}
+            {item.soThuLy ? `Số ${item.soThuLy} | ` : ""} {item.caseName} 
+            {/* TỰ ĐỘNG NHẬN DIỆN LOẠI ÁN ĐỂ HIỂN THỊ ĐÚNG VAI VẾ */}
+            {item.caseType?.includes("Hình sự") 
+              ? ` - Bị cáo: ${item.defendant || "---"} | Bị hại: ${item.plaintiff || "---"}` 
+              : (item.caseType === "cainghien" || item.caseType?.includes("Cai nghiện") || item.caseType?.includes("Hành chính")) 
+                ? ` - Người bị ĐN: ${item.defendant || "---"} | CQ ĐN: ${item.plaintiff || "---"}` 
+                : ` - NĐ: ${item.plaintiff || "---"} | BĐ: ${item.defendant || "---"}`
+            }
+          </option>
+        );
+      })
     }
   </select>
 </div>
