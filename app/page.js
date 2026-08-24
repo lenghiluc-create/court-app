@@ -58,9 +58,11 @@ const DANH_MUC_QUAN_HE = {
     "Khiếu kiện quyết định xử phạt vi phạm hành chính",
     "Khiếu kiện hành vi hành chính"
   ],
-  "Cai nghiện": [
+  "Áp dụng biện pháp xử lý hành chính": [
     "Đề nghị áp dụng biện pháp đưa vào cơ sở cai nghiện bắt buộc",
-    "Đề nghị áp dụng biện pháp đưa vào trường giáo dưỡng"
+    "Đề nghị áp dụng biện pháp đưa vào trường giáo dưỡng",
+    "Đề nghị áp dụng biện pháp đưa vào cơ sở giáo dục bắt buộc",
+    "Xem xét giảm thời hạn, tạm đình chỉ, miễn chấp hành quyết định"
   ]
 };
 const localizer = typeof window !== 'undefined' ? momentLocalizer(moment) : null;
@@ -216,12 +218,13 @@ const getLabelBenBi = (loaiAn) => {
       return 'Bị cáo:';
     case 'cainghien':
     case 'Cai nghiện': 
-    case 'Hành chính':
+    case 'Áp dụng biện pháp xử lý hành chính':
       return 'Người bị đề nghị:';
     case 'Dân sự':
     case 'Hôn nhân & GĐ':
-    case 'Kinh tế':
+    case 'Hành chính':
     case 'Lao động':
+    case 'Kinh tế':
       return 'Bị đơn:';
     default:
       return 'Bị cáo / Bị đơn / Đương sự:';
@@ -233,7 +236,8 @@ const getLabelBenKien = (loaiAn) => {
     case 'Hình sự':
       return 'Bị hại / Người liên quan:';
     case 'cainghien':
-    case 'Cai nghiện':
+    case 'Cai nghiện': 
+    case 'Áp dụng biện pháp xử lý hành chính':
       return 'Cơ quan đề nghị:';
     case 'Dân sự':
     case 'Hôn nhân & GĐ':
@@ -274,7 +278,8 @@ const goiYThamPhan = () => {
         });
       } else {
         await addDoc(collection(db, "schedule"), {
-          soThuLy: phanAnForm.soThuLy || "", // 👈 ĐÃ BỔ SUNG
+          soThuLy: phanAnForm.soThuLy || "", 
+          ngayThuLy: phanAnForm.ngayThuLy || "",// 👈 ĐÃ BỔ SUNG
           quanHePhapLuat: phanAnForm.quanHePhapLuat || "", // 👈 ĐÃ BỔ SUNG
           caseName: phanAnForm.caseName, 
           plaintiff: phanAnForm.plaintiff,
@@ -287,7 +292,7 @@ const goiYThamPhan = () => {
       }
       showToast("✅ Đã lưu hồ sơ vào hàng chờ thành công!", "success");
       // 👈 RESET LẠI TOÀN BỘ Ô NHẬP LIỆU CHO SẠCH
-      setPhanAnForm({ soThuLy: "", caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự", quanHePhapLuat: "" });
+      setPhanAnForm({ soThuLy: "", ngayThuLy: "", caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự", quanHePhapLuat: "" });
       setChoPhanAnId(null);
       // layDuLieuBangTongHop(); 
     } catch (e) { showToast("Lỗi: " + e.message, "error"); }
@@ -377,7 +382,8 @@ const goiYThamPhan = () => {
 
     try {
       const data = {
-        soThuLy: phanAnForm.soThuLy || "", // Đã bổ sung số thụ lý
+        soThuLy: phanAnForm.soThuLy || "",
+        ngayThuLy: phanAnForm.ngayThuLy || "",// Đã bổ sung ngày thụ lý
         caseName: phanAnForm.caseName,
         plaintiff: phanAnForm.plaintiff || "",
         defendant: phanAnForm.defendant || "",
@@ -398,7 +404,7 @@ const goiYThamPhan = () => {
       }
 
       showToast(`⚖️ Đã giao án thành công cho ${targetJudge.name}!`, "success");
-      setPhanAnForm({ soThuLy: "", caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự", quanHePhapLuat: "" });
+      setPhanAnForm({ soThuLy: "", ngayThuLy: "", caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự", quanHePhapLuat: "" });
       setChoPhanAnId(null);
       setManualJudge(null); 
       // layDuLieuBangTongHop();
@@ -1550,7 +1556,7 @@ const handleSendMessage = async () => {
   // THUẬT TOÁN TÍNH MA TRẬN TẢI TRỌNG THẨM PHÁN
   // =========================================================
   const bangMaTranPhanAn = useMemo(() => {
-    const dsLoaiAn = ["Hình sự", "Dân sự", "Hành chính", "Hôn nhân & GĐ", "Kinh tế", "Lao động", "Cai nghiện"];
+    const dsLoaiAn = ["Hình sự", "Dân sự", "Hành chính", "Hôn nhân & GĐ", "Kinh tế", "Lao động", "Áp dụng biện pháp xử lý hành chính"];
     const stats = {};
 
     // 1. Khởi tạo bộ đếm bằng Số án gốc cấu hình
@@ -1674,7 +1680,7 @@ const handleSendMessage = async () => {
       let noidung = "";
       if (item.caseType?.includes("Hình sự")) {
         noidung = `<b>${item.caseName || ""}</b><br/>Bị cáo: ${item.defendant || "---"}<br/>Bị hại/NLQ: ${item.plaintiff || "---"}`;
-      } else if (item.caseType === "cainghien" || item.caseType?.includes("Cai nghiện") || item.caseType?.includes("Hành chính")) {
+      } else if (item.caseType?.includes("xử lý hành chính") || item.caseType?.includes("Cai nghiện") || item.caseType === "cainghien" || item.caseType?.includes("Hành chính")) {
         noidung = `<b>${item.caseName || ""}</b><br/>CQ Đề nghị: ${item.plaintiff || "---"}<br/>Người bị ĐN: ${item.defendant || "---"}`;
       } else {
         noidung = `<b>${item.caseName || ""}</b><br/>NĐ: ${item.plaintiff || "---"}<br/>BĐ: ${item.defendant || "---"}`;
@@ -1904,7 +1910,7 @@ const handleSendMessage = async () => {
     <p><span className="text-red-600 uppercase text-[9px]">Bị cáo:</span> <span className="font-bold text-gray-800">{item.defendant || "---"}</span></p>
     <p><span className="text-gray-500 uppercase text-[9px]">Bị hại / NLQ:</span> <span className="font-bold text-gray-800">{item.plaintiff || "---"}</span></p>
   </div>
-) : (item.caseType === "cainghien" || item.caseType?.includes("Cai nghiện") || item.caseType?.includes("Hành chính")) ? (
+) : (item.caseType?.includes("xử lý hành chính") || item.caseType?.includes("Cai nghiện") || item.caseType === "cainghien" || item.caseType?.includes("Hành chính")) ? (
   <div className="flex gap-4">
     <p><span className="text-teal-600 uppercase text-[9px]">CQ ĐN:</span> <span className="font-bold text-gray-800">{item.plaintiff || "---"}</span></p>
     <p><span className="text-teal-600 uppercase text-[9px]">Người bị ĐN:</span> <span className="font-bold text-gray-800">{item.defendant || "---"}</span></p>
@@ -2122,7 +2128,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
     return acc;
   }, { tongSo: 0 });
 
-  const danhSachCacLoaiAn = ['Hình sự', 'Dân sự', 'Hành chính', 'Hôn nhân & GĐ', 'Kinh tế', 'Lao động', 'Cai nghiện'];
+  const danhSachCacLoaiAn = ["Hình sự", "Dân sự", "Hành chính", "Hôn nhân & GĐ", "Kinh tế", "Lao động", "Áp dụng biện pháp xử lý hành chính"];
   const myCases = schedule.filter(item => 
     item.judge === userFullName || item.clerk === userFullName || item.createdBy === user?.email
   );
@@ -2538,7 +2544,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
             {/* TỰ ĐỘNG NHẬN DIỆN LOẠI ÁN ĐỂ HIỂN THỊ ĐÚNG VAI VẾ */}
             {item.caseType?.includes("Hình sự") 
               ? ` - Bị cáo: ${item.defendant || "---"} | Bị hại: ${item.plaintiff || "---"}` 
-              : (item.caseType === "cainghien" || item.caseType?.includes("Cai nghiện") || item.caseType?.includes("Hành chính")) 
+              : (item.caseType?.includes("xử lý hành chính") || item.caseType?.includes("Cai nghiện") || item.caseType === "cainghien" || item.caseType?.includes("Hành chính")) 
                 ? ` - Người bị ĐN: ${item.defendant || "---"} | CQ ĐN: ${item.plaintiff || "---"}` 
                 : ` - NĐ: ${item.plaintiff || "---"} | BĐ: ${item.defendant || "---"}`
             }
@@ -2611,7 +2617,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
       <option value="Hôn nhân & GĐ">Hôn nhân & GĐ</option>
       <option value="Kinh tế">Kinh tế</option>
       <option value="Lao động">Lao động</option> {/* NÍ THÊM DÒNG NÀY VÀO ĐÂY */}
-      <option value="cainghien">Cai nghiện bắt buộc</option>
+      <option value="Áp dụng biện pháp xử lý hành chính">Áp dụng BP xử lý hành chính</option>
     </select>
   </div>
   <div>
@@ -2878,7 +2884,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
          <span className="text-[11px] font-bold text-gray-800 uppercase">{item.plaintiff || "---"}</span>
       </div>
     </div>
-  ) : (item.caseType === "cainghien" || item.caseType?.includes("Cai nghiện") || item.caseType?.includes("Hành chính")) ? (
+  ) : (item.caseType?.includes("xử lý hành chính") || item.caseType?.includes("Cai nghiện") || item.caseType === "cainghien" || item.caseType?.includes("Hành chính")) ? (
     <div className="space-y-1">
       <div className="flex flex-col">
          <span className="text-teal-600 uppercase text-[9px]">Cơ quan đề nghị:</span>
@@ -3489,20 +3495,29 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
         </div>
       </div>
 
-    {/* 3. KHU VỰC NHẬP LIỆU & AI PHÂN TÍCH */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      
-      {/* CỘT TRÁI: NHẬP LIỆU */}
-     {/* 1. Ô NHẬP SỐ THỤ LÝ VỤ ÁN */}
-        <div>
-          <label className="block text-xs font-black text-gray-500 mb-2 uppercase">Số thụ lý vụ án <span className="text-red-500">*</span></label>
-          <input 
-            type="text"
-            value={phanAnForm.soThuLy || ""}
-            onChange={e => setPhanAnForm({...phanAnForm, soThuLy: e.target.value})}
-            className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:border-indigo-500 outline-none transition-all border-indigo-100 focus:ring-4 focus:ring-indigo-100"
-            placeholder="VD: 123/2026/TLST-DS..."
-          />
+   {/* CỘT TRÁI: NHẬP LIỆU */}
+      <div className="space-y-4">
+        {/* 1. CHIA ĐÔI CỘT: SỐ THỤ LÝ & NGÀY THỤ LÝ */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-black text-gray-500 mb-2 uppercase">Số thụ lý vụ án <span className="text-red-500">*</span></label>
+            <input 
+              type="text"
+              value={phanAnForm.soThuLy || ""}
+              onChange={e => setPhanAnForm({...phanAnForm, soThuLy: e.target.value})}
+              className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:border-indigo-500 outline-none transition-all border-indigo-100 focus:ring-4 focus:ring-indigo-100"
+              placeholder="VD: 123/2026/TLST-DS..."
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-black text-gray-500 mb-2 uppercase">Ngày thụ lý <span className="text-red-500">*</span></label>
+            <input 
+              type="date"
+              value={phanAnForm.ngayThuLy || ""}
+              onChange={e => setPhanAnForm({...phanAnForm, ngayThuLy: e.target.value})}
+              className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:border-indigo-500 outline-none transition-all border-indigo-100 focus:ring-4 focus:ring-indigo-100"
+            />
+          </div>
         </div>
 
         {/* 2. Ô NHẬP TRÍCH YẾU VỤ ÁN */}
@@ -3517,7 +3532,7 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
           />
         </div>
 
-        {/* 3. ĐƯA CHỌN LOẠI ÁN LÊN TRÊN ĐỂ TỰ ĐỘNG NHẢY TÊN ĐƯƠNG SỰ Ở DƯỚI */}
+        {/* 3. ĐƯA CHỌN LOẠI ÁN LÊN TRÊN VÀ ĐỔI TÊN MỚI */}
         <div>
           <label className="block text-xs font-black text-gray-500 mb-2 uppercase">Loại án <span className="text-red-500">*</span></label>
           <select 
@@ -3529,9 +3544,9 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
             <option value="Hình sự">Hình sự</option>
             <option value="Hành chính">Hành chính</option>
             <option value="Lao động">Lao động</option>
-            <option value="Cai nghiện">Cai nghiện</option>
             <option value="Kinh tế">Kinh tế</option>
             <option value="Hôn nhân & GĐ">Hôn nhân & Gia đình</option>
+            <option value="Áp dụng biện pháp xử lý hành chính">Áp dụng BP Xử lý hành chính</option>
           </select>
         </div>
 
@@ -4103,7 +4118,7 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
 <div className="text-[11px] text-gray-500 font-medium">
   {an.caseType?.includes("Hình sự") ? (
     <span><span className="text-red-600">Bị cáo:</span> {an.defendant || "---"} <span className="mx-1">|</span> <span className="text-gray-500">Bị hại:</span> {an.plaintiff || "---"}</span>
-  ) : (an.caseType === "cainghien" || an.caseType?.includes("Cai nghiện") || an.caseType?.includes("Hành chính")) ? (
+  ) : (an.caseType?.includes("xử lý hành chính") || an.caseType === "cainghien" || an.caseType?.includes("Cai nghiện") || an.caseType?.includes("Hành chính")) ? (
     <span><span className="text-teal-600">Người bị ĐN:</span> {an.defendant || "---"} <span className="mx-1">|</span> <span className="text-gray-500">CQ ĐN:</span> {an.plaintiff || "---"}</span>
   ) : (
     <span><span className="text-gray-500">NĐ:</span> {an.plaintiff || "---"} <span className="mx-1">|</span> <span className="text-gray-500">BĐ:</span> {an.defendant || "---"}</span>
@@ -4716,7 +4731,7 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
   <>
     <span className="opacity-70">Bị cáo:</span> {item.plaintiff || item.defendant || "---"}
   </>
-) : (item.caseType === "cainghien" || item.caseType?.includes("Cai nghiện") || item.caseType?.includes("Hành chính")) ? (
+) : (item.caseType?.includes("xử lý hành chính") || item.caseType?.includes("Cai nghiện") || item.caseType === "cainghien" || item.caseType?.includes("Hành chính")) ? (
   <>
     <span className="opacity-70">Cơ quan ĐN:</span> {item.plaintiff || "---"} 
     <span className="mx-2 opacity-50">|</span> 
