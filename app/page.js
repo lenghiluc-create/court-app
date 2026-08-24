@@ -4072,13 +4072,29 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
             <th className="border-b border-teal-200 p-3 font-bold w-1/3">Số thụ lý / Trích yếu</th>
             <th className="border-b border-teal-200 p-3 font-bold">Loại án</th>
             <th className="border-b border-teal-200 p-3 font-bold">Thẩm phán nhận</th>
+            {/* ⚡ CỘT NGÀY THỤ LÝ MỚI THÊM */}
+            <th className="border-b border-teal-200 p-3 font-bold text-center">Ngày thụ lý</th>
             <th className="border-b border-teal-200 p-3 font-bold text-center">Ngày phân</th>
             <th className="border-b border-teal-200 p-3 font-bold text-center">Trạng thái</th>
           </tr>
         </thead>
         <tbody>
           {danhSachAnPhanTuDong && danhSachAnPhanTuDong.length > 0 ? (
-            danhSachAnPhanTuDong.map((an, index) => (
+            danhSachAnPhanTuDong.map((an, index) => {
+              
+              // ⚡ BỘ DỊCH NGÔN NGỮ TRẠNG THÁI TỪ TIẾNG ANH (HỆ THỐNG) SANG TIẾNG VIỆT
+              let statusText = an.status;
+              let statusColor = "bg-gray-100 text-gray-800"; // Màu mặc định
+
+              if (an.status === "pending") { statusText = "Đang giải quyết"; statusColor = "bg-yellow-100 text-yellow-800"; }
+              else if (an.status === "completed" || an.status === "done") { statusText = "Đã giải quyết"; statusColor = "bg-green-100 text-green-800"; }
+              else if (an.status === "cho_len_lich") { statusText = "Chờ xếp lịch"; statusColor = "bg-orange-100 text-orange-800"; }
+              else if (an.status === "cho_phan_an") { statusText = "Chờ phân án"; statusColor = "bg-slate-100 text-slate-800"; }
+              else if (an.status === "nghi_an") { statusText = "Đang nghị án"; statusColor = "bg-purple-100 text-purple-800"; }
+              else if (an.status === "suspended") { statusText = "Tạm ngừng"; statusColor = "bg-pink-100 text-pink-800"; }
+              else if (an.status === "dinh_chi") { statusText = "Đình chỉ"; statusColor = "bg-red-100 text-red-800"; }
+
+              return (
               <tr key={an.id} className="hover:bg-gray-50 transition-colors border-b border-gray-100 text-[14px]">
                 <td className="p-3 text-center font-medium text-gray-600 align-top">{index + 1}</td>
                 
@@ -4115,32 +4131,41 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
                     </div>
                   )}
                   <div className="text-gray-800 text-sm font-bold mb-1 leading-tight">{an.caseName}</div>
-<div className="text-[11px] text-gray-500 font-medium">
-  {an.caseType?.includes("Hình sự") ? (
-    <span><span className="text-red-600">Bị cáo:</span> {an.defendant || "---"} <span className="mx-1">|</span> <span className="text-gray-500">Bị hại:</span> {an.plaintiff || "---"}</span>
-  ) : (an.caseType?.includes("xử lý hành chính") || an.caseType === "cainghien" || an.caseType?.includes("Cai nghiện") || an.caseType?.includes("Hành chính")) ? (
-    <span><span className="text-teal-600">Người bị ĐN:</span> {an.defendant || "---"} <span className="mx-1">|</span> <span className="text-gray-500">CQ ĐN:</span> {an.plaintiff || "---"}</span>
-  ) : (
-    <span><span className="text-gray-500">NĐ:</span> {an.plaintiff || "---"} <span className="mx-1">|</span> <span className="text-gray-500">BĐ:</span> {an.defendant || "---"}</span>
-  )}
-</div>
+                  <div className="text-[11px] text-gray-500 font-medium">
+                    {an.caseType?.includes("Hình sự") ? (
+                      <span><span className="text-red-600">Bị cáo:</span> {an.defendant || "---"} <span className="mx-1">|</span> <span className="text-gray-500">Bị hại:</span> {an.plaintiff || "---"}</span>
+                    ) : (an.caseType === "cainghien" || an.caseType?.includes("Cai nghiện") || an.caseType?.includes("xử lý hành chính") || an.caseType?.includes("Hành chính")) ? (
+                      <span><span className="text-teal-600">Người bị ĐN:</span> {an.defendant || "---"} <span className="mx-1">|</span> <span className="text-gray-500">CQ ĐN:</span> {an.plaintiff || "---"}</span>
+                    ) : (
+                      <span><span className="text-gray-500">NĐ:</span> {an.plaintiff || "---"} <span className="mx-1">|</span> <span className="text-gray-500">BĐ:</span> {an.defendant || "---"}</span>
+                    )}
+                  </div>
                 </td>
 
                 <td className="p-3 font-medium text-gray-700 align-top">{an.caseType}</td>
                 <td className="p-3 font-bold text-red-700 align-top">{an.judge}</td>
+                
+                {/* ⚡ CỘT NGÀY THỤ LÝ ⚡ */}
+                <td className="p-3 text-center text-gray-500 align-top font-bold">
+                  {an.ngayThuLy ? moment(an.ngayThuLy).format("DD/MM/YYYY") : "---"}
+                </td>
+
+                {/* CỘT NGÀY PHÂN TỰ ĐỘNG */}
                 <td className="p-3 text-center text-gray-500 align-top">
                   {an.updatedAt ? moment(an.updatedAt).format("DD/MM/YYYY HH:mm") : "---"}
                 </td>
+                
+                {/* ⚡ CỘT TRẠNG THÁI ĐÃ VIỆT HÓA ⚡ */}
                 <td className="p-3 text-center align-top">
-                  <span className="bg-yellow-100 text-yellow-800 py-1 px-2 rounded-md text-xs font-bold whitespace-nowrap">
-                    {an.status === "pending" ? "Đang giải quyết" : (an.status === "cho_phan_an" ? "Chờ phân án" : an.status)}
+                  <span className={`${statusColor} py-1 px-2 rounded-md text-xs font-bold whitespace-nowrap`}>
+                    {statusText}
                   </span>
                 </td>
               </tr>
-            ))
+            )})
           ) : (
             <tr>
-              <td colSpan="6" className="text-center p-8 text-gray-500 font-medium italic">
+              <td colSpan="7" className="text-center p-8 text-gray-500 font-medium italic">
                 Không tìm thấy vụ án nào trong khoảng thời gian này.
               </td>
             </tr>
