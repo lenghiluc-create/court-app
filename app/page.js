@@ -1731,6 +1731,84 @@ const handleSendMessage = async () => {
     showToast(`Đã xuất báo cáo ${dataToExport.length} vụ và đánh dấu vào hệ thống!`, "success");
   };
 
+  // =========================================================
+  // 📊 HÀM XUẤT EXCEL TAB: GIÁM SÁT PHÂN ÁN TỰ ĐỘNG
+  // =========================================================
+  const handleExportGiamSat = () => {
+    if (!danhSachAnPhanTuDong || danhSachAnPhanTuDong.length === 0) {
+      return showToast("Không có dữ liệu để xuất!", "error");
+    }
+
+    let tableHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head><meta charset="utf-8" /><style>table { border-collapse: collapse; width: 100%; font-family: 'Times New Roman', Times, serif; font-size: 11pt; } td, th { border: .5pt solid windowtext; padding: 6px; vertical-align: top; } .text-center { text-align: center; } .font-bold { font-weight: bold; }</style></head>
+    <body>
+      <table>
+        <tr><td colspan="8" class="text-center font-bold" style="font-size: 14pt; color: #0f766e;">DANH SÁCH GIÁM SÁT PHÂN ÁN TỰ ĐỘNG</td></tr>
+        <tr><td colspan="8" class="text-center italic">Thời gian: ${thangLoc ? `Tháng ${thangLoc.split('-').reverse().join('/')}` : "Tất cả các tháng"}</td></tr>
+        <tr><td colspan="8"></td></tr>
+        <tr>
+          <th class="font-bold text-center" style="background-color: #ccfbf1; width: 50px;">STT</th>
+          <th class="font-bold text-center" style="background-color: #ccfbf1; width: 350px;">SỐ THỤ LÝ / TRÍCH YẾU / ĐƯƠNG SỰ</th>
+          <th class="font-bold text-center" style="background-color: #ccfbf1; width: 150px;">LOẠI ÁN</th>
+          <th class="font-bold text-center" style="background-color: #ccfbf1; width: 150px;">THẨM PHÁN NHẬN</th>
+          <th class="font-bold text-center" style="background-color: #ccfbf1; width: 120px;">PHƯƠNG THỨC</th>
+          <th class="font-bold text-center" style="background-color: #ccfbf1; width: 120px;">NGÀY THỤ LÝ</th>
+          <th class="font-bold text-center" style="background-color: #ccfbf1; width: 120px;">NGÀY PHÂN</th>
+          <th class="font-bold text-center" style="background-color: #ccfbf1; width: 120px;">TRẠNG THÁI</th>
+        </tr>
+    `;
+
+    danhSachAnPhanTuDong.forEach((an, index) => {
+      // 1. Dịch trạng thái
+      let statusText = an.status;
+      if (an.status === "pending") statusText = "Đang giải quyết";
+      else if (an.status === "completed" || an.status === "done") statusText = "Đã giải quyết";
+      else if (an.status === "cho_len_lich") statusText = "Chờ xếp lịch";
+      else if (an.status === "cho_phan_an") statusText = "Chờ phân án";
+      else if (an.status === "nghi_an") statusText = "Đang nghị án";
+      else if (an.status === "suspended") statusText = "Tạm ngừng";
+      else if (an.status === "dinh_chi") statusText = "Đình chỉ";
+
+      // 2. Gom thông tin đương sự
+      let duongSu = "";
+      if (an.caseType?.includes("Hình sự")) {
+        duongSu = `Bị cáo: ${an.defendant || "---"} | Bị hại: ${an.plaintiff || "---"}`;
+      } else if (an.caseType === "cainghien" || an.caseType?.includes("Cai nghiện") || an.caseType?.includes("xử lý hành chính") || an.caseType?.includes("Hành chính")) {
+        duongSu = `Người bị ĐN: ${an.defendant || "---"} | CQ ĐN: ${an.plaintiff || "---"}`;
+      } else {
+        duongSu = `NĐ: ${an.plaintiff || "---"} | BĐ: ${an.defendant || "---"}`;
+      }
+
+      // 3. Phân biệt AI hay Chỉ định
+      const phuongThucStr = an.isManual ? "Chỉ định thủ công" : "Hệ thống ngẫu nhiên";
+      const phuongThucColor = an.isManual ? "#dc2626" : "#059669";
+
+      tableHtml += `
+        <tr>
+          <td class="text-center">${index + 1}</td>
+          <td><b style="color: #1d4ed8;">${an.soThuLy || "Chưa có STL"}</b><br/><b>${an.caseName}</b><br/><i>${duongSu}</i></td>
+          <td class="text-center">${an.caseType}</td>
+          <td class="font-bold text-center" style="color: #b91c1c;">${an.judge}</td>
+          <td class="font-bold text-center" style="color: ${phuongThucColor}; font-style: italic;">${phuongThucStr}</td>
+          <td class="text-center" style="mso-number-format:'\\@';">${an.ngayThuLy ? moment(an.ngayThuLy).format("DD/MM/YYYY") : "---"}</td>
+          <td class="text-center">${an.updatedAt ? moment(an.updatedAt).format("DD/MM/YYYY HH:mm") : "---"}</td>
+          <td class="text-center font-bold">${statusText}</td>
+        </tr>
+      `;
+    });
+
+    tableHtml += `</table></body></html>`;
+
+    const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Giam_Sat_Phan_An_${thangLoc ? thangLoc : 'ToanBo'}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showToast("Đã xuất danh sách thành công!", "success");
+  };
   const calendarEvents = useMemo(() => {
     return schedule.filter(i => i.datetime && i.status !== 'suspended').map(i => ({ 
       ...i, title: `${i.status === 'completed' ? '✅ ' : ''}[${i.room}] ${i.caseName || 'Chưa có tên'}`, start: new Date(i.datetime), end: new Date(new Date(i.datetime).getTime() + (i.duration || 60) * 60000) 
@@ -4062,7 +4140,7 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
 {activeTab === 'giam_sat' && (
   <div className="animate-fadeIn mt-4 bg-white p-6 rounded-xl shadow-md border border-gray-100">
     
-    {/* HEADER CÓ THÊM BỘ LỌC THÁNG */}
+    {/* HEADER CÓ THÊM BỘ LỌC THÁNG VÀ NÚT XUẤT EXCEL */}
     <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
       <h2 className="text-xl font-bold text-teal-800 uppercase flex items-center gap-2">
         🤖 Danh sách án phân tự động 
@@ -4071,22 +4149,40 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
         </span>
       </h2>
 
-      <div className="flex items-center gap-2">
-        <label className="text-sm font-semibold text-gray-600">Lọc theo tháng:</label>
-        <input 
-          type="month" 
-          value={thangLoc}
-          onChange={(e) => setThangLoc(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-        />
-        {thangLoc && (
-          <button 
-            onClick={() => setThangLoc("")} 
-            className="text-xs text-red-500 hover:text-red-700 font-medium underline"
-          >
-            Bỏ lọc
-          </button>
-        )}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-semibold text-gray-600">Lọc theo tháng:</label>
+          <input 
+            type="month" 
+            value={thangLoc}
+            onChange={(e) => setThangLoc(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm"
+          />
+          {thangLoc && (
+            <button 
+              onClick={() => setThangLoc("")} 
+              className="text-xs text-red-500 hover:text-red-700 font-medium underline"
+            >
+              Bỏ lọc
+            </button>
+          )}
+        </div>
+
+        {/* ⚡ NÚT XUẤT EXCEL NÈ NÍ */}
+        <button 
+          onClick={handleExportGiamSat}
+          className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg font-bold text-xs uppercase shadow-md transition-all active:scale-95 border border-green-700"
+          title="Xuất Excel danh sách đang hiển thị"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="8" y1="13" x2="16" y2="13"></line>
+            <line x1="8" y1="17" x2="16" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          XUẤT EXCEL
+        </button>
       </div>
     </div>
 
@@ -4098,7 +4194,9 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
             <th className="border-b border-teal-200 p-3 font-bold w-1/3">Số thụ lý / Trích yếu</th>
             <th className="border-b border-teal-200 p-3 font-bold">Loại án</th>
             <th className="border-b border-teal-200 p-3 font-bold">Thẩm phán nhận</th>
-            {/* ⚡ CỘT NGÀY THỤ LÝ MỚI THÊM */}
+            {/* ⚡ CỘT PHƯƠNG THỨC ⚡ */}
+            <th className="border-b border-teal-200 p-3 font-bold text-center">Phương thức</th>
+            {/* ⚡ CỘT NGÀY THỤ LÝ ⚡ */}
             <th className="border-b border-teal-200 p-3 font-bold text-center">Ngày thụ lý</th>
             <th className="border-b border-teal-200 p-3 font-bold text-center">Ngày phân</th>
             <th className="border-b border-teal-200 p-3 font-bold text-center">Trạng thái</th>
@@ -4108,9 +4206,9 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
           {danhSachAnPhanTuDong && danhSachAnPhanTuDong.length > 0 ? (
             danhSachAnPhanTuDong.map((an, index) => {
               
-              // ⚡ BỘ DỊCH NGÔN NGỮ TRẠNG THÁI TỪ TIẾNG ANH (HỆ THỐNG) SANG TIẾNG VIỆT
+              // DỊCH TRẠNG THÁI SANG TIẾNG VIỆT
               let statusText = an.status;
-              let statusColor = "bg-gray-100 text-gray-800"; // Màu mặc định
+              let statusColor = "bg-gray-100 text-gray-800"; 
 
               if (an.status === "pending") { statusText = "Đang giải quyết"; statusColor = "bg-yellow-100 text-yellow-800"; }
               else if (an.status === "completed" || an.status === "done") { statusText = "Đã giải quyết"; statusColor = "bg-green-100 text-green-800"; }
@@ -4124,7 +4222,6 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
               <tr key={an.id} className="hover:bg-gray-50 transition-colors border-b border-gray-100 text-[14px]">
                 <td className="p-3 text-center font-medium text-gray-600 align-top">{index + 1}</td>
                 
-                {/* CỘT SỐ THỤ LÝ (CÓ TÍNH NĂNG CHỈNH SỬA) */}
                 <td className="p-3 align-top">
                   {editingSoThuLy === an.id ? (
                     <div className="flex items-center gap-2 mb-1">
@@ -4170,20 +4267,25 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
 
                 <td className="p-3 font-medium text-gray-700 align-top">{an.caseType}</td>
                 <td className="p-3 font-bold text-red-700 align-top">{an.judge}</td>
+
+                {/* ⚡ CỘT PHƯƠNG THỨC ⚡ */}
+                <td className="p-3 text-center align-top">
+                  <span className={`px-2 py-1.5 rounded-md text-[10px] font-black uppercase border shadow-sm whitespace-nowrap ${an.isManual ? 'bg-red-50 text-red-600 border-red-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200'}`}>
+                    {an.isManual ? "✍️ Chỉ định" : "🎲 Ngẫu nhiên"}
+                  </span>
+                </td>
                 
                 {/* ⚡ CỘT NGÀY THỤ LÝ ⚡ */}
                 <td className="p-3 text-center text-gray-500 align-top font-bold">
                   {an.ngayThuLy ? moment(an.ngayThuLy).format("DD/MM/YYYY") : "---"}
                 </td>
 
-                {/* CỘT NGÀY PHÂN TỰ ĐỘNG */}
                 <td className="p-3 text-center text-gray-500 align-top">
                   {an.updatedAt ? moment(an.updatedAt).format("DD/MM/YYYY HH:mm") : "---"}
                 </td>
                 
-                {/* ⚡ CỘT TRẠNG THÁI ĐÃ VIỆT HÓA ⚡ */}
                 <td className="p-3 text-center align-top">
-                  <span className={`${statusColor} py-1 px-2 rounded-md text-xs font-bold whitespace-nowrap`}>
+                  <span className={`${statusColor} py-1 px-2 rounded-md text-xs font-bold whitespace-nowrap border shadow-sm`}>
                     {statusText}
                   </span>
                 </td>
@@ -4191,7 +4293,8 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
             )})
           ) : (
             <tr>
-              <td colSpan="7" className="text-center p-8 text-gray-500 font-medium italic">
+              {/* Đã tăng colSpan lên 8 cho khớp số lượng cột */}
+              <td colSpan="8" className="text-center p-8 text-gray-500 font-medium italic">
                 Không tìm thấy vụ án nào trong khoảng thời gian này.
               </td>
             </tr>
