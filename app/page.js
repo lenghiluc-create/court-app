@@ -1508,21 +1508,34 @@ const handleSendMessage = async () => {
       return matchSearch && matchStatus && matchDate && matchCreator && matchJudge && matchClerk && matchUrgent && hasDateTime && hasValidJudge;
       
     }).sort((a, b) => {
-      // ⚡ Đưa hàm sắp xếp ra đúng vị trí
-      const doneStatuses = [
-        'dinh_chi', 'da_xet_xu', 'tam_dinh_chi', 'tam_ngung', 'da_xong', 'hieu_luc', 'completed', 'suspended', 'cho_len_lich', 'nghi_an'
-      ];
-      
-      const doneA = doneStatuses.includes(a.status) ? 1 : 0;
-      const doneB = doneStatuses.includes(b.status) ? 1 : 0;
+          // 1. CHẤM ĐIỂM ƯU TIÊN HIỂN THỊ TRÊN BẢNG
+          const getPriority = (item) => {
+            // VIP 1: Mấy vụ đang dang dở cần theo dõi sát (Cho nổi lên đầu danh sách)
+            if (['cho_len_lich', 'nghi_an', 'suspended'].includes(item.status)) return 1;
+            // VIP 2: Án đang chờ xử lý bình thường
+            if (item.status === 'pending') return 2;
+            // VIP 3: Án đã giải quyết xong, đình chỉ (Đẩy xuống cuối cùng)
+            return 3;
+          };
 
-      if (doneA !== doneB) return doneA - doneB; 
+          const priA = getPriority(a);
+          const priB = getPriority(b);
 
-      const dateA = a.datetime ? new Date(a.datetime).getTime() : 0;
-      const dateB = b.datetime ? new Date(b.datetime).getTime() : 0;
-      
-      return dateA - dateB; 
-    });
+          if (priA !== priB) return priA - priB; // Thằng nào số nhỏ hơn (VIP hơn) thì nổi lên trên
+
+          // 2. NẾU CÙNG NHÓM VIP (Ví dụ cùng là nhóm Hoãn/Nghị án)
+          if (priA === 1) {
+              // Nhóm VIP 1: Sắp xếp theo cập nhật mới nhất (Vụ nào mới bị hoãn thì nằm trên cùng)
+              const updateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+              const updateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+              return updateB - updateA; 
+          }
+
+          // 3. NHÓM BÌNH THƯỜNG: Xếp theo ngày xử tăng dần (Xử trước hiện trước)
+          const dateA = a.datetime ? new Date(a.datetime).getTime() : Infinity;
+          const dateB = b.datetime ? new Date(b.datetime).getTime() : Infinity;
+          return dateA - dateB; 
+        });
   }, [schedule, searchQuery, statusFilter, creatorFilter, judgeFilter, clerkFilter, showOnlyUrgent, startDate, endDate, dateFilterType]);
   
   // THUẬT TOÁN ĐÁNH GIÁ CHẤT LƯỢNG XÉT XỬ (ĐÃ NÂNG CẤP LỌC THEO THÁNG)
@@ -2789,28 +2802,41 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
           const overduePublish = isOverduePublish(item);
           const effective = isEffective(item);
 
-          // 3. TỰ ĐỘNG ĐỔI MÀU NỀN THEO TRẠNG THÁI
+          // 3. TỰ ĐỘNG ĐỔI MÀU NỀN THEO TRẠNG THÁI ĐỂ VIP THẬT SỰ NỔI BẬT
           let rowBgClass = isForgotten ? "bg-orange-50" : 
                            isHappening ? "bg-yellow-50" :
                            isRowUrgent ? "bg-red-50 hover:bg-red-100" : 
+                           item.status === 'cho_len_lich' ? "bg-amber-50 hover:bg-amber-100" :
+                           item.status === 'nghi_an' ? "bg-indigo-50 hover:bg-indigo-100" :
+                           item.status === 'suspended' ? "bg-purple-50 hover:bg-purple-100" :
                            index % 2 === 0 ? "bg-white hover:bg-blue-50/30" : "bg-slate-50 hover:bg-blue-50/30";
           
           return (
             <tr key={item.id} className={`transition-all ${rowBgClass}`}>
+              
+              {/* ============================================================== */}
               {/* CỘT 1: LỊCH & CẬP NHẬT */}
               <td className={`px-2 py-2 w-[15%] align-top text-center border-r border-gray-300 ${isRowUrgent ? 'border-l-4 border-l-red-500' : isForgotten ? 'border-l-4 border-l-orange-500' : isHappening ? 'border-l-4 border-l-yellow-400' : ''}`}>
+                
                 {item.status === 'suspended' ? (
-                  <div className="text-purple-600 font-bold uppercase text-[10px]">⏸ Tạm ngừng</div>
-                  ) : item.status === 'dinh_chi' ? (  
-                  <div className="text-red-600 font-bold uppercase text-[10px]">🛑 ĐÌNH CHỈ</div>
+                  <div className="text-purple-600 font-bold uppercase text-[10px] mt-1 mb-1">⏸ TẠM NGỪNG</div>
+                ) : item.status === 'dinh_chi' ? (  
+                  <div className="text-red-600 font-bold uppercase text-[10px] mt-1 mb-1">🛑 ĐÌNH CHỈ</div>
+                ) : item.status === 'cho_len_lich' ? (
+                  <div className="text-orange-600 font-bold uppercase text-[10px] mt-1 mb-1 animate-pulse">⚠️ CHỜ XẾP LỊCH</div>
+                ) : item.status === 'nghi_an' ? (
+                  <div className="text-indigo-600 font-bold uppercase text-[10px] mt-1 mb-1 animate-pulse">⚖️ NGHỊ ÁN</div>
                 ) : (
                   <>
                     <div className="font-bold text-[12px] text-gray-900">{item.datetime ? moment(item.datetime).format("DD/MM/YYYY") : "---"}</div>
-                    {/* Hiệu ứng nhấp nháy cho giờ khi ĐANG XỬ */}
                     <div className={`font-bold mt-0.5 text-[11px] ${isHappening ? 'text-yellow-600 animate-pulse' : 'text-blue-600'}`}>🕒 {item.datetime ? moment(item.datetime).format("HH:mm") : "---"}</div>
                   </>
                 )}
-                <div className="font-bold text-gray-500 uppercase text-[10px] mt-1.5">{item.room || "---"}</div>
+                
+                {/* Ẩn chữ phòng xử nếu là án Chưa có lịch */}
+                {item.status !== 'cho_len_lich' && (
+                  <div className="font-bold text-gray-500 uppercase text-[10px] mt-1.5">{item.room || "---"}</div>
+                )}
                 
                 <div className="border-t border-gray-200 border-dashed pt-1 mt-1.5 text-[9px] text-gray-400 italic">
                   Nhập: {item.createdBy ? item.createdBy.split('@')[0] : "---"}
