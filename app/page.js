@@ -4672,9 +4672,15 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
             <div>
               <p className="text-xs text-gray-500 uppercase mb-1">Thông tin đương sự:</p>
               {selectedEvent.caseType?.includes("Hình sự") ? (
-                <p className="text-base text-red-700 font-black">
-                  Bị cáo: {selectedEvent.plaintiff || selectedEvent.defendant || "---"}
-                </p>
+                <div className="space-y-1">
+                  <p className="text-base text-red-700 font-black">Bị cáo: {selectedEvent.defendant || "---"}</p>
+                  <p className="text-sm font-black text-gray-800">Bị hại / NLQ: {selectedEvent.plaintiff || "---"}</p>
+                </div>
+              ) : (selectedEvent.caseType?.includes("xử lý hành chính") || selectedEvent.caseType?.includes("Cai nghiện") || selectedEvent.caseType === "cainghien" || selectedEvent.caseType?.includes("Hành chính")) ? (
+                <div className="space-y-1">
+                  <p className="text-base text-teal-700 font-black">Người bị ĐN: {selectedEvent.defendant || "---"}</p>
+                  <p className="text-sm font-black text-gray-800">CQ ĐN: {selectedEvent.plaintiff || "---"}</p>
+                </div>
               ) : (
                 <div className="space-y-1">
                   <p className="text-sm font-black text-gray-800">NĐ: {selectedEvent.plaintiff || "---"}</p>
