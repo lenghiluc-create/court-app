@@ -4268,11 +4268,32 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
                 <td className="p-3 font-medium text-gray-700 align-top">{an.caseType}</td>
                 <td className="p-3 font-bold text-red-700 align-top">{an.judge}</td>
 
-                {/* ⚡ CỘT PHƯƠNG THỨC ⚡ */}
+                {/* ⚡ CỘT PHƯƠNG THỨC (CÓ THỂ ĐIỀU CHỈNH BẰNG TAY) ⚡ */}
                 <td className="p-3 text-center align-top">
-                  <span className={`px-2 py-1.5 rounded-md text-[10px] font-black uppercase border shadow-sm whitespace-nowrap ${an.isManual ? 'bg-red-50 text-red-600 border-red-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200'}`}>
-                    {an.isManual ? "✍️ Chỉ định" : "🎲 Ngẫu nhiên"}
-                  </span>
+                  <select
+                    value={an.isManual ? "true" : "false"}
+                    onChange={async (e) => {
+                      const isManualValue = e.target.value === "true";
+                      try {
+                        const { doc, updateDoc } = await import('firebase/firestore');
+                        await updateDoc(doc(db, "schedule", an.id), { 
+                          isManual: isManualValue,
+                          updatedAt: moment().toISOString(),
+                          updatedBy: user?.email || "Hệ thống"
+                        });
+                        showToast("✅ Đã cập nhật phương thức phân án!", "success");
+                      } catch (error) {
+                        console.error("Lỗi cập nhật:", error);
+                        alert("Lỗi cập nhật phương thức!");
+                      }
+                    }}
+                    className={`px-1 py-1.5 rounded-md text-[10px] font-black uppercase border shadow-sm outline-none cursor-pointer transition-all w-full min-w-[105px] ${an.isManual ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'}`}
+                    style={{ textAlignLast: "center" }}
+                    title="Bấm để thay đổi phương thức"
+                  >
+                    <option value="false" className="font-bold text-emerald-700 bg-white">🎲 Ngẫu nhiên</option>
+                    <option value="true" className="font-bold text-red-700 bg-white">✍️ Chỉ định</option>
+                  </select>
                 </td>
                 
                 {/* ⚡ CỘT NGÀY THỤ LÝ ⚡ */}
