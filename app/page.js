@@ -2663,8 +2663,25 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                     <div className="flex gap-4 w-full">
                       <input type="date" value={form.datetime ? form.datetime.split('T')[0] : ""} onChange={e => { const time = form.datetime && form.datetime.includes('T') ? form.datetime.split('T')[1] : '07:30'; setForm({...form, datetime: `${e.target.value}T${time}`}); }} className="w-[65%] border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 text-[15px] font-medium" />
                       <select value={form.datetime && form.datetime.includes('T') ? form.datetime.split('T')[1] : "07:30"} onChange={e => { const date = form.datetime ? form.datetime.split('T')[0] : moment().format('YYYY-MM-DD'); setForm({...form, datetime: `${date}T${e.target.value}`}); }} className="w-[35%] border border-gray-300 rounded-md px-4 py-3 bg-white outline-none focus:border-blue-500 text-[15px] font-medium">
-                        <option value="07:30">07:30</option><option value="08:00">08:00</option><option value="08:30">08:30</option><option value="09:00">09:00</option><option value="09:30">09:30</option><option value="10:00">10:00</option><option value="10:30">10:30</option><option value="11:00">11:00</option><option value="13:30">13:30</option><option value="14:00">14:00</option><option value="14:30">14:30</option><option value="15:00">15:00</option><option value="15:30">15:30</option><option value="16:00">16:00</option><option value="16:30">16:30</option><option value="17:00">17:00</option>
-                      </select>
+  <option value="07:00">07:00</option>
+  <option value="07:30">07:30</option>
+  <option value="08:00">08:00</option>
+  <option value="08:30">08:30</option>
+  <option value="09:00">09:00</option>
+  <option value="09:30">09:30</option>
+  <option value="10:00">10:00</option>
+  <option value="10:30">10:30</option>
+  <option value="11:00">11:00</option>
+  <option value="13:00">13:00</option>
+  <option value="13:30">13:30</option>
+  <option value="14:00">14:00</option>
+  <option value="14:30">14:30</option>
+  <option value="15:00">15:00</option>
+  <option value="15:30">15:30</option>
+  <option value="16:00">16:00</option>
+  <option value="16:30">16:30</option>
+  <option value="17:00">17:00</option>
+</select>
                     </div>
                   </div>
                   <div>
@@ -5432,10 +5449,9 @@ function QuanLyThamPhan({ db, showToast }) {
       const data = {
         name,
         role,
-        weight: parseFloat(weight) / 100, // Đổi % ra số thập phân cho AI tính toán (vd: 60 -> 0.6)
+        weight: parseFloat(weight) / 100,
         tonCuChiTiet,
-        tonCu: Number(tonCu),
-        daGiaiQuyet: Number(daGiaiQuyet),
+        tonCu: tongTonCu, // ⚡ Tự động lấy số tổng từ các ô chi tiết bên dưới
         updatedAt: new Date().toISOString()
       };
 
@@ -5475,56 +5491,35 @@ function QuanLyThamPhan({ db, showToast }) {
       
       <div className={`mb-8 p-6 rounded-xl border shadow-inner transition-all ${editingJudgeId ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-100'}`}>
         
-        {/* THÊM CỘT NHẬP % ĐỊNH MỨC VÀO ĐÂY */}
-       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-  {/* Ô 1: Tên Thẩm phán */}
-  <div>
-    <label className="block text-xs font-black uppercase text-blue-800 mb-2">Tên Thẩm phán</label>
-    <input type="text" placeholder="Nhập họ tên..." value={name} onChange={e => setName(e.target.value)} className="w-full border p-3 rounded-lg font-bold outline-none focus:border-blue-500" />
-  </div>
+       {/* ĐÃ CHUYỂN THÀNH grid-cols-3 VÀ BỎ 2 Ô DƯ THỪA */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          {/* Ô 1: Tên Thẩm phán */}
+          <div>
+            <label className="block text-xs font-black uppercase text-blue-800 mb-2">Tên Thẩm phán</label>
+            <input type="text" placeholder="Nhập họ tên..." value={name} onChange={e => setName(e.target.value)} className="w-full border p-3 rounded-lg font-bold outline-none focus:border-blue-500" />
+          </div>
 
-  {/* Ô 2: Chức vụ */}
-  <div>
-    <label className="block text-xs font-black uppercase text-blue-800 mb-2">Chức vụ</label>
-    <select value={role} onChange={handleRoleChange} className="w-full border p-3 rounded-lg font-bold outline-none focus:border-blue-500">
-      <option value="Chánh án">Chánh án</option>
-      <option value="Phó Chánh án">Phó Chánh án</option>
-      <option value="Thẩm phán">Thẩm phán</option>
-    </select>
-  </div>
+          {/* Ô 2: Chức vụ */}
+          <div>
+            <label className="block text-xs font-black uppercase text-blue-800 mb-2">Chức vụ</label>
+            <select value={role} onChange={handleRoleChange} className="w-full border p-3 rounded-lg font-bold outline-none focus:border-blue-500">
+              <option value="Chánh án">Chánh án</option>
+              <option value="Phó Chánh án">Phó Chánh án</option>
+              <option value="Thẩm phán">Thẩm phán</option>
+            </select>
+          </div>
 
-  {/* Ô 3: Định mức giải quyết */}
-  <div>
-    <label className="block text-xs font-black uppercase text-blue-800 mb-2">Định mức giải quyết (%)</label>
-    <div className="flex items-center gap-2">
-      <input type="number" min="1" max="100" value={weight} onChange={e => setWeight(e.target.value)} className="w-full border p-3 rounded-lg font-black text-blue-900 outline-none focus:border-blue-500 text-center" />
-      <span className="font-black text-blue-800">%</span>
-    </div>
-  </div>
+          {/* Ô 3: Định mức giải quyết */}
+          <div>
+            <label className="block text-xs font-black uppercase text-blue-800 mb-2">Định mức giải quyết (%)</label>
+            <div className="flex items-center gap-2">
+              <input type="number" min="1" max="100" value={weight} onChange={e => setWeight(e.target.value)} className="w-full border p-3 rounded-lg font-black text-blue-900 outline-none focus:border-blue-500 text-center" />
+              <span className="font-black text-blue-800">%</span>
+            </div>
+          </div>
+        </div>
 
-  {/* Ô 4: Án tồn cũ (MỚI THÊM) */}
-  <div>
-    <label className="block text-xs font-black uppercase text-orange-800 mb-2">Án tồn cũ</label>
-    <div className="flex items-center gap-2">
-      <input type="number" min="0" value={tonCu} onChange={e => setTonCu(e.target.value)} className="w-full border p-3 rounded-lg font-black text-orange-700 outline-none focus:border-orange-500 text-center bg-orange-50" placeholder="0" />
-      <span className="font-black text-orange-800">Vụ</span>
-    </div>
-  </div>
-  <div>
-  <label className="block text-xs font-black uppercase text-blue-800 mb-2">Đã giải quyết</label>
-  <div className="flex items-center gap-2">
-    <input 
-      type="number" 
-      min="0" 
-      value={daGiaiQuyet} 
-      onChange={e => setDaGiaiQuyet(e.target.value)} 
-      className="w-full bg-blue-50 border-2 border-blue-200 rounded-lg px-3 py-2 text-sm font-bold text-blue-700 text-center focus:border-blue-500 outline-none transition-colors" 
-    />
-    <span className="font-black text-blue-800">Vụ</span>
-  </div>
-</div>
-</div>
-
+        {/* GIỮ NGUYÊN KHUNG NHẬP SỐ LIỆU CHI TIẾT TỪNG LOẠI ÁN */}
         <div className="bg-white p-4 rounded-lg border border-gray-200">
           <div className="flex justify-between items-center mb-4">
             <label className="text-xs font-black uppercase text-red-600">Số lượng án đang thụ lý (Cập nhật chuẩn nhất)</label>
