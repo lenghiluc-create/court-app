@@ -82,6 +82,7 @@ export default function PremiumCourtApp() {
   const [loginError, setLoginError] = useState("");
   const [schedule, setSchedule] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchChonNhanh, setSearchChonNhanh] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showOnlyUrgent, setShowOnlyUrgent] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -725,6 +726,7 @@ useEffect(() => {
       setEditingId(selectedCase.id);
       
       showToast("⚡ Đã tự động điền thông tin vụ án!", "success");
+      setSearchChonNhanh("");
     }
   };
   // =========================================================
@@ -1114,7 +1116,7 @@ const handleSendMessage = async () => {
         showToast("✅ Lưu lịch mới thành công!", "success");
         ghiNhatKy("Thêm lịch mới", `Tạo vụ án: ${form.caseName} - Phòng: ${form.room}`);
       }
-      setForm(initialForm); setEditingId(null);
+      setForm(initialForm); setEditingId(null); setSearchChonNhanh("");
     } catch (err) { showToast("Lỗi khi lưu dữ liệu", "error"); }
   };
 
@@ -2582,47 +2584,58 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
           </div>
               <div className="max-w-5xl mx-auto space-y-8">
               {/* THÀNH PHẦN CHỌN NHANH VỤ ÁN ĐÃ PHÂN CÔNG */}
-<div className="mb-6 bg-blue-50 p-4 rounded-xl border border-blue-100">
+{/* THÀNH PHẦN CHỌN NHANH VỤ ÁN ĐÃ PHÂN CÔNG (CÓ TÌM KIẾM) */}
+<div className="mb-6 bg-blue-50 p-4 rounded-xl border border-blue-100 shadow-sm">
   <label className="block text-xs font-black text-blue-900 uppercase mb-2">
     ⚡ Chọn nhanh vụ án đã phân công:
   </label>
+  
+  {/* 1. Ô NHẬP TỪ KHÓA TÌM KIẾM THÔNG MINH */}
+  <input 
+    type="text"
+    placeholder="🔍 Gõ tên đương sự, số thụ lý hoặc trích yếu để lọc nhanh danh sách..."
+    value={searchChonNhanh}
+    onChange={(e) => setSearchChonNhanh(e.target.value)}
+    className="w-full mb-3 border border-blue-300 p-2.5 bg-white text-gray-800 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-[13px] font-bold shadow-inner placeholder-gray-400"
+  />
+
+  {/* 2. DANH SÁCH XỔ XUỐNG TỰ ĐỘNG LỌC */}
   <select 
     onChange={(e) => handleSelectPendingCase(e.target.value)}
-    className="w-full border border-blue-200 p-3 bg-white text-gray-800 font-bold rounded-lg outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer text-sm"
+    className="w-full border border-blue-200 p-3 bg-white text-gray-800 font-bold rounded-lg outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer text-sm shadow-sm"
   >
     <option value="">--- Chọn vụ án chờ lên lịch ---</option>
-    {/* BỘ LỌC ĐÃ ĐƯỢC NÂNG CẤP */}
-    {/* BỘ LỌC ĐÃ ĐƯỢC NÂNG CẤP: ÉP ÁN HOÃN, NGHỊ ÁN, TẠM NGỪNG LÊN ĐẦU */}
+    
     {schedule
       .filter(item => 
         item.judge && item.judge.trim() !== "" && 
         item.status !== "cho_phan_an" &&          
-        // CHO PHÉP HIỂN THỊ: Án chưa có lịch, HOẶC án Hoãn, Nghị án, Tạm ngừng
         (!item.datetime || ['cho_len_lich', 'nghi_an', 'suspended'].includes(item.status)) 
       )
+      // ⚡ BỘ LỌC TÌM KIẾM ĐƯỢC CHÈN VÀO ĐÂY ⚡
+      .filter(item => {
+        if (!searchChonNhanh) return true; // Không gõ gì thì hiện tất cả
+        const keyword = searchChonNhanh.toLowerCase();
+        return (item.caseName || "").toLowerCase().includes(keyword) ||
+               (item.soThuLy || "").toLowerCase().includes(keyword) ||
+               (item.plaintiff || "").toLowerCase().includes(keyword) ||
+               (item.defendant || "").toLowerCase().includes(keyword);
+      })
       .sort((a, b) => {
-        // CHẤM ĐIỂM ƯU TIÊN ĐỂ XẾP HẠNG
         const getPriority = (status) => {
-          if (status === 'cho_len_lich') return 3; // VIP 1: Hoãn chưa có ngày
-          if (status === 'nghi_an') return 2;      // VIP 2: Đang nghị án
-          if (status === 'suspended') return 1;    // VIP 3: Tạm ngừng
-          return 0;                                // Thường dân: Án mới tinh
+          if (status === 'cho_len_lich') return 3; 
+          if (status === 'nghi_an') return 2;      
+          if (status === 'suspended') return 1;    
+          return 0;                                
         };
-        
         const priA = getPriority(a.status);
         const priB = getPriority(b.status);
-        
-        if (priA !== priB) {
-          return priB - priA; // Thằng nào VIP hơn (điểm cao hơn) thì nổi lên trên
-        }
-        
-        // Cùng cấp VIP (hoặc cùng là án mới) thì thằng nào vừa cập nhật gần nhất sẽ nằm trên
+        if (priA !== priB) return priB - priA; 
         const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
         const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
         return timeB - timeA;
       })
       .map(item => {
-        // GẮN MÁC CẢNH BÁO CHO TỪNG LOẠI VIP
         let prefix = "";
         if (item.status === 'cho_len_lich') prefix = "⚠️ [HOÃN CHỜ LỊCH] - ";
         else if (item.status === 'nghi_an') prefix = "⚖️ [ĐANG NGHỊ ÁN] - ";
@@ -2632,7 +2645,6 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
           <option key={item.id} value={item.id}>
             {prefix}
             {item.soThuLy ? `Số ${item.soThuLy} | ` : ""} {item.caseName} 
-            {/* TỰ ĐỘNG NHẬN DIỆN LOẠI ÁN ĐỂ HIỂN THỊ ĐÚNG VAI VẾ */}
             {item.caseType?.includes("Hình sự") 
               ? ` - Bị cáo: ${item.defendant || "---"} | Bị hại: ${item.plaintiff || "---"}` 
               : (item.caseType?.includes("xử lý hành chính") || item.caseType?.includes("Cai nghiện") || item.caseType === "cainghien" || item.caseType?.includes("Hành chính")) 
