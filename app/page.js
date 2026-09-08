@@ -3500,7 +3500,6 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
           <span className="text-[10px] text-indigo-500 font-bold italic">* Số liệu án đang thụ lý</span>
         </div>
         
-        {/* COPY TỪ ĐÂY */}
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[11px]">
             <thead>
@@ -3509,9 +3508,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                 {bangMaTranPhanAn.dsLoaiAn.map(type => (
                   <th key={type} className="p-3 border-b border-r border-gray-200 text-center">{type}</th>
                 ))}
-                {/* 👉 THÊM CỘT ĐÃ GIẢI QUYẾT */}
-                <th className="p-3 border-b border-r border-gray-200 text-center bg-blue-50 text-blue-800">Đã giải quyết</th>
-                <th className="p-3 border-b border-r border-gray-200 text-center bg-orange-50 text-orange-800">Án tồn</th>
+                {/* ⚡ ĐÃ XÓA 2 CỘT ÁN TỒN VÀ GIẢI QUYẾT, CHỈ GIỮ LẠI TỔNG CỘNG ⚡ */}
                 <th className="p-3 border-b border-gray-200 text-center bg-indigo-100 text-indigo-900">Tổng cộng</th>
               </tr>
             </thead>
@@ -3520,15 +3517,8 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
             {listJudges.map(judge => {
               const statsCuaJudge = bangMaTranPhanAn.stats[judge.name] || {};
 
-// 1. Kéo số liệu án mới phân (Cộng dồn từ các cột Hình sự, Dân sự...)
-const tongAnMoi = Object.values(statsCuaJudge).reduce((acc, val) => acc + (val || 0), 0);
-
-// 2. Kéo số liệu nhập tay từ Cấu hình
-const soDaGiaiQuyet = parseInt(judge.daGiaiQuyet) || 0; 
-const soAnTon = parseInt(judge.tonCu) || 0; 
-
-// 3. 👉 CÔNG THỨC CHUẨN: Phải cộng cả 3 thằng lại với nhau!
-const tongTatCa = soDaGiaiQuyet + soAnTon;
+              // 1. Kéo số liệu án thực tế (Cộng dồn ngang từ các cột Hình sự, Dân sự...)
+              const tongTatCa = Object.values(statsCuaJudge).reduce((acc, val) => acc + (val || 0), 0);
               
               return (
                 <tr key={judge.id} className="hover:bg-gray-50 transition-colors">
@@ -3551,20 +3541,10 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
                       {statsCuaJudge[type] > 0 ? statsCuaJudge[type] : <span className="text-gray-300">0</span>}
                     </td>
                   ))}
-                  
-                  {/* 👉 CỘT ĐÃ GIẢI QUYẾT TỪNG NGƯỜI */}
-                  <td className="p-3 border-b border-r border-gray-200 text-center font-bold text-blue-600 bg-blue-50/30">
-                    {soDaGiaiQuyet > 0 ? soDaGiaiQuyet : <span className="text-gray-300">0</span>}
-                  </td>
-
-                  {/* 👉 CỘT ÁN TỒN TỪNG NGƯỜI */}
-                  <td className="p-3 border-b border-r border-gray-200 text-center font-bold text-orange-600 bg-orange-50/30">
-                    {soAnTon > 0 ? soAnTon : <span className="text-gray-300">0</span>}
-                  </td>
 
                   {/* CỘT TỔNG CỘNG TỪNG NGƯỜI */}
                   <td className="p-3 border-b border-gray-200 text-center font-black text-red-600 bg-red-50/20 text-[13px]">
-                    {tongTatCa}
+                    {tongTatCa > 0 ? tongTatCa : <span className="text-gray-300">0</span>}
                   </td>
                 </tr>
               );
@@ -3584,27 +3564,14 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
                   </td>
                 );
               })}
-              
-              {/* TỔNG ĐÃ GIẢI QUYẾT DỌC */}
-              <td className="p-3 border-b border-r border-gray-200 text-center text-blue-700 bg-blue-100/50">
-                {listJudges.reduce((sum, judge) => sum + (parseInt(judge.daGiaiQuyet) || 0), 0)}
-              </td>
-
-              {/* TỔNG ÁN TỒN DỌC */}
-              <td className="p-3 border-b border-r border-gray-200 text-center text-orange-700 bg-orange-100/50">
-                {listJudges.reduce((sum, judge) => sum + (parseInt(judge.tonCu) || 0), 0)}
-              </td>
 
               <td className="p-3 border-b border-gray-200 text-center text-red-600 text-[14px] bg-red-100/50">
-  {listJudges.reduce((tongHeThong, judge) => {
-    // Chỉ lôi 2 thông số này ra tính
-    const daGiaiQuyet = parseInt(judge.daGiaiQuyet) || 0;
-    const tonCu = parseInt(judge.tonCu) || 0;
-    
-    // Cộng dồn 2 món
-    return tongHeThong + daGiaiQuyet + tonCu;
-  }, 0)}
-</td>
+                {listJudges.reduce((tongHeThong, judge) => {
+                  const statsCuaJudge = bangMaTranPhanAn.stats[judge.name] || {};
+                  const tongCuaTP = Object.values(statsCuaJudge).reduce((acc, val) => acc + (val || 0), 0);
+                  return tongHeThong + tongCuaTP;
+                }, 0)}
+              </td>
             </tr>
           </tbody>
           </table>
@@ -4892,7 +4859,7 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
 
     <div ref={tvScrollRef} className="flex-1 overflow-y-auto p-4 md:p-10 space-y-4 custom-scrollbar">
       {schedule
-        .filter(i => moment(i.datetime).isSame(moment(), 'day'))
+        .filter(i => i.datetime && moment(i.datetime).isSame(moment(), 'day'))
         .sort((a,b) => moment(a.datetime).diff(moment(b.datetime)))
         .map(item => (
           <div key={item.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 md:p-8 space-y-3 md:grid md:grid-cols-4 md:gap-6 md:items-center">
@@ -4965,7 +4932,7 @@ const tongTatCa = soDaGiaiQuyet + soAnTon;
           </div>
         ))}
 
-      {schedule.filter(i => moment(i.datetime).isSame(moment(), 'day')).length === 0 && (
+      {schedule.filter(i => i.datetime && moment(i.datetime).isSame(moment(), 'day')).length === 0 && (
         <div className="h-full flex items-center justify-center opacity-20">
           <p className="text-2xl md:text-6xl font-black uppercase tracking-[0.5em] text-center">Hôm nay không có lịch xét xử</p>
         </div>
