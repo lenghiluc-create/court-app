@@ -1571,22 +1571,34 @@ const handleSendMessage = async () => {
   // THUẬT TOÁN TÍNH MA TRẬN TẢI TRỌNG THẨM PHÁN
   // =========================================================
   const bangMaTranPhanAn = useMemo(() => {
-    const dsLoaiAn = ["Hình sự", "Dân sự", "Hành chính", "Hôn nhân & GĐ", "Kinh tế", "Lao động", "Áp dụng biện pháp xử lý hành chính"];
+    const dsLoaiAn = ["Hình sự", "Dân sự", "Hành chính", "Hôn nhân & GĐ", "Kinh tế", "Lao động", "ADBPXLHC"];
     const stats = {};
 
     // 1. Khởi tạo bộ đếm bằng Số án gốc cấu hình
     listJudges.forEach(judge => {
       stats[judge.name] = {};
       dsLoaiAn.forEach(type => {
-        stats[judge.name][type] = judge.tonCuChiTiet && judge.tonCuChiTiet[type] ? parseInt(judge.tonCuChiTiet[type]) : 0;
+        let val = 0;
+        if (judge.tonCuChiTiet) {
+          if (type === "ADBPXLHC") {
+            val = parseInt(judge.tonCuChiTiet["ADBPXLHC"]) || parseInt(judge.tonCuChiTiet["Cai nghiện"]) || parseInt(judge.tonCuChiTiet["Áp dụng biện pháp xử lý hành chính"]) || 0;
+          } else {
+            val = parseInt(judge.tonCuChiTiet[type]) || 0;
+          }
+        }
+        stats[judge.name][type] = val;
       });
     });
 
     // 2. CHỈ CỘNG THÊM NHỮNG ÁN MỚI PHÂN (Chưa được Thư ký lên lịch)
-    // Thêm điều kiện !item.datetime để loại bỏ các án đã nằm trên Lịch Xét Xử
     schedule.forEach(item => {
       if (item.status === 'pending' && !item.datetime && item.judge && stats[item.judge]) {
-        let type = item.caseType === "cainghien" ? "Cai nghiện" : item.caseType;
+        let type = item.caseType;
+        
+        // Đồng bộ mọi từ khóa cũ về chuẩn ADBPXLHC
+        if (type === "cainghien" || type === "Cai nghiện" || type === "Áp dụng biện pháp xử lý hành chính") {
+           type = "ADBPXLHC";
+        }
         
         if (stats[item.judge][type] !== undefined) {
           stats[item.judge][type] += 1;
@@ -5391,7 +5403,7 @@ function QuanLyThamPhan({ db, showToast }) {
   const [editingJudgeId, setEditingJudgeId] = React.useState(null); 
 
   const [tonCuChiTiet, setTonCuChiTiet] = React.useState({
-    "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "Cai nghiện": 0
+    "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "ADBPXLHC": 0
   });
 
   React.useEffect(() => {
@@ -5422,7 +5434,7 @@ function QuanLyThamPhan({ db, showToast }) {
     setTonCu(judge.tonCu || 0);
     setDaGiaiQuyet(judge.daGiaiQuyet || 0);
     setTonCuChiTiet(judge.tonCuChiTiet || {
-      "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "Cai nghiện": 0
+      "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "ADBPXLHC": oldTC["ADBPXLHC"] || oldTC["Cai nghiện"] || oldTC["Áp dụng biện pháp xử lý hành chính"] || 0
     });
     window.scrollTo({ top: 0, behavior: 'smooth' }); 
   };
@@ -5434,7 +5446,7 @@ function QuanLyThamPhan({ db, showToast }) {
     setWeight(100); // Trả về mặc định
     setTonCu(0);
     setDaGiaiQuyet(0);
-    setTonCuChiTiet({ "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "Cai nghiện": 0 });
+    setTonCuChiTiet({ "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "ADBPXLHC": 0 });
   };
 
   const handleSaveJudge = async () => {
