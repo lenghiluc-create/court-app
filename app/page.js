@@ -5526,12 +5526,29 @@ function QuanLyThamPhan({ db, showToast }) {
             <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-black">Tổng: {currentTotal} vụ</span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.keys(tonCuChiTiet).map(type => (
-              <div key={type} className="flex flex-col bg-gray-50 border rounded-md px-3 py-2">
-                <span className="text-[10px] font-bold text-gray-500 uppercase mb-1">{type}</span>
-                <input type="number" min="0" value={tonCuChiTiet[type] === 0 ? '' : tonCuChiTiet[type]} onChange={e => handleTonCuChange(type, e.target.value)} className="w-full bg-transparent font-black text-blue-900 outline-none text-right text-lg" placeholder="0" />
-              </div>
-            ))}
+            {Object.keys(tonCuChiTiet).map(type => {
+              
+              // ⚡ ĐỔI TÊN HIỂN THỊ TRÊN GIAO DIỆN THÀNH ADBPXLHC
+              let tenHienThi = type;
+              if (type === "Cai nghiện" || type.toLowerCase().includes("hành chính")) {
+                // Tùy database của Ní đang lưu key là gì, nó sẽ tự map sang chữ này
+                if (type === "Cai nghiện") tenHienThi = "ADBPXLHC";
+              }
+
+              return (
+                <div key={type} className="flex flex-col bg-gray-50 border rounded-md px-3 py-2 shadow-sm">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase mb-1">{tenHienThi}</span>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    value={tonCuChiTiet[type] === 0 ? '' : tonCuChiTiet[type]} 
+                    onChange={e => handleTonCuChange(type, e.target.value)} 
+                    className="w-full bg-transparent font-black text-blue-900 outline-none text-right text-lg" 
+                    placeholder="0" 
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
 
