@@ -75,6 +75,7 @@ export default function PremiumCourtApp() {
   const [userRole, setUserRole] = useState('viewer'); 
   const [userRoles, setUserRoles] = useState([]);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
+  const [canhBaoTrungLap, setCanhBaoTrungLap] = useState([]);
   
   // States
   const [loginEmail, setLoginEmail] = useState("");
@@ -696,6 +697,34 @@ useEffect(() => {
 
     return () => unsubscribeJudges();
   }, []);
+  useEffect(() => {
+    // Nếu đang sửa án cũ (đã có id) thì tắt radar
+    if (form.id) {
+      setCanhBaoTrungLap([]);
+      return;
+    }
+
+    const txtND = (form.plaintiff || '').toLowerCase().trim();
+    const txtBD = (form.defendant || '').toLowerCase().trim();
+
+    // Chỉ quét khi gõ từ 4 ký tự trở lên
+    if (txtND.length > 3 || txtBD.length > 3) {
+      const ketQuaTrung = schedule.filter(item => {
+        // Chỉ quét các án đang chờ (chưa lên lịch)
+        const isPending = item.status === 'pending' || !item.datetime;
+        if (!isPending) return false;
+
+        const ndMatch = txtND && item.plaintiff?.toLowerCase().includes(txtND);
+        const bdMatch = txtBD && item.defendant?.toLowerCase().includes(txtBD);
+
+        return ndMatch || bdMatch;
+      });
+      
+      setCanhBaoTrungLap(ketQuaTrung);
+    } else {
+      setCanhBaoTrungLap([]); 
+    }
+  }, [form.plaintiff, form.defendant, schedule]);
   // TỰ ĐỘNG ĐIỀN THÔNG TIN TỪ VỤ ÁN ĐÃ PHÂN CÔNG
   const handleSelectPendingCase = (caseId) => {
     if (!caseId) {
@@ -2680,6 +2709,44 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
     }
   </select>
 </div>
+{/* ========================================== */}
+        {/* ⚡ BƯỚC 3: DÁN CÁI KHUNG CẢNH BÁO VÀO ĐÂY ⚡ */}
+        {/* ========================================== */}
+        {canhBaoTrungLap.length > 0 && (
+          <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-lg shadow-sm">
+            <div className="flex">
+              <div className="flex-shrink-0 mt-0.5">
+                <span className="text-xl">⚠️</span>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm text-yellow-800 font-black uppercase tracking-wide">
+                  Khoan đã! Vụ này có vẻ đã nằm trong danh sách Chờ lên lịch ({canhBaoTrungLap.length} kết quả)
+                </h3>
+                <p className="text-xs text-yellow-700 mt-1 mb-2 font-medium">
+                  Bạn có chắc muốn tạo mới hoàn toàn không? Hãy xem các vụ đang chờ dưới đây:
+                </p>
+                <ul className="space-y-1">
+                  {canhBaoTrungLap.slice(0, 3).map(an => (
+                    <li key={an.id} className="text-sm text-yellow-800 bg-yellow-100/50 p-2 rounded border border-yellow-200">
+                      <span className="font-bold">{an.soThuLy || 'Chưa số TL'}</span> - Đương sự: <span className="font-semibold">{an.plaintiff}</span> {an.defendant && `(Bị đơn: ${an.defendant})`}
+                      
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          handleSelectPendingCase(an.id); // Gọi đúng hàm của Ní
+                          setCanhBaoTrungLap([]); // Xóa cảnh báo sau khi chọn
+                        }} 
+                        className="ml-3 inline-flex items-center gap-1 text-xs font-black bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600 transition-colors"
+                      >
+                        👉 CHỌN VỤ NÀY
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
                     <label className={labelStyle}>Thời gian xét xử <span className="text-red-500">*</span></label>
