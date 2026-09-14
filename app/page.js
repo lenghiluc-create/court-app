@@ -2225,7 +2225,18 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
       
       // Chỉ đếm những vụ nằm trong tháng được chọn (hoặc nếu chọn 'all' thì đếm hết)
       if (statMonth === "all" || itemMonth === statMonth) {
-        const loai = item.caseType || 'Chưa xác định';
+        let loai = item.caseType || 'Chưa xác định';
+        
+        // ⚡ GOM NHÓM TÊN ÁN TẠI ĐÂY ⚡
+        if (
+          loai === "cainghien" || 
+          loai === "CAINGHIEN" || 
+          loai === "Cai nghiện" || 
+          loai === "ADBPXLHC"
+        ) {
+          loai = "Áp dụng biện pháp xử lý hành chính"; // Ép về đúng cái tên chuẩn trong danhSachCacLoaiAn
+        }
+
         acc[loai] = (acc[loai] || 0) + 1;
         acc.tongSo = (acc.tongSo || 0) + 1;
       }
