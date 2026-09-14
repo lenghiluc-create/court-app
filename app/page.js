@@ -2710,36 +2710,49 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
   </select>
 </div>
 {/* ========================================== */}
-        {/* ⚡ BƯỚC 3: DÁN CÁI KHUNG CẢNH BÁO VÀO ĐÂY ⚡ */}
+        {/* ⚡ BƯỚC 3: CẢNH BÁO GHIM NỔI GÓC MÀN HÌNH ⚡ */}
         {/* ========================================== */}
         {canhBaoTrungLap.length > 0 && (
-          <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-lg shadow-sm">
+          <div className="fixed bottom-8 right-8 z-[9999] w-[450px] max-w-[90vw] bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-lg shadow-2xl border-y border-r border-yellow-300 transition-all duration-300">
             <div className="flex">
               <div className="flex-shrink-0 mt-0.5">
-                <span className="text-xl">⚠️</span>
+                <span className="text-xl animate-pulse">⚠️</span>
               </div>
-              <div className="ml-3">
-                <h3 className="text-sm text-yellow-800 font-black uppercase tracking-wide">
-                  Khoan đã! Vụ này có vẻ đã nằm trong danh sách Chờ lên lịch ({canhBaoTrungLap.length} kết quả)
-                </h3>
-                <p className="text-xs text-yellow-700 mt-1 mb-2 font-medium">
-                  Bạn có chắc muốn tạo mới hoàn toàn không? Hãy xem các vụ đang chờ dưới đây:
+              <div className="ml-3 w-full">
+                
+                {/* Header cảnh báo + Nút tắt */}
+                <div className="flex justify-between items-start mb-1">
+                  <h3 className="text-sm text-yellow-800 font-black uppercase tracking-wide">
+                    Lưu ý !!! ({canhBaoTrungLap.length} kết quả)
+                  </h3>
+                  <button 
+                    type="button" 
+                    onClick={() => setCanhBaoTrungLap([])} 
+                    className="text-yellow-600 hover:text-red-600 text-lg leading-none font-bold ml-2 outline-none"
+                    title="Bỏ qua cảnh báo"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <p className="text-xs text-yellow-700 mb-2 font-medium">
+                  Hình như vụ án này đang chờ lên lịch, vui lòng kiểm tra:
                 </p>
-                <ul className="space-y-1">
+
+                {/* Danh sách án trùng */}
+                <ul className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
                   {canhBaoTrungLap.slice(0, 3).map(an => (
-                    <li key={an.id} className="text-sm text-yellow-800 bg-yellow-100/50 p-2 rounded border border-yellow-200">
-                      <span className="font-bold">{an.soThuLy || 'Chưa số TL'}</span> 
-                      {an.caseName ? ` | ${an.caseName}` : ""}
+                    <li key={an.id} className="text-sm text-yellow-900 bg-yellow-100 p-2.5 rounded shadow-sm border border-yellow-200">
+                      <div className="font-bold mb-1">{an.soThuLy || 'Chưa số TL'} {an.caseName ? ` | ${an.caseName}` : ""}</div> 
                       
-                      {/* TỰ ĐỘNG PHÂN LOẠI TÊN GỌI THEO LOẠI ÁN */}
-                      <span className="font-semibold">
+                      <div className="font-medium text-xs mb-2 text-gray-700">
                         {an.caseType?.includes("Hình sự") 
-                          ? ` - Bị cáo: ${an.defendant || "---"} | Bị hại: ${an.plaintiff || "---"}` 
+                          ? `Bị cáo: ${an.defendant || "---"} | Bị hại: ${an.plaintiff || "---"}` 
                           : (an.caseType?.includes("xử lý hành chính") || an.caseType?.includes("Cai nghiện") || an.caseType === "cainghien" || an.caseType?.includes("Hành chính")) 
-                            ? ` - Người bị ĐN: ${an.defendant || "---"} | CQ ĐN: ${an.plaintiff || "---"}` 
-                            : ` - NĐ: ${an.plaintiff || "---"} | BĐ: ${an.defendant || "---"}`
+                            ? `Người bị ĐN: ${an.defendant || "---"} | CQ ĐN: ${an.plaintiff || "---"}` 
+                            : `NĐ: ${an.plaintiff || "---"} | BĐ: ${an.defendant || "---"}`
                         }
-                      </span>
+                      </div>
                       
                       <button 
                         type="button" 
@@ -2747,9 +2760,9 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                           handleSelectPendingCase(an.id); 
                           setCanhBaoTrungLap([]); 
                         }} 
-                        className="ml-3 inline-flex items-center gap-1 text-xs font-black bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600 transition-colors"
+                        className="w-full inline-flex justify-center items-center gap-1 text-xs font-black bg-yellow-500 text-white px-3 py-1.5 rounded hover:bg-yellow-600 transition-colors shadow-sm"
                       >
-                        👉 CHỌN VỤ NÀY
+                        👉 NHẤP CHỌN ĐỂ LÊN LỊCH
                       </button>
                     </li>
                   ))}
@@ -2758,7 +2771,9 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
             </div>
           </div>
         )}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* ========================================== */}
+        {/* ⚡ KẾT THÚC BƯỚC 3 ⚡ */}
+        {/* ========================================== */}                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
                     <label className={labelStyle}>Thời gian xét xử <span className="text-red-500">*</span></label>
                     <div className="flex gap-4 w-full">
