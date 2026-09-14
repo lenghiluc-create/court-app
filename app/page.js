@@ -2728,13 +2728,24 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                 <ul className="space-y-1">
                   {canhBaoTrungLap.slice(0, 3).map(an => (
                     <li key={an.id} className="text-sm text-yellow-800 bg-yellow-100/50 p-2 rounded border border-yellow-200">
-                      <span className="font-bold">{an.soThuLy || 'Chưa số TL'}</span> - Đương sự: <span className="font-semibold">{an.plaintiff}</span> {an.defendant && `(Bị đơn: ${an.defendant})`}
+                      <span className="font-bold">{an.soThuLy || 'Chưa số TL'}</span> 
+                      {an.caseName ? ` | ${an.caseName}` : ""}
+                      
+                      {/* TỰ ĐỘNG PHÂN LOẠI TÊN GỌI THEO LOẠI ÁN */}
+                      <span className="font-semibold">
+                        {an.caseType?.includes("Hình sự") 
+                          ? ` - Bị cáo: ${an.defendant || "---"} | Bị hại: ${an.plaintiff || "---"}` 
+                          : (an.caseType?.includes("xử lý hành chính") || an.caseType?.includes("Cai nghiện") || an.caseType === "cainghien" || an.caseType?.includes("Hành chính")) 
+                            ? ` - Người bị ĐN: ${an.defendant || "---"} | CQ ĐN: ${an.plaintiff || "---"}` 
+                            : ` - NĐ: ${an.plaintiff || "---"} | BĐ: ${an.defendant || "---"}`
+                        }
+                      </span>
                       
                       <button 
                         type="button" 
                         onClick={() => {
-                          handleSelectPendingCase(an.id); // Gọi đúng hàm của Ní
-                          setCanhBaoTrungLap([]); // Xóa cảnh báo sau khi chọn
+                          handleSelectPendingCase(an.id); 
+                          setCanhBaoTrungLap([]); 
                         }} 
                         className="ml-3 inline-flex items-center gap-1 text-xs font-black bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600 transition-colors"
                       >
