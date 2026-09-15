@@ -4414,8 +4414,15 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                 </td>
 
                 <td className="p-3 text-center text-gray-500 align-top">
-                  {an.updatedAt ? moment(an.updatedAt).format("DD/MM/YYYY HH:mm") : "---"}
-                </td>
+  {/* ✅ Lấy đúng ngày phân công ban đầu (ưu tiên assignedAt -> ngayPhan -> createdAt) */}
+  {an.assignedAt 
+    ? moment(an.assignedAt).format("DD/MM/YYYY HH:mm") 
+    : (an.ngayPhan 
+        ? moment(an.ngayPhan).format("DD/MM/YYYY HH:mm") 
+        : (an.createdAt ? moment(an.createdAt).format("DD/MM/YYYY HH:mm") : "---")
+      )
+  }
+</td>
                 
                 <td className="p-3 text-center align-top">
                   <span className={`${statusColor} py-1 px-2 rounded-md text-xs font-bold whitespace-nowrap border shadow-sm`}>
