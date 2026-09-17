@@ -326,10 +326,31 @@ const goiYThamPhan = () => {
     
     return schedule.filter(item => {
       if (item.judge !== judgeName) return false;
-      // Ưu tiên lấy ngày tạo án, nếu không có lấy ngày cập nhật
-      const itemDate = item.createdAt ? moment(item.createdAt) : moment(item.updatedAt || new Date());
+      
+      // ✅ CHỈNH LẠI: Ưu tiên lấy ngày phân án (assignedAt) hoặc ngày thụ lý. 
+      // TUYỆT ĐỐI bỏ updatedAt để không bị nhảy số khi Thư ký/Thẩm phán vào sửa án
+      const dateToCount = item.assignedAt || item.ngayThuLy || item.createdAt;
+      if (!dateToCount) return false; 
+
+      const itemDate = moment(dateToCount);
       return itemDate.month() + 1 === currentMonth && itemDate.year() === currentYear;
     }).length;
+  };
+  
+  const filterNamCongTacToaAn = (list, nam) => {
+    // Bắt đầu: 00:00:00 ngày 01/10 năm trước
+    const ngayBatDau = new Date(`${nam - 1}-10-01T00:00:00`); 
+    // Kết thúc chốt sổ: 23:59:59 ngày 30/09 năm nay 
+    const ngayKetThuc = new Date(`${nam}-09-30T23:59:59`);   
+
+    return list.filter(item => {
+      // Ưu tiên ngày phân công, sau đó tới ngày thụ lý, cuối cùng là ngày tạo
+      const dateToFilter = item.assignedAt || item.ngayThuLy || item.createdAt;
+      if (!dateToFilter) return false;
+      
+      const itemDate = new Date(dateToFilter);
+      return itemDate >= ngayBatDau && itemDate <= ngayKetThuc;
+    });
   };
 
   const danhSachAnPhanTuDong = schedule.filter((an) => {
@@ -337,17 +358,21 @@ const goiYThamPhan = () => {
     const isAuto = an.phuongThucPhanAn === "Hệ thống phân ngẫu nhiên";
     if (!isAuto) return false;
 
-    // 2. Nếu có chọn tháng thì lọc theo tháng (dựa vào updatedAt hoặc createdAt)
-    if (thangLoc && an.updatedAt) {
-      const anMonth = moment(an.updatedAt).format("YYYY-MM");
+    // 2. ✅ CHỈNH LẠI: Lọc theo tháng dựa vào Ngày phân công hoặc Ngày thụ lý
+    if (thangLoc) {
+      const dateToFilter = an.assignedAt || an.ngayThuLy || an.createdAt;
+      if (!dateToFilter) return false; // Nếu không có ngày nào thì bỏ qua
+      
+      const anMonth = moment(dateToFilter).format("YYYY-MM");
       return anMonth === thangLoc;
     }
     
     return true; // Nếu chưa chọn tháng thì hiện tất cả
   }).sort((a, b) => {
-    // SẮP XẾP: Lấy ngày phân án mới nhất đẩy lên trên cùng
-    const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
-    const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+    // SẮP XẾP: Lấy ngày phân án/tạo án mới nhất đẩy lên trên cùng
+    // (Vẫn giữ createdAt ở đây để lỡ án chưa có ngày phân thì vẫn lấy ngày tạo đẩy lên đầu)
+    const timeA = new Date(a.assignedAt || a.ngayThuLy || a.createdAt || 0).getTime();
+    const timeB = new Date(b.assignedAt || b.ngayThuLy || b.createdAt || 0).getTime();
     return timeB - timeA; 
   });
 
