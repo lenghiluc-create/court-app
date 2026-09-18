@@ -336,7 +336,7 @@ const goiYThamPhan = () => {
       return itemDate.month() + 1 === currentMonth && itemDate.year() === currentYear;
     }).length;
   };
-  
+
   const filterNamCongTacToaAn = (list, nam) => {
     // Bắt đầu: 00:00:00 ngày 01/10 năm trước
     const ngayBatDau = new Date(`${nam - 1}-10-01T00:00:00`); 
@@ -2409,28 +2409,28 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
             </div>
           )}
 
-          {!isPublicView && (
+          {(!isPublicView || userRole === 'thuky' || userRole === 'admin' || userRole === 'chanhan') && (
     <div onClick={() => { setActiveTab("giam_sat"); setViewMode("app"); }} className={`flex items-center px-3 py-3 rounded-lg cursor-pointer transition-colors ${activeTab === 'giam_sat' ? 'bg-amber-50 text-amber-800 font-extrabold border-l-4 border-amber-500' : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950 font-semibold'}`}>
       <span className="text-[17px]">📝</span>{!isCollapsed && <span className="ml-3 text-[14px]">Giám sát phân án</span>}
     </div>
   )}
 
           {/* LỊCH THẨM ĐỊNH (ĐẬM HƠN) */}
-          {!isPublicView && (
+          {(!isPublicView || userRole === 'thuky' || userRole === 'admin' || userRole === 'chanhan') && (
             <div onClick={() => { setActiveTab("inspection"); setViewMode("app"); }} className={`flex items-center px-3 py-3 rounded-lg cursor-pointer transition-colors ${activeTab === 'inspection' ? 'bg-teal-50 text-teal-800 font-extrabold border-l-4 border-teal-600' : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950 font-semibold'}`}>
               <span className="text-[17px]">🌍</span>{!isCollapsed && <span className="ml-3 text-[14px]">Lịch thẩm định</span>}
             </div>
           )}
 
           {/* 💡 BỔ SUNG: BÁO CÁO */}
-          {!isPublicView && (
+          {(!isPublicView || userRole === 'thuky' || userRole === 'admin' || userRole === 'chanhan') && (
             <div onClick={() => { setActiveTab("report"); setViewMode("app"); }} className={`flex items-center px-3 py-3 rounded-lg cursor-pointer transition-colors ${activeTab === 'report' ? 'bg-blue-50 text-blue-800 font-bold' : 'text-slate-500 hover:bg-slate-50'}`}>
               <span className="text-[17px]">📊</span>{!isCollapsed && <span className="ml-3 text-[13px] font-medium">Báo cáo thống kê</span>}
             </div>
           )}
 
           {/* 💡 BỔ SUNG: QUẢN LÝ CÔNG VIỆC */}
-          {!isPublicView && (
+          {(!isPublicView || userRole === 'thuky' || userRole === 'admin' || userRole === 'chanhan') && (
             <div onClick={() => { setActiveTab("tasks"); setViewMode("app"); }} className={`flex items-center px-3 py-3 rounded-lg cursor-pointer transition-colors ${activeTab === 'tasks' ? 'bg-blue-50 text-blue-800 font-bold' : 'text-slate-500 hover:bg-slate-50'}`}>
               <span className="text-[17px]">📝</span>{!isCollapsed && <span className="ml-3 text-[13px] font-medium">Quản lý công việc</span>}
             </div>
