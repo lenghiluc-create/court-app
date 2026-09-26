@@ -1676,11 +1676,47 @@ const handleSendMessage = async () => {
       .map(month => ({ month, cases: stats[month], count: stats[month].length }))
       .sort((a, b) => moment(b.month, "MM/YYYY").valueOf() - moment(a.month, "MM/YYYY").valueOf());
   }, [schedule]);
+  // ==============================================================
+  // ⚡ CHỐT SỔ NĂM CÔNG TÁC TÒA ÁN (01/10 - 30/09)
+  // Tự động giữ lại Tồn cũ chuyển sang + Án thụ lý mới
+  // ==============================================================
+  const danhSachAnNamNay = useMemo(() => {
+    const now = moment();
+    const currentMonth = now.month() + 1; // moment() tháng chạy từ 0-11 nên phải +1
+    const currentYear = now.year();
 
-  const urgentCount = schedule.filter(i => i.status === 'pending' && isUrgent(i.datetime)).length;
-  const overduePublishCount = schedule.filter(i => isOverduePublish(i)).length;
-  const effectiveCount = schedule.filter(i => isEffective(i)).length;
-  const pendingCases = schedule.filter(i => i.status === 'pending');
+    // Nếu hiện tại từ tháng 10 trở đi -> Năm thi đua bắt đầu từ 01/10 năm nay
+    // Nếu đang từ tháng 1 đến tháng 9 -> Năm thi đua bắt đầu từ 01/10 năm ngoái
+    const startOfNamCongTac = currentMonth >= 10 
+      ? moment(`${currentYear}-10-01`).startOf('day') 
+      : moment(`${currentYear - 1}-10-01`).startOf('day');
+
+    return schedule.filter(item => {
+      // 1. Nếu án thụ lý / phân công SAU ngày 01/10 -> Là Án mới -> LẤY
+      const dateToFilter = item.assignedAt || item.ngayThuLy || item.createdAt;
+      if (dateToFilter && moment(dateToFilter).isSameOrAfter(startOfNamCongTac)) {
+        return true;
+      }
+
+      // 2. Nếu án thụ lý TRƯỚC ngày 01/10 (Án của năm cũ)
+      // -> Đã xử xong hoặc đình chỉ XONG TRƯỚC 01/10 -> LỌC BỎ (vì đã tính cho năm ngoái)
+      if (item.status === 'completed' && item.completedAt) {
+        return moment(item.completedAt).isSameOrAfter(startOfNamCongTac); // Lọt qua năm nay mới lấy
+      }
+      if (item.status === 'dinh_chi' && item.ngayDinhChi) {
+         return moment(item.ngayDinhChi).isSameOrAfter(startOfNamCongTac);
+      }
+
+      // -> Nếu đến giờ vẫn pending, suspended, nghi_an, khang_cao... -> LẤY (Tồn cũ chuyển sang)
+      return true;
+    });
+  }, [schedule]);
+
+  // Đổi chữ 'schedule' thành 'danhSachAnNamNay' để nó chỉ đếm án của năm nay
+  const urgentCount = danhSachAnNamNay.filter(i => i.status === 'pending' && isUrgent(i.datetime)).length;
+  const overduePublishCount = danhSachAnNamNay.filter(i => isOverduePublish(i)).length;
+  const effectiveCount = danhSachAnNamNay.filter(i => isEffective(i)).length;
+  const pendingCases = danhSachAnNamNay.filter(i => i.status === 'pending');
 
   const caseTypeStats = {}; schedule.forEach(i => { if(i.caseType) caseTypeStats[i.caseType] = (caseTypeStats[i.caseType] || 0) + 1 });
   const caseTypeData = Object.keys(caseTypeStats).map(key => ({ name: key, value: caseTypeStats[key] }));
@@ -2571,7 +2607,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                   <span className="text-[10px] font-black text-amber-700 uppercase tracking-wider whitespace-nowrap">Tạm ngừng</span>
                   <span className="text-amber-500 text-sm">⏸️</span>
                 </div>
-                <p className="text-xl font-black text-amber-600">{schedule.filter(i => i.status === 'suspended').length}</p>
+                <p className="text-xl font-black text-amber-600">{danhSachAnNamNay.filter(i => i.status === 'suspended').length}</p>
               </div>
 
               <div onClick={() => handleStatCardClick('completed')} className="flex-1 min-w-[120px] bg-green-50 hover:bg-green-100 cursor-pointer rounded-xl px-3 py-2 shadow-sm border border-green-100 flex flex-col justify-between transition-all">
@@ -2579,7 +2615,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                   <span className="text-[10px] font-black text-green-700 uppercase tracking-wider whitespace-nowrap">Đã xong</span>
                   <span className="text-green-500 text-sm">✅</span>
                 </div>
-                <p className="text-xl font-black text-green-600">{schedule.filter(i => i.status === 'completed').length}</p>
+                <p className="text-xl font-black text-green-600">{danhSachAnNamNay.filter(i => i.status === 'completed').length}</p>
               </div>
 
               <div onClick={() => handleStatCardClick('overdue_publish')} className="flex-1 min-w-[120px] bg-rose-50 hover:bg-rose-100 cursor-pointer rounded-xl px-3 py-2 shadow-sm border border-rose-100 flex flex-col justify-between transition-all">
@@ -2596,7 +2632,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                   <span className="text-orange-500 text-sm">📜</span>
                 </div>
                 <p className="text-xl font-black text-orange-600">
-                  {schedule.filter(i => i.isKhangCao).length}
+                  {danhSachAnNamNay.filter(i => i.isKhangCao).length}
                 </p>
               </div>
 
@@ -2613,7 +2649,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                   <span className="text-[10px] font-black text-gray-600 uppercase tracking-wider whitespace-nowrap">Tổng số vụ</span>
                   <span className="text-gray-500 text-sm">📁</span>
                 </div>
-                <p className="text-xl font-black text-gray-700">{schedule.length}</p>
+                <p className="text-xl font-black text-gray-700">{danhSachAnNamNay.length}</p>
               </div>
 
             </div>
