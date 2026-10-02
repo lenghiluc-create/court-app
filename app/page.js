@@ -257,8 +257,20 @@ const goiYThamPhan = () => {
     if (!danhSachChoAI || danhSachChoAI.length === 0) return null;
 
     const calculations = danhSachChoAI.map(j => {
-    // (Chưa có datetime)
-      const soAnDangCho = schedule.filter(a => a.judge === j.name && a.status === 'pending' && !a.datetime).length;
+      // ⚡ ĐÃ THAY ĐỔI: Chỉ đếm án pending chưa lên lịch từ 01/10 trở đi để cộng với Tồn cũ
+      const soAnDangCho = schedule.filter(a => {
+        const dateToFilter = a.assignedAt || a.ngayThuLy || a.createdAt;
+        const now = moment();
+        const moc01Thang10 = now.month() + 1 >= 10 
+          ? moment(`${now.year()}-10-01`).startOf('day') 
+          : moment(`${now.year() - 1}-10-01`).startOf('day');
+          
+        return a.judge === j.name && 
+               a.status === 'pending' && 
+               !a.datetime && 
+               dateToFilter && 
+               moment(dateToFilter).isSameOrAfter(moc01Thang10);
+      }).length;
       
       const tongAnThucTe = (parseInt(j.tonCu, 10) || 0) + soAnDangCho;
       const heSo = j.weight && j.weight > 0 ? j.weight : 1; 
@@ -379,21 +391,28 @@ const goiYThamPhan = () => {
   const thongKeChiTietThamPhan = listJudges
     .filter(j => j.role !== "Chánh án")
     .map(j => {
-      // Tìm tất cả án của thẩm phán này trong hệ thống
+      // Tìm tất cả án của thẩm phán này
       const cacAnCuaTP = schedule.filter(a => a.judge === j.name);
-      
-      // Án đã giải quyết xong
       const anDaXong = cacAnCuaTP.filter(a => a.status === 'completed' || a.status === 'dinh_chi').length;
       
-      // Án tồn (pending, chờ lịch...)
-      const anTon = cacAnCuaTP.length - anDaXong;
+      // ⚡ CHỈ TÍNH ÁN TỒN MỚI TỪ 01/10
+      const anMoiChuaXu = cacAnCuaTP.filter(a => {
+        const dateToFilter = a.assignedAt || a.ngayThuLy || a.createdAt;
+        const now = moment();
+        const moc01Thang10 = now.month() + 1 >= 10 
+          ? moment(`${now.year()}-10-01`).startOf('day') 
+          : moment(`${now.year() - 1}-10-01`).startOf('day');
+        return a.status !== 'completed' && a.status !== 'dinh_chi' && 
+               dateToFilter && moment(dateToFilter).isSameOrAfter(moc01Thang10);
+      }).length;
       
       return {
         tenThamPhan: j.name,
         tongAn: cacAnCuaTP.length,
         anDaXong: anDaXong,
-        anTon: anTon + (parseInt(j.tonCu) || 0), // Cộng thêm tồn cũ từ tháng trước nếu có
-        anThangNay: countCasesThisMonth(j.name) // Số án nhận trong tháng
+        // Tổng tồn = Tồn cũ (nhập tay) + Án mới chưa xử từ 01/10
+        anTon: (parseInt(j.tonCu) || 0) + anMoiChuaXu, 
+        anThangNay: countCasesThisMonth(j.name)
       };
     });
   // ====================================================================
@@ -458,7 +477,14 @@ const goiYThamPhan = () => {
     let tempLoads = listJudges.filter(j => j.role !== "Chánh án").map(j => ({
         name: j.name,
         tonCu: parseInt(j.tonCu) || 0,
-        soAnDangCho: schedule.filter(a => a.judge === j.name && a.status === 'pending' && !a.datetime).length,
+        soAnDangCho: schedule.filter(a => {
+          const dateToFilter = a.assignedAt || a.ngayThuLy || a.createdAt;
+          const now = moment();
+          const moc01Thang10 = now.month() + 1 >= 10 
+            ? moment(`${now.year()}-10-01`).startOf('day') 
+            : moment(`${now.year() - 1}-10-01`).startOf('day');
+          return a.judge === j.name && a.status === 'pending' && !a.datetime && dateToFilter && moment(dateToFilter).isSameOrAfter(moc01Thang10);
+        }).length,
         anThangNay: countCasesThisMonth(j.name), // Lấy số án đang ôm trong tháng này
         weight: j.weight && j.weight > 0 ? j.weight : 1
     }));
@@ -533,7 +559,14 @@ const goiYThamPhan = () => {
       let tempLoads = listJudges.filter(j => j.role !== "Chánh án").map(j => ({
           name: j.name,
           tonCu: parseInt(j.tonCu) || 0,
-          soAnDangCho: schedule.filter(a => a.judge === j.name && a.status === 'pending' && !a.datetime).length,
+          soAnDangCho: schedule.filter(a => {
+            const dateToFilter = a.assignedAt || a.ngayThuLy || a.createdAt;
+            const now = moment();
+            const moc01Thang10 = now.month() + 1 >= 10 
+              ? moment(`${now.year()}-10-01`).startOf('day') 
+              : moment(`${now.year() - 1}-10-01`).startOf('day');
+            return a.judge === j.name && a.status === 'pending' && !a.datetime && dateToFilter && moment(dateToFilter).isSameOrAfter(moc01Thang10);
+          }).length,
           anThangNay: countCasesThisMonth(j.name),
           weight: j.weight && j.weight > 0 ? j.weight : 1
       }));
@@ -1644,9 +1677,21 @@ const handleSendMessage = async () => {
       });
     });
 
-    // 2. CHỈ CỘNG THÊM NHỮNG ÁN MỚI PHÂN (Chưa được Thư ký lên lịch)
+    // ⚡ XÁC ĐỊNH MỐC 01/10 CỦA NĂM CÔNG TÁC HIỆN TẠI
+    const now = moment();
+    const currentMonth = now.month() + 1;
+    const currentYear = now.year();
+    const moc01Thang10 = currentMonth >= 10 
+      ? moment(`${currentYear}-10-01`).startOf('day') 
+      : moment(`${currentYear - 1}-10-01`).startOf('day');
+
+    // 2. CHỈ CỘNG THÊM NHỮNG ÁN MỚI PHÂN TỪ 01/10 TRỞ ĐI
     schedule.forEach(item => {
-      if (item.status === 'pending' && !item.datetime && item.judge && stats[item.judge]) {
+      const dateToFilter = item.assignedAt || item.ngayThuLy || item.createdAt;
+      const isAnMoi = dateToFilter && moment(dateToFilter).isSameOrAfter(moc01Thang10);
+
+      // NẾU LÀ ÁN MỚI TỪ 01/10 THÌ MỚI CỘNG VÀO (Vì án cũ đã nằm trong tonCu rồi)
+      if (isAnMoi && item.status === 'pending' && !item.datetime && item.judge && stats[item.judge]) {
         let type = item.caseType;
         
         // Đồng bộ mọi từ khóa cũ về chuẩn ADBPXLHC
@@ -1662,6 +1707,7 @@ const handleSendMessage = async () => {
 
     return { dsLoaiAn, stats };
   }, [schedule, listJudges]);
+
   const completedByMonth = useMemo(() => {
     const stats = {};
     schedule
@@ -3943,8 +3989,24 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
         <div className="absolute top-0 right-0 p-4 opacity-10 text-8xl">⚖️</div>
         
         <h3 className="text-indigo-400 font-black uppercase tracking-tighter text-sm mb-4 flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full animate-ping ${manualJudge ? 'bg-green-500' : 'bg-indigo-500'}`}></span>
-          {manualJudge ? "Chế độ: Lãnh đạo chỉ định" : "Hệ thống phân tích (AI Suggest)"}
+          <span className={`text-2xl font-black ${manualJudge ? 'text-green-300' : 'text-indigo-300'}`}>
+                    {manualJudge 
+                      ? (parseInt(manualJudge.tonCu) || 0) + schedule.filter(a => {
+                          // ⚡ RÀO CHẶN TẠI ĐÂY: Chỉ cộng án mới từ 01/10
+                          const dateToFilter = a.assignedAt || a.ngayThuLy || a.createdAt;
+                          const now = moment();
+                          const moc01Thang10 = now.month() + 1 >= 10 
+                            ? moment(`${now.year()}-10-01`).startOf('day') 
+                            : moment(`${now.year() - 1}-10-01`).startOf('day');
+                            
+                          return a.judge === manualJudge.name && 
+                                 a.status === 'pending' && 
+                                 !a.datetime &&
+                                 dateToFilter && 
+                                 moment(dateToFilter).isSameOrAfter(moc01Thang10);
+                        }).length 
+                      : goiYThamPhan()?.tongAnThucTe}
+                  </span>
         </h3>
 
         {/* BỘ LỌC TỰ CHỌN BỔ SUNG (GHI ĐÈ AI) */}
@@ -5747,21 +5809,47 @@ function QuanLyThamPhan({ db, showToast }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {listJudges.map(j => (
-          <div key={j.id} className="p-4 border border-gray-200 rounded-xl flex justify-between items-center bg-gray-50 group hover:border-blue-300 transition-all">
-            <div className="flex-1">
-              <p className="font-black text-blue-900 text-sm uppercase">{j.name}</p>
-              <p className="text-[10px] uppercase font-bold text-gray-500">{j.role} - Định mức: {j.weight ? Math.round(j.weight * 100) : 100}%</p>
-              <div className="mt-2 flex gap-2">
-                 <span className="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100 font-bold">Tổng: {j.tonCu} vụ</span>
+        {listJudges.map(j => {
+          // ⚡ ĐẾM ÁN THỰC TẾ CHỈ LẤY ÁN TỪ 01/10 TRỞ ĐI
+          const anThucTeHeThong = schedule.filter(a => {
+            const dateToFilter = a.assignedAt || a.ngayThuLy || a.createdAt;
+            const now = moment();
+            const moc01Thang10 = now.month() + 1 >= 10 
+              ? moment(`${now.year()}-10-01`).startOf('day') 
+              : moment(`${now.year() - 1}-10-01`).startOf('day');
+
+            const isAnMoi = dateToFilter && moment(dateToFilter).isSameOrAfter(moc01Thang10);
+
+            return a.judge === j.name && 
+                   a.status === 'pending' && 
+                   !a.datetime &&
+                   isAnMoi; // Chỉ đếm án mới cộng thêm vào
+          }).length;
+          
+          const tongTonCu = parseInt(j.tonCu) || 0;
+          const tongAnGiaiQuyet = tongTonCu + anThucTeHeThong;
+
+          return (
+            <div key={j.id} className="p-4 border border-gray-200 rounded-xl flex justify-between items-center bg-gray-50 group hover:border-blue-300 transition-all">
+              <div className="flex-1">
+                <p className="font-black text-blue-900 text-sm uppercase">{j.name}</p>
+                <p className="text-[10px] uppercase font-bold text-gray-500">{j.role} - Định mức: {j.weight ? Math.round(j.weight * 100) : 100}%</p>
+                <div className="mt-2 flex gap-2 items-center">
+                   <span className="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100 font-bold">
+                     Tổng: {tongAnGiaiQuyet} vụ
+                   </span>
+                   <span className="text-[9px] text-gray-400 font-medium italic">
+                     (Tồn cũ: {tongTonCu} + Mới: {anThucTeHeThong})
+                   </span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => handleEditClick(j)} className="p-2 bg-white border border-amber-200 text-amber-600 rounded-lg hover:bg-amber-50 shadow-sm" title="Sửa thông tin">✏️</button>
+                <button onClick={() => handleDeleteJudge(j.id, j.name)} className="p-2 bg-white border border-red-200 text-red-500 rounded-lg hover:bg-red-50 shadow-sm" title="Xóa Thẩm phán">🗑️</button>
               </div>
             </div>
-            <div className="flex gap-2">
-              <button onClick={() => handleEditClick(j)} className="p-2 bg-white border border-amber-200 text-amber-600 rounded-lg hover:bg-amber-50 shadow-sm" title="Sửa thông tin">✏️</button>
-              <button onClick={() => handleDeleteJudge(j.id, j.name)} className="p-2 bg-white border border-red-200 text-red-500 rounded-lg hover:bg-red-50 shadow-sm" title="Xóa Thẩm phán">🗑️</button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
