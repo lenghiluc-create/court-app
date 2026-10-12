@@ -67,6 +67,21 @@ const DANH_MUC_QUAN_HE = {
 };
 const localizer = typeof window !== 'undefined' ? momentLocalizer(moment) : null;
 const DnDCalendar = withDragAndDrop(Calendar);
+// ==============================================================
+// ⚡ HOOK CHỐNG LAG: Chỉ cập nhật giá trị sau khi người dùng NGỪNG GÕ
+// ==============================================================
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = React.useState(value);
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 export default function PremiumCourtApp() {
   const [isMounted, setIsMounted] = useState(false);
@@ -84,6 +99,9 @@ export default function PremiumCourtApp() {
   const [schedule, setSchedule] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchChonNhanh, setSearchChonNhanh] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const debouncedSearchAssigned = useDebounce(searchAssigned, 300);
+  const debouncedSearchChonNhanh = useDebounce(searchChonNhanh, 300);
   const [statusFilter, setStatusFilter] = useState("all");
   const [showOnlyUrgent, setShowOnlyUrgent] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -120,10 +138,10 @@ export default function PremiumCourtApp() {
     const assigned = schedule.filter(item => item.judge && item.judge !== "");
     
     // 2. Nếu không gõ tìm kiếm thì trả về nguyên danh sách
-    if (!searchAssigned) return assigned; 
+    if (!debouncedSearchAssigned) return assigned; 
     
     // 3. Nếu có gõ tìm kiếm thì lọc tiếp
-    const searchLower = searchAssigned.toLowerCase().trim();
+    const searchLower = debouncedSearchAssigned.toLowerCase().trim();
     return assigned.filter(item => {
       const matchTrichYeu = (item.caseName || item.soThuLy || "").toLowerCase().includes(searchLower);
       const matchLoaiAn = (item.caseType || "").toLowerCase().includes(searchLower);
@@ -131,7 +149,7 @@ export default function PremiumCourtApp() {
       
       return matchTrichYeu || matchLoaiAn || matchThamPhan; 
     });
-  }, [schedule, searchAssigned]);
+  }, [schedule, debouncedSearchAssigned]);
   // Modal States
   const [showPwdModal, setShowPwdModal] = useState(false);
   const [newPwd, setNewPwd] = useState("");
@@ -1557,7 +1575,7 @@ const handleSendMessage = async () => {
 
   const processedSchedule = useMemo(() => {
     return schedule.filter((item) => {
-      const search = (searchQuery || "").toLowerCase().trim();
+      const search = (debouncedSearchQuery || "").toLowerCase().trim();
       const matchSearch = search === "" || (item.caseName || "").toLowerCase().includes(search) || (item.plaintiff || "").toLowerCase().includes(search) || (item.defendant || "").toLowerCase().includes(search);
       const matchStatus = statusFilter === 'all' ? true : 
                     statusFilter === 'has_appeal' ? item.isKhangCao === true : 
@@ -1625,7 +1643,7 @@ const handleSendMessage = async () => {
           const dateB = b.datetime ? new Date(b.datetime).getTime() : Infinity;
           return dateA - dateB; 
         });
-  }, [schedule, searchQuery, statusFilter, creatorFilter, judgeFilter, clerkFilter, showOnlyUrgent, startDate, endDate, dateFilterType]);
+  }, [schedule, debouncedSearchQuery, statusFilter, creatorFilter, judgeFilter, clerkFilter, showOnlyUrgent, startDate, endDate, dateFilterType]);
   
   // THUẬT TOÁN ĐÁNH GIÁ CHẤT LƯỢNG XÉT XỬ (ĐÃ NÂNG CẤP LỌC THEO THÁNG)
   const chatLuongXetXu = useMemo(() => {
@@ -2773,8 +2791,8 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
       )
       // ⚡ BỘ LỌC TÌM KIẾM ĐƯỢC CHÈN VÀO ĐÂY ⚡
       .filter(item => {
-        if (!searchChonNhanh) return true; // Không gõ gì thì hiện tất cả
-        const keyword = searchChonNhanh.toLowerCase();
+        if (!debouncedSearchChonNhanh) return true; // Không gõ gì thì hiện tất cả
+        const keyword = debouncedSearchChonNhanh.toLowerCase();
         return (item.caseName || "").toLowerCase().includes(keyword) ||
                (item.soThuLy || "").toLowerCase().includes(keyword) ||
                (item.plaintiff || "").toLowerCase().includes(keyword) ||
