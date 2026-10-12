@@ -491,7 +491,7 @@ const goiYThamPhan = () => {
   // ====================================================================
   // 2. HÀM TÍNH TOÁN DỰ KIẾN (ĐÃ UPDATE AI ẨN THẨM PHÁN >= 10 VỤ)
   // ====================================================================
-  const predictAssignments = () => {
+  const dsDuKienPhanAn = useMemo(() => {
     let tempLoads = listJudges.filter(j => j.role !== "Chánh án").map(j => ({
         name: j.name,
         tonCu: parseInt(j.tonCu) || 0,
@@ -536,7 +536,7 @@ const goiYThamPhan = () => {
         }
         return { ...item, suggestedJudge: target ? target.name : "Đang tính...", isManual: false };
     });
-  };
+  }, [dsChoPhanAn, schedule, listJudges]);
   // ==============================================================
   // ⚡ HÀM THU HỒI ÁN VỀ LẠI DANH SÁCH CHỜ
   // ==============================================================
@@ -566,6 +566,9 @@ const goiYThamPhan = () => {
   // ====================================================================
   // 3. HÀM PHÂN ÁN ĐỒNG LOẠT (ĐÃ UPDATE CHIA TỰ ĐỘNG XOAY VÒNG < 10 VỤ)
   // ====================================================================
+  // ====================================================================
+  // 3. HÀM PHÂN ÁN ĐỒNG LOẠT (ĐÃ UPDATE CHIA TỰ ĐỘNG XOAY VÒNG < 10 VỤ + TỐI ƯU TỐC ĐỘ)
+  // ====================================================================
   const handlePhanAnDongLoat = async () => {
     if (!isChanHan && !isAdmin) return showToast("⛔ Chỉ Chánh án mới có quyền phê duyệt giao án!", "error");
     if (dsChoPhanAn.length === 0) return;
@@ -588,6 +591,8 @@ const goiYThamPhan = () => {
           anThangNay: countCasesThisMonth(j.name),
           weight: j.weight && j.weight > 0 ? j.weight : 1
       }));
+
+      const promiseThucThi = []; // ⚡ Tạo mảng chứa đạn
 
       for (let item of dsChoPhanAn) {
           let targetJudgeName = item.judge; 
@@ -620,15 +625,22 @@ const goiYThamPhan = () => {
 
           if (!targetJudgeName) continue;
 
-          await updateDoc(doc(db, "schedule", item.id), {
-              judge: targetJudgeName,
-              phuongThucPhanAn: "Hệ thống phân ngẫu nhiên",
-              status: "pending",
-              room: "Chưa phân phòng",
-              updatedAt: moment().toISOString(),
-              updatedBy: user?.email || "Hệ thống tự động"
-          });
+          // ⚡ Nạp lệnh updateDoc vào mảng thay vì bắn ngay lập tức
+          const anRef = doc(db, "schedule", item.id);
+          promiseThucThi.push(
+              updateDoc(anRef, {
+                  judge: targetJudgeName,
+                  phuongThucPhanAn: "Hệ thống phân ngẫu nhiên",
+                  status: "pending",
+                  room: "Chưa phân phòng",
+                  updatedAt: moment().toISOString(),
+                  updatedBy: user?.email || "Hệ thống tự động"
+              })
+          );
       }
+
+      // ⚡ Bắn một lượt tất cả các lệnh đã nạp trong mảng lên Firebase
+      await Promise.all(promiseThucThi);
 
       showToast(`✅ Đã phân án đồng loạt thành công!`, "success");
       setPhanAnForm({ soThuLy: "", caseName: "", plaintiff: "", defendant: "", caseType: "Dân sự", quanHePhapLuat: "" });
@@ -973,6 +985,7 @@ useEffect(() => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
   };
   
   const handleLogin = async (e) => {
@@ -1974,6 +1987,7 @@ const handleSendMessage = async () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
     
     showToast("Đã xuất danh sách thành công!", "success");
   };
@@ -3385,7 +3399,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
         {/* 5. NHÓM NÚT SỬA / LOG / XÓA */}
         {canEdit && (
           <>
-            <button onClick={() => {setForm(item); setEditingId(item.id); document.getElementById('khu-vuc-len-lich')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}} className="w-full text-left px-2 py-1.5 bg-white hover:bg-blue-50 text-blue-600 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">✏️ Sửa hồ sơ</button>
+            <button onClick={() => {setForm({ ...initialForm, ...item }); setEditingId(item.id); document.getElementById('khu-vuc-len-lich')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}} className="w-full text-left px-2 py-1.5 bg-white hover:bg-blue-50 text-blue-600 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">✏️ Sửa hồ sơ</button>
             <button onClick={() => setSelectedEvent(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-gray-100 text-gray-600 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">🕒 Xem Log</button>
             {canManagePortal && <button onClick={() => handleDelete(item.id, item.caseName)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-red-100 text-red-600 font-bold uppercase text-[9px] rounded border border-red-100 shadow-sm transition-all flex items-center gap-1.5">🗑️ Xóa hồ sơ</button>}
           </>
@@ -3712,7 +3726,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
         </div>
         
         <div className="flex gap-4 overflow-x-auto pb-2 custom-scrollbar">
-          {predictAssignments().map(item => (
+          {dsDuKienPhanAn.map(item => (
             <div key={item.id} onClick={() => { setPhanAnForm(item); setChoPhanAnId(item.id); }} className={`min-w-[260px] max-w-[260px] p-4 bg-white border-2 rounded-xl cursor-pointer transition-all hover:border-indigo-400 hover:-translate-y-1 hover:shadow-md ${choPhanAnId === item.id ? 'border-indigo-600 shadow-lg bg-indigo-50/50' : 'border-gray-200'}`}>
               <p className="font-bold text-[13px] text-blue-900 line-clamp-2 mb-3 leading-tight" title={item.caseName}>{item.caseName}</p>
               
