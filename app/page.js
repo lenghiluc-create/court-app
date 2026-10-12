@@ -99,9 +99,10 @@ export default function PremiumCourtApp() {
   const [schedule, setSchedule] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchChonNhanh, setSearchChonNhanh] = useState("");
+  const [searchAssigned, setSearchAssigned] = useState(""); // Đem lên đây!
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
-  const debouncedSearchAssigned = useDebounce(searchAssigned, 300);
   const debouncedSearchChonNhanh = useDebounce(searchChonNhanh, 300);
+  const debouncedSearchAssigned = useDebounce(searchAssigned, 300);
   const [statusFilter, setStatusFilter] = useState("all");
   const [showOnlyUrgent, setShowOnlyUrgent] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -129,7 +130,6 @@ export default function PremiumCourtApp() {
   const [ketQuaTraCuu, setKetQuaTraCuu] = useState(null);
   const [selectedStatType, setSelectedStatType] = useState(null);
   const [statMonth, setStatMonth] = useState(moment().format('YYYY-MM'));
-  const [searchAssigned, setSearchAssigned] = useState("");
   const [thangLoc, setThangLoc] = useState(""); // Lưu tháng lọc (định dạng YYYY-MM)
   const [editingSoThuLy, setEditingSoThuLy] = useState(null); // Lưu ID của án đang được sửa STL
   const [tempSoThuLy, setTempSoThuLy] = useState("")
@@ -1528,46 +1528,6 @@ const handleSendMessage = async () => {
     scrollToTable();
   };
 
-  const isUrgent = (datetime) => {
-    if(!datetime) return false;
-    const diffDays = moment(datetime).startOf('day').diff(moment().startOf('day'), 'days');
-    return diffDays === 0 || diffDays === 1; 
-  };
-
-  const isOverduePublish = (item) => {
-    if (item.status !== 'completed' || !item.completedAt || item.publishedAt) return false;
-    const days = moment().startOf('day').diff(moment(item.completedAt).startOf('day'), 'days');
-    return days >= 5; 
-  };
-
-  const isEffective = (item) => {
-    // 1. Án chưa xử xong thì chắc chắn là không có hiệu lực
-    if (item.status !== 'completed' || !item.completedAt) return false;
-
-    // 2. NẾU VỤ ÁN CÓ KHÁNG CÁO / KHÁNG NGHỊ
-    if (item.isKhangCao) {
-      // Chỉ khi nào Lãnh đạo/Thư ký đã "Chốt Kết quả Phúc thẩm" thì án mới có hiệu lực
-      if (item.ketQuaPhucTham) {
-         return true; // Án phúc thẩm có hiệu lực ngay khi tuyên
-      } else {
-         // Đang chờ chuyển, hoặc Đã chuyển mà chưa xử phúc thẩm -> KHÔNG có hiệu lực
-         return false; 
-      }
-    }
-
-    // 3. NẾU KHÔNG CÓ KHÁNG CÁO: Đếm đủ 30 ngày (luật định) mới cho có hiệu lực
-    const days = moment().startOf('day').diff(moment(item.completedAt).startOf('day'), 'days');
-    return days >= 30;
-  };
-
-  const calculateDeadlines = (item) => {
-    if (!item.completedAt) return { publish: null, effective: null };
-    return {
-      publish: moment(item.completedAt).add(5, 'days').format("DD/MM/YYYY"),
-      effective: moment(item.completedAt).add(30, 'days').format("DD/MM/YYYY")
-    };
-  };
-
   const creatorsList = [...new Set(schedule.map(i => i.createdBy).filter(Boolean))];
   const judgesList = [...new Set(schedule.map(i => i.judge).filter(Boolean))];
   const clerksList = [...new Set(schedule.map(i => i.clerk).filter(Boolean))];
@@ -1775,6 +1735,46 @@ const handleSendMessage = async () => {
       return true;
     });
   }, [schedule]);
+
+  const isUrgent = (datetime) => {
+    if(!datetime) return false;
+    const diffDays = moment(datetime).startOf('day').diff(moment().startOf('day'), 'days');
+    return diffDays === 0 || diffDays === 1; 
+  };
+
+  const isOverduePublish = (item) => {
+    if (item.status !== 'completed' || !item.completedAt || item.publishedAt) return false;
+    const days = moment().startOf('day').diff(moment(item.completedAt).startOf('day'), 'days');
+    return days >= 5; 
+  };
+
+  const isEffective = (item) => {
+    // 1. Án chưa xử xong thì chắc chắn là không có hiệu lực
+    if (item.status !== 'completed' || !item.completedAt) return false;
+
+    // 2. NẾU VỤ ÁN CÓ KHÁNG CÁO / KHÁNG NGHỊ
+    if (item.isKhangCao) {
+      // Chỉ khi nào Lãnh đạo/Thư ký đã "Chốt Kết quả Phúc thẩm" thì án mới có hiệu lực
+      if (item.ketQuaPhucTham) {
+         return true; // Án phúc thẩm có hiệu lực ngay khi tuyên
+      } else {
+         // Đang chờ chuyển, hoặc Đã chuyển mà chưa xử phúc thẩm -> KHÔNG có hiệu lực
+         return false; 
+      }
+    }
+
+    // 3. NẾU KHÔNG CÓ KHÁNG CÁO: Đếm đủ 30 ngày (luật định) mới cho có hiệu lực
+    const days = moment().startOf('day').diff(moment(item.completedAt).startOf('day'), 'days');
+    return days >= 30;
+  };
+
+  const calculateDeadlines = (item) => {
+    if (!item.completedAt) return { publish: null, effective: null };
+    return {
+      publish: moment(item.completedAt).add(5, 'days').format("DD/MM/YYYY"),
+      effective: moment(item.completedAt).add(30, 'days').format("DD/MM/YYYY")
+    };
+  };
 
   // Đổi chữ 'schedule' thành 'danhSachAnNamNay' để nó chỉ đếm án của năm nay
   const urgentCount = danhSachAnNamNay.filter(i => i.status === 'pending' && isUrgent(i.datetime)).length;
@@ -5682,11 +5682,13 @@ function QuanLyThamPhan({ db, showToast }) {
     setEditingJudgeId(judge.id);
     setName(judge.name);
     setRole(judge.role || "Thẩm phán");
-    setWeight(judge.weight ? Math.round(judge.weight * 100) : 100); // Phục hồi số %
+    setWeight(judge.weight ? Math.round(judge.weight * 100) : 100); 
     setTonCu(judge.tonCu || 0);
     setDaGiaiQuyet(judge.daGiaiQuyet || 0);
+    
+    // Đã thay oldTC thành số 0 chuẩn chỉnh:
     setTonCuChiTiet(judge.tonCuChiTiet || {
-      "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "ADBPXLHC": oldTC["ADBPXLHC"] || oldTC["Cai nghiện"] || oldTC["Áp dụng biện pháp xử lý hành chính"] || 0
+      "Hình sự": 0, "Dân sự": 0, "Hành chính": 0, "Hôn nhân & GĐ": 0, "Kinh tế": 0, "Lao động": 0, "ADBPXLHC": 0
     });
     window.scrollTo({ top: 0, behavior: 'smooth' }); 
   };
