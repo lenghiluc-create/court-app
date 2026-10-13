@@ -1793,7 +1793,7 @@ const handleSendMessage = async () => {
   const urgentCount = danhSachAnNamNay.filter(i => i.status === 'pending' && isUrgent(i.datetime)).length;
   const overduePublishCount = danhSachAnNamNay.filter(i => isOverduePublish(i)).length;
   const effectiveCount = danhSachAnNamNay.filter(i => isEffective(i)).length;
-  const pendingCases = danhSachAnNamNay.filter(i => i.status === 'pending');
+  const pendingCases = danhSachAnNamNay.filter(i => i.status === 'pending' && i.datetime);
 
   const caseTypeStats = {}; schedule.forEach(i => { if(i.caseType) caseTypeStats[i.caseType] = (caseTypeStats[i.caseType] || 0) + 1 });
   const caseTypeData = Object.keys(caseTypeStats).map(key => ({ name: key, value: caseTypeStats[key] }));
