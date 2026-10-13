@@ -1159,6 +1159,60 @@ const handleSendMessage = async () => {
     }
     // ==============================================================
 
+    // ==============================================================
+    // 🛡️ 1.5. BẮT BUỘC GIẢI TRÌNH & BẮN GOOGLE SHEETS KHI ĐỔI HỘI THẨM
+    // ==============================================================
+    if (editingId) {
+      const oldItem = schedule.find(item => item.id === editingId);
+      if (oldItem && (form.trialCount === "Lần 2" || form.trialCount === "Mở lại" || form.trialCount !== oldItem.trialCount)) {
+        
+        const doiHT1 = oldItem.juror1 && oldItem.juror1 !== "---" && form.juror1 !== oldItem.juror1;
+        const doiHT2 = oldItem.juror2 && oldItem.juror2 !== "---" && form.juror2 !== oldItem.juror2;
+
+        if (doiHT1 || doiHT2) {
+          const lyDo = window.prompt(
+            `🚨 HỆ THỐNG GIÁM SÁT TỐ TỤNG!\n\n` +
+            `Theo quy định, án Hoãn xét xử thì Hội đồng xét xử phải được GIỮ NGUYÊN.\n` +
+            `Hệ thống phát hiện bạn đang đổi tên Hội thẩm nhân dân so với Lần 1.\n\n` +
+            `👉 BẮT BUỘC: Vui lòng nhập lý do cụ thể (Bệnh, bận họp, rút đơn...) để hệ thống ghi nhận và báo cáo Lãnh đạo phụ trách:`
+          );
+          
+          if (!lyDo || lyDo.trim() === "") {
+            // Không có lý do -> Từ chối lưu, ép về tên cũ
+            setForm(prev => ({ ...prev, juror1: oldItem.juror1, juror2: oldItem.juror2 }));
+            return showToast("❌ Đã hủy cập nhật! Bắt buộc phải có lý do nếu muốn đổi HTND.", "error");
+          } else {
+             // Cập nhật nhãn cảnh báo lên màn hình hệ thống
+             form.ghiChuQuyTrinh = (form.ghiChuQuyTrinh ? form.ghiChuQuyTrinh + " | " : "") + `⚠️ Đổi HTND: ${lyDo}`;
+             
+             // 🚀 KÍCH HOẠT BẮN TÊN ĐẠN SANG GOOGLE SHEETS CHO SẾP NHUNG
+             try {
+               const GOOGLE_SHEET_WEBHOOK = "DÁN_CÁI_LINK_APPS_SCRIPT_CỦA_NÍ_VÀO_ĐÂY";
+               
+               fetch(GOOGLE_SHEET_WEBHOOK, {
+                 method: 'POST',
+                 mode: 'no-cors', // Bắt buộc dùng no-cors để không bị chặn chéo trình duyệt
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({
+                   thuKy: user?.email || "Chưa rõ",
+                   tenVuAn: form.caseName,
+                   htCu: `${oldItem.juror1 || "---"} & ${oldItem.juror2 || "---"}`,
+                   htMoi: `${form.juror1 || "---"} & ${form.juror2 || "---"}`,
+                   lyDo: lyDo
+                 })
+               });
+             } catch (err) {
+               console.log("Không thể kết nối máy chủ Google Sheets", err);
+             }
+             
+             // Ghi luôn vào nhật ký hệ thống nội bộ
+             ghiNhatKy("Cảnh báo Tố tụng", `Thư ký thay đổi Hội thẩm vụ "${form.caseName}". Lý do: ${lyDo}`);
+          }
+        }
+      }
+    }
+    // ==============================================================
+
     const conflicts = schedule.filter(item => {
       // Bỏ qua chính vụ án đang sửa (nếu là update)
       if (editingId && item.id === editingId) return false;
@@ -1251,6 +1305,74 @@ const handleSendMessage = async () => {
       showToast(msg, "success");
       ghiNhatKy("Đổi trạng thái", `Chuyển vụ "${caseName}" sang: ${newStatus}`);
     } catch (err) { showToast("Lỗi cập nhật trạng thái", "error"); }
+  };
+  // ==============================================================
+  // 🛡️ CHỐT CHẶN PHÚT 89: KIỂM TRA HỘI THẨM TRƯỚC KHI CHỐT ÁN
+  // ==============================================================
+  const handleXetXuXong = async (item) => {
+    // 1. Hỏi xác nhận xem người ngồi xử hôm nay có đúng với lịch không
+    const dungNguoiKhong = window.confirm(
+      `⚖️ CHỐT KẾT QUẢ XÉT XỬ VỤ: ${item.caseName}\n\n` +
+      `Hệ thống đang ghi nhận Hội đồng xét xử gồm:\n` +
+      `👨‍⚖️ Thẩm phán: ${item.judge || "---"}\n` +
+      `👥 Hội thẩm 1: ${item.juror1 || "---"}\n` +
+      `👥 Hội thẩm 2: ${item.juror2 || "---"}\n\n` +
+      `❓ HÔM NAY CÁC VỊ HỘI THẨM NÀY CÓ NGỒI XỬ ĐÚNG NHƯ LỊCH KHÔNG?\n\n` +
+      `👉 Bấm [OK] nếu ĐÚNG NGƯỜI (Hệ thống sẽ chốt án).\n` +
+      `👉 Bấm [Cancel/Hủy] nếu ĐÃ THAY NGƯỜI KHÁC phút chót.`
+    );
+
+    if (dungNguoiKhong) {
+      // Nếu đúng người -> Cho phép chốt án bình thường gọi hàm toggleStatus cũ
+      await toggleStatus(item.id, 'completed', item.caseName);
+    } else {
+      // 2. Nếu khai báo ĐỔI NGƯỜI -> Ép viết bản kiểm điểm giải trình
+      const lyDo = window.prompt(
+        `🚨 PHÁT HIỆN THAY ĐỔI HỘI THẨM PHÚT CHÓT!\n\n` +
+        `Vui lòng nhập TÊN HỘI THẨM MỚI tham gia hôm nay và LÝ DO THAY ĐỔI:\n` +
+        `(Ví dụ: Trần Văn B thay Nguyễn Văn A do ông A bận công tác đột xuất)`
+      );
+
+      if (!lyDo || lyDo.trim() === "") {
+        return showToast("❌ Không thể chốt án! Bắt buộc phải giải trình nếu có đổi Hội thẩm.", "error");
+      }
+
+      // 3. Cho phép chốt án nhưng LƯU VẾT TỘI CHỨNG và BẮN WEBHOOK CHO SẾP
+      try {
+        const { doc, updateDoc } = await import('firebase/firestore');
+        await updateDoc(doc(db, "schedule", item.id), {
+          status: 'completed',
+          completedAt: moment().toISOString(),
+          ghiChuQuyTrinh: (item.ghiChuQuyTrinh ? item.ghiChuQuyTrinh + " | " : "") + `⚠️ Đổi HT lúc xét xử: ${lyDo}`,
+          updatedBy: user.email,
+          updatedAt: moment().toISOString()
+        });
+
+        // Kích hoạt bắn tin nhắn lên Google Sheets cho Sếp Nhung
+        try {
+          const GOOGLE_SHEET_WEBHOOK = "https://script.google.com/macros/s/AKfycbywnfl2GRRamSRRCD-nzOWCcZJhkRv_N5RZcWxEqKWy3J3fmzzn5tccbrwieDNHbqrp/exec";
+          fetch(GOOGLE_SHEET_WEBHOOK, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              thuKy: user?.email || "Chưa rõ",
+              tenVuAn: item.caseName,
+              htCu: `${item.juror1 || "---"} & ${item.juror2 || "---"}`,
+              htMoi: `(Đổi phút chót)`,
+              lyDo: `(Đổi lúc chốt án) - ${lyDo}`
+            })
+          });
+        } catch (err) {
+          console.log("Lỗi webhook:", err);
+        }
+
+        showToast("✅ Đã chốt án và ghi nhận báo cáo giải trình!", "success");
+        ghiNhatKy("Đổi HT phút chót", `Vụ ${item.caseName} - Giải trình: ${lyDo}`);
+      } catch (e) {
+        showToast("Lỗi chốt án: " + e.message, "error");
+      }
+    }
   };
   // HÀM XỬ LÝ ĐÌNH CHỈ VỤ ÁN / RÚT ĐƠN
   const handleDinhChi = async (item) => {
@@ -1795,12 +1917,12 @@ const handleSendMessage = async () => {
   const effectiveCount = danhSachAnNamNay.filter(i => isEffective(i)).length;
   const pendingCases = danhSachAnNamNay.filter(i => i.status === 'pending' && i.datetime);
 
-  const caseTypeStats = {}; schedule.forEach(i => { if(i.caseType) caseTypeStats[i.caseType] = (caseTypeStats[i.caseType] || 0) + 1 });
+  const caseTypeStats = {}; danhSachAnNamNay.forEach(i => { if(i.caseType) caseTypeStats[i.caseType] = (caseTypeStats[i.caseType] || 0) + 1 });
   const caseTypeData = Object.keys(caseTypeStats).map(key => ({ name: key, value: caseTypeStats[key] }));
   const judgeStats = {}; pendingCases.forEach(i => { if(i.judge) judgeStats[i.judge] = (judgeStats[i.judge] || 0) + 1 });
   const judgeDataList = Object.keys(judgeStats).map(key => ({ name: key, value: judgeStats[key] })).sort((a,b) => b.value - a.value); 
   const CHART_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899'];
-  const danhSachDaPhan = schedule.filter(item => item.judge && item.judge !== "");
+  const danhSachDaPhan = danhSachAnNamNay.filter(item => item.judge && item.judge !== "");
 
   const handleExportClick = async () => {
     // 1. GIỮ NGUYÊN KIỂM TRA DỮ LIỆU CỦA NÍ
@@ -1991,6 +2113,158 @@ const handleSendMessage = async () => {
     
     showToast("Đã xuất danh sách thành công!", "success");
   };
+  // =========================================================
+  // 📊 HÀM XUẤT EXCEL: THỐNG KÊ HOẠT ĐỘNG HỘI THẨM NHÂN DÂN
+  // =========================================================
+  const handleExportThongKeHTND = () => {
+    if (danhSachAnNamNay.length === 0) return showToast("Không có dữ liệu án năm nay!", "error");
+
+    // 1. Quét và gom nhóm số liệu của từng Hội thẩm
+    const statsHT = {};
+    const dsDoiPhutChot = []; // Chứa danh sách các vụ bị đổi người phút chót
+
+    danhSachAnNamNay.forEach(item => {
+      // Đếm án cho HT1 và HT2
+      const demHT = (tenHT) => {
+        if (!tenHT || tenHT === "---") return;
+        if (!statsHT[tenHT]) {
+          statsHT[tenHT] = { tongPhanCong: 0, daXetXuXong: 0, dangChoXu: 0 };
+        }
+        statsHT[tenHT].tongPhanCong += 1;
+        if (item.status === 'completed' || item.status === 'done') {
+          statsHT[tenHT].daXetXuXong += 1;
+        } else if (item.status === 'pending' || item.status === 'nghi_an' || item.status === 'cho_len_lich') {
+          statsHT[tenHT].dangChoXu += 1;
+        }
+      };
+
+      demHT(item.juror1);
+      demHT(item.juror2);
+
+      // Quét tìm vết tội chứng "Đổi HT phút chót" trong ghiChuQuyTrinh
+      if (item.ghiChuQuyTrinh && item.ghiChuQuyTrinh.includes("Đổi HT lúc xét xử")) {
+        dsDoiPhutChot.push(item);
+      }
+    });
+
+    // Chuyển Object thành mảng và sắp xếp người đi xử nhiều nhất lên đầu
+    const mangHT = Object.keys(statsHT).map(name => ({
+      name,
+      ...statsHT[name]
+    })).sort((a, b) => b.tongPhanCong - a.tongPhanCong);
+
+    if (mangHT.length === 0) return showToast("Chưa có dữ liệu Hội thẩm nào!", "error");
+
+    // 2. Bắt đầu vẽ khung Excel chuẩn Tòa án
+    let tableHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+      <meta charset="utf-8" />
+      <style>
+        table { border-collapse: collapse; width: 100%; font-family: 'Times New Roman', Times, serif; font-size: 12pt; } 
+        td, th { border: .5pt solid windowtext; padding: 8px; vertical-align: top; } 
+        .no-border { border: none !important; } 
+        .text-center { text-align: center; vertical-align: middle; } 
+        .text-left { text-align: left; }
+        .font-bold { font-weight: bold; }
+        .bg-header { background-color: #fce4ec; color: #880e4f; }
+        .bg-warning { background-color: #fff3e0; }
+      </style>
+    </head>
+    <body>
+      <table>
+        <tr>
+          <td colspan="2" class="no-border text-center font-bold" style="font-size: 11pt;">TÒA ÁN NHÂN DÂN<br/>KHU VỰC 9 - CẦN THƠ</td>
+          <td colspan="3" class="no-border text-center font-bold" style="font-size: 11pt;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br/>Độc lập - Tự do - Hạnh Phúc</td>
+        </tr>
+        <tr><td colspan="5" class="no-border"></td></tr>
+        <tr>
+          <td colspan="5" class="no-border text-center font-bold" style="font-size: 15pt; text-transform: uppercase; color: #880e4f;">
+            BÁO CÁO THỐNG KÊ HOẠT ĐỘNG HỘI THẨM NHÂN DÂN
+          </td>
+        </tr>
+        <tr>
+          <td colspan="5" class="no-border text-center italic" style="font-size: 11pt; color: #555;">
+            (Trích xuất từ dữ liệu năm công tác ${moment().format('YYYY')})
+          </td>
+        </tr>
+        <tr><td colspan="5" class="no-border"></td></tr>
+        
+        <thead>
+          <tr class="bg-header">
+            <th class="text-center font-bold" style="width: 60px;">STT</th>
+            <th class="text-center font-bold" style="width: 250px;">HỌ VÀ TÊN HỘI THẨM</th>
+            <th class="text-center font-bold" style="width: 150px;">TỔNG SỐ ÁN ĐƯỢC PHÂN</th>
+            <th class="text-center font-bold" style="width: 150px;">ĐÃ XÉT XỬ XONG</th>
+            <th class="text-center font-bold" style="width: 150px;">ĐANG CHỜ XỬ</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    // 3. Đổ danh sách Hội thẩm vào
+    mangHT.forEach((ht, idx) => {
+      tableHtml += `
+        <tr>
+          <td class="text-center">${idx + 1}</td>
+          <td class="font-bold uppercase text-blue-900">${ht.name}</td>
+          <td class="text-center font-bold">${ht.tongPhanCong}</td>
+          <td class="text-center font-bold" style="color: #059669;">${ht.daXetXuXong}</td>
+          <td class="text-center font-bold" style="color: #d97706;">${ht.dangChoXu}</td>
+        </tr>
+      `;
+    });
+
+    tableHtml += `</tbody></table><br/><br/>`;
+
+    // 4. KẸP THÊM BẢNG "PHONG THẦN" CÁC VỤ ÁN ĐỔI NGƯỜI PHÚT CHÓT LÊN THỚT
+    if (dsDoiPhutChot.length > 0) {
+      tableHtml += `
+        <table>
+          <tr>
+            <td colspan="5" class="no-border font-bold text-left" style="font-size: 13pt; color: #b91c1c; padding-top: 20px;">
+              🚨 DANH SÁCH CÁC VỤ ÁN BỊ THAY ĐỔI HỘI THẨM VÀO PHÚT CHÓT (SAI QUY TRÌNH)
+            </td>
+          </tr>
+          <tr style="background-color: #fee2e2; color: #991b1b;">
+            <th class="text-center font-bold" style="width: 60px;">STT</th>
+            <th class="text-center font-bold" style="width: 250px;">TÊN VỤ ÁN / SỐ THỤ LÝ</th>
+            <th class="text-center font-bold" style="width: 150px;">THẨM PHÁN / THƯ KÝ</th>
+            <th class="text-center font-bold" style="width: 150px;">NGÀY CHỐT ÁN</th>
+            <th class="text-center font-bold" style="width: 300px;">NỘI DUNG GIẢI TRÌNH (LÝ DO ĐỔI)</th>
+          </tr>
+      `;
+      dsDoiPhutChot.forEach((v, idx) => {
+        // Tách lấy đoạn lý do từ chuỗi ghiChuQuyTrinh
+        const lyDo = v.ghiChuQuyTrinh.split('⚠️ Đổi HT lúc xét xử:')[1] || v.ghiChuQuyTrinh;
+        
+        tableHtml += `
+          <tr class="bg-warning">
+            <td class="text-center">${idx + 1}</td>
+            <td><b>${v.caseName}</b><br/><i>${v.soThuLy || "Chưa có STL"}</i></td>
+            <td class="text-center">TP: ${v.judge}<br/>TK: ${v.clerk}</td>
+            <td class="text-center">${moment(v.completedAt).format("DD/MM/YYYY")}</td>
+            <td style="color: #b91c1c;">${lyDo.trim()}</td>
+          </tr>
+        `;
+      });
+      tableHtml += `</table>`;
+    }
+
+    tableHtml += `</body></html>`;
+
+    // 5. Nén và tải file
+    const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Bao_Cao_Thong_Ke_Hoi_Tham_${moment().format('MM_YYYY')}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    
+    showToast("✅ Đã xuất báo cáo Hội thẩm thành công!", "success");
+  };
+  
   const calendarEvents = useMemo(() => {
     return schedule.filter(i => i.datetime && i.status !== 'suspended').map(i => ({ 
       ...i, title: `${i.status === 'completed' ? '✅ ' : ''}[${i.room}] ${i.caseName || 'Chưa có tên'}`, start: new Date(i.datetime), end: new Date(new Date(i.datetime).getTime() + (i.duration || 60) * 60000) 
@@ -3350,7 +3624,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
         {/* 1. KHI ÁN CHỜ XỬ HOẶC CHƯA CÓ TRẠNG THÁI */}
         {canEdit && (item.status === 'pending' || !item.status) && (
           <>
-            <button onClick={() => toggleStatus(item.id, 'completed', item.caseName)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-green-100 text-green-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">✅ Xét xử xong</button>
+            <button onClick={() => handleXetXuXong(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-green-100 text-green-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">✅ Xét xử xong</button>
             <button onClick={() => handleReschedule(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-blue-50 text-blue-700 font-bold uppercase text-[9px] rounded border border-blue-100 shadow-sm transition-all flex items-center gap-1.5">🔄 Hoãn (Có ngày ngay)</button>
             <button onClick={() => handleHoanChuaCoLich(item)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-orange-100 text-orange-700 font-bold uppercase text-[9px] rounded border border-orange-100 shadow-sm transition-all flex items-center gap-1.5">⏳ Hoãn (Chưa có ngày)</button>
             <button onClick={() => toggleStatus(item.id, 'suspended', item.caseName)} className="w-full text-left px-2 py-1.5 bg-white hover:bg-purple-100 text-purple-700 font-bold uppercase text-[9px] rounded border border-gray-100 shadow-sm transition-all flex items-center gap-1.5">⏸ Tạm ngừng</button>
@@ -4621,6 +4895,13 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                  Toàn thời gian
               </button>
            )}
+           <button 
+             onClick={handleExportThongKeHTND}
+             className="ml-2 flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white px-4 py-2.5 rounded-lg font-black uppercase text-[10px] tracking-widest shadow-md transition-all active:scale-95 border border-pink-400"
+             title="Xuất thống kê số lượng án của Hội thẩm và phát hiện án đổi người sai quy định"
+           >
+             <span className="text-base">👩‍⚖️</span> Tải B/C Hội Thẩm
+           </button>
         </div>
       </div>
 
