@@ -269,13 +269,14 @@ const getLabelBenKien = (loaiAn) => {
       return 'Nguyên đơn / VKS / CQ Đề nghị:';
   }
 };
-const goiYThamPhan = () => {
+// ⚡ BỌC LẠI BỘ MÁY TÍNH TOÁN AI ĐỂ CHỐNG LAG KHI GÕ CHỮ TRONG FORM ⚡
+  const thongTinThamPhanGoiY = useMemo(() => {
     const danhSachChoAI = listJudges.filter(j => j.role !== "Chánh án");
     
     if (!danhSachChoAI || danhSachChoAI.length === 0) return null;
 
     const calculations = danhSachChoAI.map(j => {
-      // ⚡ ĐÃ THAY ĐỔI: Chỉ đếm án pending chưa lên lịch từ 01/10 trở đi để cộng với Tồn cũ
+      // Chỉ đếm án pending chưa lên lịch từ 01/10 trở đi để cộng với Tồn cũ
       const soAnDangCho = schedule.filter(a => {
         const dateToFilter = a.assignedAt || a.ngayThuLy || a.createdAt;
         const now = moment();
@@ -299,6 +300,11 @@ const goiYThamPhan = () => {
 
     calculations.sort((a, b) => a.chiSoTai - b.chiSoTai);
     return calculations[0]; 
+  }, [listJudges, schedule]); // 👈 Chỉ tính toán lại khi có án mới hoặc danh sách Thẩm phán thay đổi
+
+  // 💡 Trả về biến đã được "đóng băng" để không phải sửa lại các dòng HTML dài thòngng bên dưới
+  const goiYThamPhan = () => {
+    return thongTinThamPhanGoiY;
   };
     
   const handleLuuChoPhanAn = async () => {
@@ -383,56 +389,62 @@ const goiYThamPhan = () => {
     });
   };
 
-  const danhSachAnPhanTuDong = schedule.filter((an) => {
-    // 1. Phải là án phân tự động
-    const isAuto = an.phuongThucPhanAn === "Hệ thống phân ngẫu nhiên";
-    if (!isAuto) return false;
+  // 1️⃣ BỌC LẠI DANH SÁCH ÁN PHÂN TỰ ĐỘNG
+  const danhSachAnPhanTuDong = useMemo(() => {
+    return schedule.filter((an) => {
+      // 1. Phải là án phân tự động
+      const isAuto = an.phuongThucPhanAn === "Hệ thống phân ngẫu nhiên";
+      if (!isAuto) return false;
 
-    // 2. ✅ CHỈNH LẠI: Lọc theo tháng dựa vào Ngày phân công hoặc Ngày thụ lý
-    if (thangLoc) {
-      const dateToFilter = an.assignedAt || an.ngayThuLy || an.createdAt;
-      if (!dateToFilter) return false; // Nếu không có ngày nào thì bỏ qua
+      // 2. Lọc theo tháng dựa vào Ngày phân công hoặc Ngày thụ lý
+      if (thangLoc) {
+        const dateToFilter = an.assignedAt || an.ngayThuLy || an.createdAt;
+        if (!dateToFilter) return false; 
+        
+        const anMonth = moment(dateToFilter).format("YYYY-MM");
+        return anMonth === thangLoc;
+      }
       
-      const anMonth = moment(dateToFilter).format("YYYY-MM");
-      return anMonth === thangLoc;
-    }
-    
-    return true; // Nếu chưa chọn tháng thì hiện tất cả
-  }).sort((a, b) => {
-    // SẮP XẾP: Lấy ngày phân án/tạo án mới nhất đẩy lên trên cùng
-    // (Vẫn giữ createdAt ở đây để lỡ án chưa có ngày phân thì vẫn lấy ngày tạo đẩy lên đầu)
-    const timeA = new Date(a.assignedAt || a.ngayThuLy || a.createdAt || 0).getTime();
-    const timeB = new Date(b.assignedAt || b.ngayThuLy || b.createdAt || 0).getTime();
-    return timeB - timeA; 
-  });
-
-  const thongKeChiTietThamPhan = listJudges
-    .filter(j => j.role !== "Chánh án")
-    .map(j => {
-      // Tìm tất cả án của thẩm phán này
-      const cacAnCuaTP = schedule.filter(a => a.judge === j.name);
-      const anDaXong = cacAnCuaTP.filter(a => a.status === 'completed' || a.status === 'dinh_chi').length;
-      
-      // ⚡ CHỈ TÍNH ÁN TỒN MỚI TỪ 01/10
-      const anMoiChuaXu = cacAnCuaTP.filter(a => {
-        const dateToFilter = a.assignedAt || a.ngayThuLy || a.createdAt;
-        const now = moment();
-        const moc01Thang10 = now.month() + 1 >= 10 
-          ? moment(`${now.year()}-10-01`).startOf('day') 
-          : moment(`${now.year() - 1}-10-01`).startOf('day');
-        return a.status !== 'completed' && a.status !== 'dinh_chi' && 
-               dateToFilter && moment(dateToFilter).isSameOrAfter(moc01Thang10);
-      }).length;
-      
-      return {
-        tenThamPhan: j.name,
-        tongAn: cacAnCuaTP.length,
-        anDaXong: anDaXong,
-        // Tổng tồn = Tồn cũ (nhập tay) + Án mới chưa xử từ 01/10
-        anTon: (parseInt(j.tonCu) || 0) + anMoiChuaXu, 
-        anThangNay: countCasesThisMonth(j.name)
-      };
+      return true; 
+    }).sort((a, b) => {
+      // SẮP XẾP: Lấy ngày phân án/tạo án mới nhất đẩy lên trên cùng
+      const timeA = new Date(a.assignedAt || a.ngayThuLy || a.createdAt || 0).getTime();
+      const timeB = new Date(b.assignedAt || b.ngayThuLy || b.createdAt || 0).getTime();
+      return timeB - timeA; 
     });
+  }, [schedule, thangLoc]); // 👈 Chỉ tính lại khi có án mới hoặc sếp chọn tháng khác
+
+  // 2️⃣ BỌC LẠI BẢNG THỐNG KÊ CHI TIẾT THẨM PHÁN
+  const thongKeChiTietThamPhan = useMemo(() => {
+    return listJudges
+      .filter(j => j.role !== "Chánh án")
+      .map(j => {
+        // Tìm tất cả án của thẩm phán này
+        const cacAnCuaTP = schedule.filter(a => a.judge === j.name);
+        const anDaXong = cacAnCuaTP.filter(a => a.status === 'completed' || a.status === 'dinh_chi').length;
+        
+        // CHỈ TÍNH ÁN TỒN MỚI TỪ 01/10
+        const anMoiChuaXu = cacAnCuaTP.filter(a => {
+          const dateToFilter = a.assignedAt || a.ngayThuLy || a.createdAt;
+          const now = moment();
+          const moc01Thang10 = now.month() + 1 >= 10 
+            ? moment(`${now.year()}-10-01`).startOf('day') 
+            : moment(`${now.year() - 1}-10-01`).startOf('day');
+          
+          return a.status !== 'completed' && a.status !== 'dinh_chi' && 
+                 dateToFilter && moment(dateToFilter).isSameOrAfter(moc01Thang10);
+        }).length;
+        
+        return {
+          tenThamPhan: j.name,
+          tongAn: cacAnCuaTP.length,
+          anDaXong: anDaXong,
+          // Tổng tồn = Tồn cũ (nhập tay) + Án mới chưa xử từ 01/10
+          anTon: (parseInt(j.tonCu) || 0) + anMoiChuaXu, 
+          anThangNay: countCasesThisMonth(j.name)
+        };
+      });
+  }, [schedule, listJudges]); // 👈 Chỉ tính lại khi có án mới hoặc thêm/xóa Thẩm phán
   // ====================================================================
   // 1. HÀM LƯU PHÂN ÁN (1 VỤ)
   // ====================================================================
@@ -1668,6 +1680,7 @@ const handleSendMessage = async () => {
   const clerksList = [...new Set(schedule.map(i => i.clerk).filter(Boolean))];
   const prosecutorsList = [...new Set(schedule.map(i => i.prosecutor).filter(Boolean))];
 
+
   const processedSchedule = useMemo(() => {
     return schedule.filter((item) => {
       const search = (debouncedSearchQuery || "").toLowerCase().trim();
@@ -1870,6 +1883,19 @@ const handleSendMessage = async () => {
       return true;
     });
   }, [schedule]);
+    // ⚡ BỌC LẠI BỘ ĐẾM HỘI THẨM ĐỂ CHỐNG LAG KHI GÕ CHỮ VÀ CHỐNG GỌI "CẢM TÍNH"
+  const thongKeHoiTham = useMemo(() => {
+    const stats = {};
+    danhSachAnNamNay.forEach(item => {
+      // Chỉ đếm những án chưa xử xong
+      if (item.status !== 'completed' && item.status !== 'dinh_chi') {
+        if (item.juror1 && item.juror1 !== "---") stats[item.juror1] = (stats[item.juror1] || 0) + 1;
+        if (item.juror2 && item.juror2 !== "---") stats[item.juror2] = (stats[item.juror2] || 0) + 1;
+      }
+    });
+    // Trả về mảng đã sắp xếp từ người ÍT VIỆC NHẤT lên đầu
+    return Object.entries(stats).sort((a, b) => a[1] - b[1]);
+  }, [danhSachAnNamNay]); // 👈 Chỉ tính lại bảng phong thần khi có thêm/bớt án
 
   const isUrgent = (datetime) => {
     if(!datetime) return false;
@@ -2603,7 +2629,42 @@ const handleSendMessage = async () => {
     </div>
   );
   }
+  const thongKeLoaiAn = schedule.reduce((acc, item) => {
+    if (item.judge && item.judge !== "---" && item.judge !== "") {
+      // Lấy ngày phân án (ưu tiên ngày tạo, nếu không có lấy ngày cập nhật)
+      const itemMonth = moment(item.createdAt || item.updatedAt || new Date()).format('YYYY-MM');
+      
+      // Chỉ đếm những vụ nằm trong tháng được chọn (hoặc nếu chọn 'all' thì đếm hết)
+      if (statMonth === "all" || itemMonth === statMonth) {
+        let loai = item.caseType || 'Chưa xác định';
+        
+        // ⚡ GOM NHÓM TÊN ÁN TẠI ĐÂY ⚡
+        if (
+          loai === "cainghien" || 
+          loai === "CAINGHIEN" || 
+          loai === "Cai nghiện" || 
+          loai === "ADBPXLHC"
+        ) {
+          loai = "Áp dụng biện pháp xử lý hành chính"; // Ép về đúng cái tên chuẩn trong danhSachCacLoaiAn
+        }
+
+        acc[loai] = (acc[loai] || 0) + 1;
+        acc.tongSo = (acc.tongSo || 0) + 1;
+      }
+    }
+    return acc;
+  }, { tongSo: 0 });
+
+  const danhSachCacLoaiAn = ["Hình sự", "Dân sự", "Hành chính", "Hôn nhân & GĐ", "Kinh tế", "Lao động", "Áp dụng biện pháp xử lý hành chính"];
+  const myCases = useMemo(() => schedule.filter(item => 
+    item.judge === userFullName || item.clerk === userFullName || item.createdBy === user?.email
+  ), [schedule, userFullName, user?.email]);
+
+  const myPendingCases = useMemo(() => myCases.filter(item => item.status === 'pending' || !item.datetime), [myCases]);
   
+  const myUpcomingTrials = useMemo(() => myCases.filter(item => item.datetime && item.status !== 'completed' && item.status !== 'done')
+                                  .sort((a, b) => new Date(a.datetime) - new Date(b.datetime))
+                                  .slice(0, 5), [myCases]);
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-blue-950 font-sans">
       <div className="relative mb-8">
@@ -2660,42 +2721,7 @@ const handleSendMessage = async () => {
   const canEdit = canEditSchedule; // Khai báo thêm dòng này để tránh lỗi canEdit is not defined
   // =========================================================
   // HÀM TÍNH TOÁN THỐNG KÊ ÁN ĐÃ PHÂN CÔNG
-const thongKeLoaiAn = schedule.reduce((acc, item) => {
-    if (item.judge && item.judge !== "---" && item.judge !== "") {
-      // Lấy ngày phân án (ưu tiên ngày tạo, nếu không có lấy ngày cập nhật)
-      const itemMonth = moment(item.createdAt || item.updatedAt || new Date()).format('YYYY-MM');
-      
-      // Chỉ đếm những vụ nằm trong tháng được chọn (hoặc nếu chọn 'all' thì đếm hết)
-      if (statMonth === "all" || itemMonth === statMonth) {
-        let loai = item.caseType || 'Chưa xác định';
-        
-        // ⚡ GOM NHÓM TÊN ÁN TẠI ĐÂY ⚡
-        if (
-          loai === "cainghien" || 
-          loai === "CAINGHIEN" || 
-          loai === "Cai nghiện" || 
-          loai === "ADBPXLHC"
-        ) {
-          loai = "Áp dụng biện pháp xử lý hành chính"; // Ép về đúng cái tên chuẩn trong danhSachCacLoaiAn
-        }
 
-        acc[loai] = (acc[loai] || 0) + 1;
-        acc.tongSo = (acc.tongSo || 0) + 1;
-      }
-    }
-    return acc;
-  }, { tongSo: 0 });
-
-  const danhSachCacLoaiAn = ["Hình sự", "Dân sự", "Hành chính", "Hôn nhân & GĐ", "Kinh tế", "Lao động", "Áp dụng biện pháp xử lý hành chính"];
-  const myCases = schedule.filter(item => 
-    item.judge === userFullName || item.clerk === userFullName || item.createdBy === user?.email
-  );
-
-  const myPendingCases = myCases.filter(item => item.status === 'pending' || !item.datetime);
-  
-  const myUpcomingTrials = myCases.filter(item => item.datetime && item.status !== 'completed' && item.status !== 'done')
-                                  .sort((a, b) => new Date(a.datetime) - new Date(b.datetime))
-                                  .slice(0, 5);
   return (
     <div className="min-h-screen bg-gray-100 flex font-sans antialiased tracking-tight relative">
       <div className="absolute inset-0 bg-black/30 z-0"></div>
@@ -3344,8 +3370,23 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                       <div><label className={judgeLabelStyle}>Thẩm phán</label><input list="judges-list" value={form.judge} onChange={e => setForm({...form, judge: e.target.value})} className={inputBase} /></div>
                       <div><label className={judgeLabelStyle}>Thư ký</label><input list="clerks-list" value={form.clerk} onChange={e => setForm({...form, clerk: e.target.value})} className={inputBase} /></div>
                       <div><label className={judgeLabelStyle}>Kiểm sát viên</label><input list="prosecutors-list" value={form.prosecutor} onChange={e => setForm({...form, prosecutor: e.target.value})} className={inputBase} /></div>
-                      <div><label className={judgeLabelStyle}>Hội thẩm 1</label><input value={form.juror1} onChange={e => setForm({...form, juror1: e.target.value})} className={inputBase} /></div>
-                      <div><label className={judgeLabelStyle}>Hội thẩm 2</label><input value={form.juror2} onChange={e => setForm({...form, juror2: e.target.value})} className={inputBase} /></div>
+                      <div>
+            <label className={judgeLabelStyle}>Hội thẩm 1</label>
+            <input list="jurors-list" value={form.juror1} onChange={e => setForm({...form, juror1: e.target.value})} className={inputBase} placeholder="Chọn hoặc gõ tên..." />
+          </div>
+
+          {/* CỘT HỘI THẨM 2 VÀ BẢNG PHONG THẦN */}
+          <div>
+            <label className={judgeLabelStyle}>Hội thẩm 2</label>
+            <input list="jurors-list" value={form.juror2} onChange={e => setForm({...form, juror2: e.target.value})} className={inputBase} placeholder="Chọn hoặc gõ tên..." />
+            
+            {/* ⚡ DANH SÁCH XOAY VÒNG HỘI THẨM (NGƯỜI ÍT ÁN NỔI LÊN TRÊN) */}
+            <datalist id="jurors-list">
+              {thongKeHoiTham.map(([name, count]) => (
+                <option key={name} value={name}>Đang tham gia: {count} vụ</option>
+              ))}
+            </datalist>
+          </div>
                    </div>
                 </div>
 
@@ -4882,7 +4923,7 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
           <h2 className="text-3xl font-black uppercase tracking-tighter">Báo Cáo Kết Quả Xét Xử</h2>
           <p className="opacity-70 font-bold uppercase text-[11px] mt-1 tracking-[0.2em]">Thống kê tổng hợp</p>
         </div>
-       <div className="flex items-center gap-3 bg-white/20 p-3 rounded-xl border border-white/30 backdrop-blur-sm shadow-inner">
+        <div className="flex items-center gap-3 bg-white/20 p-3 rounded-xl border border-white/30 backdrop-blur-sm shadow-inner">
            <span className="text-[11px] font-black uppercase tracking-widest text-blue-100 hidden sm:block">Chọn tháng:</span>
            <input 
               type="month" 
@@ -4895,6 +4936,8 @@ const thongKeLoaiAn = schedule.reduce((acc, item) => {
                  Toàn thời gian
               </button>
            )}
+           
+           {/* ⚡ NÚT TẢI BÁO CÁO HỘI THẨM ĐƯỢC RÁP VÀO ĐÂY ⚡ */}
            <button 
              onClick={handleExportThongKeHTND}
              className="ml-2 flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white px-4 py-2.5 rounded-lg font-black uppercase text-[10px] tracking-widest shadow-md transition-all active:scale-95 border border-pink-400"
