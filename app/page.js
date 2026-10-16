@@ -1199,7 +1199,7 @@ const handleSendMessage = async () => {
              
              // 🚀 KÍCH HOẠT BẮN TÊN ĐẠN SANG GOOGLE SHEETS CHO SẾP NHUNG
              try {
-               const GOOGLE_SHEET_WEBHOOK = "DÁN_CÁI_LINK_APPS_SCRIPT_CỦA_NÍ_VÀO_ĐÂY";
+               const GOOGLE_SHEET_WEBHOOK = "https://script.google.com/macros/s/AKfycbywnfl2GRRamSRRCD-nzOWCcZJhkRv_N5RZcWxEqKWy3J3fmzzn5tccbrwieDNHbqrp/exec";
                
                fetch(GOOGLE_SHEET_WEBHOOK, {
                  method: 'POST',
