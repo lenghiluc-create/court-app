@@ -65,6 +65,40 @@ const DANH_MUC_QUAN_HE = {
     "Xem xét giảm thời hạn, tạm đình chỉ, miễn chấp hành quyết định"
   ]
 };
+const DANH_SACH_HTND_CHUAN = [
+  "Nguyễn Kim Phước",
+  "Thạch Hoàng Tha",
+  "Võ Văn Phượng",
+  "Bùi Hồng Hiệp",
+  "Nguyễn Thanh Rực",
+  "Thạch Thanh Tâm",
+  "Trà Minh Châu",
+  "Lê Hồng Điệp",
+  "Trần Thị Thanh Nhanh",
+  "Nguyễn Phương Nhi",
+  "Trần Thúy Kiều",
+  "Nguyễn Hồng Được",
+  "Võ Thị Nhì",
+  "Nguyễn Thành Thái",
+  "Hà Ngân Kim Tới",
+  "Huỳnh Minh Thuận",
+  "Trần Hoàng Việt",
+  "Nguyễn Văn Hòa",
+  "Lâm Minh Đoàn",
+  "Thạch Văn Mến",
+  "Trần Huy Tùng",
+  "Lê Thị Tiến",
+  "Phan Văn Hùng",
+  "Võ Quốc Hưng",
+  "Đỗ Văn Quân",
+  "Dương Hồng Hải",
+  "Lê Thị Hồng Loan",
+  "Lê Thị Ánh Tuyết",
+  "Nguyễn Thanh Phong",
+  "Nguyễn Thanh Phương"
+  // 👉 Anh nhập tiếp tên các vị Hội thẩm của KV9 vào đây...
+];
+const TRAN_HTND_MOI_THANG = 8;
 const localizer = typeof window !== 'undefined' ? momentLocalizer(moment) : null;
 const DnDCalendar = withDragAndDrop(Calendar);
 // ==============================================================
@@ -1321,46 +1355,85 @@ const handleSendMessage = async () => {
   // ==============================================================
   // 🛡️ CHỐT CHẶN PHÚT 89: KIỂM TRA HỘI THẨM TRƯỚC KHI CHỐT ÁN
   // ==============================================================
+  // ==============================================================
+  // 🛡️ CHỐT CHẶN PHÚT 89: CẬP NHẬT ĐÚNG TÊN HTND MỚI & LƯU VẾT GỐC
+  // ==============================================================
   const handleXetXuXong = async (item) => {
-    // 1. Hỏi xác nhận xem người ngồi xử hôm nay có đúng với lịch không
     const dungNguoiKhong = window.confirm(
       `⚖️ CHỐT KẾT QUẢ XÉT XỬ VỤ: ${item.caseName}\n\n` +
       `Hệ thống đang ghi nhận Hội đồng xét xử gồm:\n` +
       `👨‍⚖️ Thẩm phán: ${item.judge || "---"}\n` +
       `👥 Hội thẩm 1: ${item.juror1 || "---"}\n` +
       `👥 Hội thẩm 2: ${item.juror2 || "---"}\n\n` +
+      `⚠️ LƯU Ý: Danh sách này dùng để đối soát thanh toán tiền bồi dưỡng phiên tòa.\n` +
       `❓ HÔM NAY CÁC VỊ HỘI THẨM NÀY CÓ NGỒI XỬ ĐÚNG NHƯ LỊCH KHÔNG?\n\n` +
       `👉 Bấm [OK] nếu ĐÚNG NGƯỜI (Hệ thống sẽ chốt án).\n` +
       `👉 Bấm [Cancel/Hủy] nếu ĐÃ THAY NGƯỜI KHÁC phút chót.`
     );
 
     if (dungNguoiKhong) {
-      // Nếu đúng người -> Cho phép chốt án bình thường gọi hàm toggleStatus cũ
       await toggleStatus(item.id, 'completed', item.caseName);
     } else {
-      // 2. Nếu khai báo ĐỔI NGƯỜI -> Ép viết bản kiểm điểm giải trình
-      const lyDo = window.prompt(
-        `🚨 PHÁT HIỆN THAY ĐỔI HỘI THẨM PHÚT CHÓT!\n\n` +
-        `Vui lòng nhập TÊN HỘI THẨM MỚI tham gia hôm nay và LÝ DO THAY ĐỔI:\n` +
-        `(Ví dụ: Trần Văn B thay Nguyễn Văn A do ông A bận công tác đột xuất)`
+      // 1. Hỏi vị trí Hội thẩm bị thay đổi
+      const viTriDoi = window.prompt(
+        `🚨 KHAI BÁO THAY ĐỔI HỘI THẨM PHÚT CHÓT\n\n` +
+        `Hiện tại: [1] ${item.juror1 || "---"}  |  [2] ${item.juror2 || "---"}\n\n` +
+        `Nhập SỐ tương ứng với vị trí thay đổi:\n` +
+        `1 - Chỉ đổi Hội thẩm 1 (${item.juror1 || "---"})\n` +
+        `2 - Chỉ đổi Hội thẩm 2 (${item.juror2 || "---"})\n` +
+        `3 - Đổi cả 2 Hội thẩm`
       );
 
-      if (!lyDo || lyDo.trim() === "") {
-        return showToast("❌ Không thể chốt án! Bắt buộc phải giải trình nếu có đổi Hội thẩm.", "error");
+      if (!["1", "2", "3"].includes((viTriDoi || "").trim())) {
+        return showToast("❌ Đã hủy thao tác! Vui lòng nhập số 1, 2 hoặc 3.", "error");
       }
 
-      // 3. Cho phép chốt án nhưng LƯU VẾT TỘI CHỨNG và BẮN WEBHOOK CHO SẾP
+      let newJuror1 = item.juror1 || "---";
+      let newJuror2 = item.juror2 || "---";
+      const choice = viTriDoi.trim();
+
+      // 2. Nhập tên chính xác của người đi xử thay
+      if (choice === "1" || choice === "3") {
+        const nhapHT1 = window.prompt(`👤 Nhập HỌ VÀ TÊN CHÍNH XÁC của Hội thẩm mới thay cho [${item.juror1 || "Hội thẩm 1"}]:`);
+        if (!nhapHT1 || !nhapHT1.trim()) return showToast("❌ Bắt buộc phải nhập tên Hội thẩm mới!", "error");
+        newJuror1 = nhapHT1.trim();
+      }
+
+      if (choice === "2" || choice === "3") {
+        const nhapHT2 = window.prompt(`👤 Nhập HỌ VÀ TÊN CHÍNH XÁC của Hội thẩm mới thay cho [${item.juror2 || "Hội thẩm 2"}]:`);
+        if (!nhapHT2 || !nhapHT2.trim()) return showToast("❌ Bắt buộc phải nhập tên Hội thẩm mới!", "error");
+        newJuror2 = nhapHT2.trim();
+      }
+
+      // 3. Nhập lý do thay đổi
+      const lyDo = window.prompt(
+        `📝 Nhập LÝ DO THAY ĐỔI để báo cáo Lãnh đạo:\n` +
+        `(Ví dụ: Ông ${item.juror1} báo ốm đột xuất lúc 7h00 sáng)`
+      );
+
+      if (!lyDo || !lyDo.trim()) {
+        return showToast("❌ Không thể chốt án! Bắt buộc phải nhập lý do giải trình.", "error");
+      }
+
+      const htCuStr = `${item.juror1 || "---"} & ${item.juror2 || "---"}`;
+      const htMoiStr = `${newJuror1} & ${newJuror2}`;
+
+      // 4. Lưu tên mới vào hồ sơ (để tính đúng thành tích) + Lưu vết người cũ + Bắn Webhook
       try {
         const { doc, updateDoc } = await import('firebase/firestore');
         await updateDoc(doc(db, "schedule", item.id), {
           status: 'completed',
           completedAt: moment().toISOString(),
-          ghiChuQuyTrinh: (item.ghiChuQuyTrinh ? item.ghiChuQuyTrinh + " | " : "") + `⚠️ Đổi HT lúc xét xử: ${lyDo}`,
+          juror1: newJuror1, // ✅ Cập nhật tên người mới để cộng đúng số vụ đã xử
+          juror2: newJuror2, // ✅ Cập nhật tên người mới để cộng đúng số vụ đã xử
+          htGocTruocKhiDoi: htCuStr, // Lưu lại cặp HTND gốc
+          ghiChuQuyTrinh: (item.ghiChuQuyTrinh ? item.ghiChuQuyTrinh + " | " : "") + 
+            `⚠️ Đổi HT lúc xét xử: Từ [${htCuStr}] sang [${htMoiStr}] - Lý do: ${lyDo.trim()}`,
           updatedBy: user.email,
           updatedAt: moment().toISOString()
         });
 
-        // Kích hoạt bắn tin nhắn lên Google Sheets cho Sếp Nhung
+        // Bắn dữ liệu sang Google Sheets & Email cho Lãnh đạo
         try {
           const GOOGLE_SHEET_WEBHOOK = "https://script.google.com/macros/s/AKfycbywnfl2GRRamSRRCD-nzOWCcZJhkRv_N5RZcWxEqKWy3J3fmzzn5tccbrwieDNHbqrp/exec";
           fetch(GOOGLE_SHEET_WEBHOOK, {
@@ -1370,17 +1443,17 @@ const handleSendMessage = async () => {
             body: JSON.stringify({
               thuKy: user?.email || "Chưa rõ",
               tenVuAn: item.caseName,
-              htCu: `${item.juror1 || "---"} & ${item.juror2 || "---"}`,
-              htMoi: `(Đổi phút chót)`,
-              lyDo: `(Đổi lúc chốt án) - ${lyDo}`
+              htCu: htCuStr,
+              htMoi: htMoiStr,
+              lyDo: `(Đổi lúc chốt án) - ${lyDo.trim()}`
             })
           });
         } catch (err) {
           console.log("Lỗi webhook:", err);
         }
 
-        showToast("✅ Đã chốt án và ghi nhận báo cáo giải trình!", "success");
-        ghiNhatKy("Đổi HT phút chót", `Vụ ${item.caseName} - Giải trình: ${lyDo}`);
+        showToast("✅ Đã chốt án, cập nhật tên HTND mới và gửi báo cáo giải trình!", "success");
+        ghiNhatKy("Đổi HT phút chót", `Vụ "${item.caseName}": Đổi từ [${htCuStr}] sang [${htMoiStr}]. Lý do: ${lyDo.trim()}`);
       } catch (e) {
         showToast("Lỗi chốt án: " + e.message, "error");
       }
@@ -1884,18 +1957,53 @@ const handleSendMessage = async () => {
     });
   }, [schedule]);
     // ⚡ BỌC LẠI BỘ ĐẾM HỘI THẨM ĐỂ CHỐNG LAG KHI GÕ CHỮ VÀ CHỐNG GỌI "CẢM TÍNH"
+  // ⚡ BỘ ĐẾM HỘI THẨM CHUẨN HÓA (ƯU TIÊN NGƯỜI 0 VỤ & KIỂM SOÁT TRẦN THÁNG)
   const thongKeHoiTham = useMemo(() => {
     const stats = {};
+    const monthStats = {};
+    const currentMonth = moment().format("YYYY-MM");
+
+    // 1. Khởi tạo từ danh sách chuẩn (Đảm bảo người chưa có vụ nào hiện 0 vụ lên đầu)
+    DANH_SACH_HTND_CHUAN.forEach(name => {
+      const cleanName = name.trim();
+      stats[cleanName] = 0;
+      monthStats[cleanName] = 0;
+    });
+
+    // 2. Quét dữ liệu án năm nay để cộng dồn
     danhSachAnNamNay.forEach(item => {
-      // Chỉ đếm những án chưa xử xong
+      const itemMonth = item.datetime ? moment(item.datetime).format("YYYY-MM") : "";
+
+      // Đếm số án đang ôm (chưa xử xong)
       if (item.status !== 'completed' && item.status !== 'dinh_chi') {
-        if (item.juror1 && item.juror1 !== "---") stats[item.juror1] = (stats[item.juror1] || 0) + 1;
-        if (item.juror2 && item.juror2 !== "---") stats[item.juror2] = (stats[item.juror2] || 0) + 1;
+        if (item.juror1 && item.juror1 !== "---") {
+          const j1 = item.juror1.trim();
+          stats[j1] = (stats[j1] || 0) + 1;
+        }
+        if (item.juror2 && item.juror2 !== "---") {
+          const j2 = item.juror2.trim();
+          stats[j2] = (stats[j2] || 0) + 1;
+        }
+      }
+
+      // Đếm số án xếp lịch trong tháng hiện tại (để kiểm soát trần)
+      if (itemMonth === currentMonth && item.status !== 'dinh_chi') {
+        if (item.juror1 && item.juror1 !== "---") {
+          const j1 = item.juror1.trim();
+          monthStats[j1] = (monthStats[j1] || 0) + 1;
+        }
+        if (item.juror2 && item.juror2 !== "---") {
+          const j2 = item.juror2.trim();
+          monthStats[j2] = (monthStats[j2] || 0) + 1;
+        }
       }
     });
-    // Trả về mảng đã sắp xếp từ người ÍT VIỆC NHẤT lên đầu
-    return Object.entries(stats).sort((a, b) => a[1] - b[1]);
-  }, [danhSachAnNamNay]); // 👈 Chỉ tính lại bảng phong thần khi có thêm/bớt án
+
+    // 3. Sắp xếp từ người ÍT VIỆC NHẤT lên đầu
+    return Object.entries(stats)
+      .map(([name, dangOm]) => [name, dangOm, monthStats[name] || 0])
+      .sort((a, b) => a[1] - b[1] || a[2] - b[2]);
+  }, [danhSachAnNamNay]);
 
   const isUrgent = (datetime) => {
     if(!datetime) return false;
@@ -3382,8 +3490,12 @@ const handleSendMessage = async () => {
             
             {/* ⚡ DANH SÁCH XOAY VÒNG HỘI THẨM (NGƯỜI ÍT ÁN NỔI LÊN TRÊN) */}
             <datalist id="jurors-list">
-              {thongKeHoiTham.map(([name, count]) => (
-                <option key={name} value={name}>Đang tham gia: {count} vụ</option>
+              {thongKeHoiTham.map(([name, dangOm, trongThang]) => (
+                <option key={name} value={name}>
+                  {trongThang >= TRAN_HTND_MOI_THANG 
+                    ? `⛔ Đã chạm trần tháng (${trongThang} vụ) | Đang chờ xử: ${dangOm} vụ` 
+                    : `Đang chờ xử: ${dangOm} vụ | Tháng này: ${trongThang}/${TRAN_HTND_MOI_THANG} vụ`}
+                </option>
               ))}
             </datalist>
           </div>
