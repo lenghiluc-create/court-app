@@ -1352,13 +1352,11 @@ const handleSendMessage = async () => {
       ghiNhatKy("Đổi trạng thái", `Chuyển vụ "${caseName}" sang: ${newStatus}`);
     } catch (err) { showToast("Lỗi cập nhật trạng thái", "error"); }
   };
-  // ==============================================================
-  // 🛡️ CHỐT CHẶN PHÚT 89: KIỂM TRA HỘI THẨM TRƯỚC KHI CHỐT ÁN
-  // ==============================================================
-  // ==============================================================
-  // 🛡️ CHỐT CHẶN PHÚT 89: CẬP NHẬT ĐÚNG TÊN HTND MỚI & LƯU VẾT GỐC
+ // ==============================================================
+  // 🛡️ CHỐT CHẶN PHÚT 89: CẬP NHẬT ĐÚNG TÊN HTND MỚI & LƯU VẾT GỐC (ĐÃ SỬA NÚT BẤM)
   // ==============================================================
   const handleXetXuXong = async (item) => {
+    // 1. Tạo hộp thoại xác nhận có sửa lại nút bấm
     const dungNguoiKhong = window.confirm(
       `⚖️ CHỐT KẾT QUẢ XÉT XỬ VỤ: ${item.caseName}\n\n` +
       `Hệ thống đang ghi nhận Hội đồng xét xử gồm:\n` +
@@ -1367,14 +1365,14 @@ const handleSendMessage = async () => {
       `👥 Hội thẩm 2: ${item.juror2 || "---"}\n\n` +
       `⚠️ LƯU Ý: Danh sách này dùng để đối soát thanh toán tiền bồi dưỡng phiên tòa.\n` +
       `❓ HÔM NAY CÁC VỊ HỘI THẨM NÀY CÓ NGỒI XỬ ĐÚNG NHƯ LỊCH KHÔNG?\n\n` +
-      `👉 Bấm [OK] nếu ĐÚNG NGƯỜI (Hệ thống sẽ chốt án).\n` +
-      `👉 Bấm [Cancel/Hủy] nếu ĐÃ THAY NGƯỜI KHÁC phút chót.`
+      `👉 Bấm [OK] để GIỮ NGUYÊN (Hệ thống sẽ chốt án).\n` +
+      `👉 Bấm [Cancel/Hủy] nếu CÓ THAY ĐỔI người khác phút chót.`
     );
 
     if (dungNguoiKhong) {
       await toggleStatus(item.id, 'completed', item.caseName);
     } else {
-      // 1. Hỏi vị trí Hội thẩm bị thay đổi
+      // 2. Hỏi vị trí Hội thẩm bị thay đổi
       const viTriDoi = window.prompt(
         `🚨 KHAI BÁO THAY ĐỔI HỘI THẨM PHÚT CHÓT\n\n` +
         `Hiện tại: [1] ${item.juror1 || "---"}  |  [2] ${item.juror2 || "---"}\n\n` +
@@ -1392,7 +1390,7 @@ const handleSendMessage = async () => {
       let newJuror2 = item.juror2 || "---";
       const choice = viTriDoi.trim();
 
-      // 2. Nhập tên chính xác của người đi xử thay
+      // 3. Nhập tên chính xác của người đi xử thay
       if (choice === "1" || choice === "3") {
         const nhapHT1 = window.prompt(`👤 Nhập HỌ VÀ TÊN CHÍNH XÁC của Hội thẩm mới thay cho [${item.juror1 || "Hội thẩm 1"}]:`);
         if (!nhapHT1 || !nhapHT1.trim()) return showToast("❌ Bắt buộc phải nhập tên Hội thẩm mới!", "error");
@@ -1405,7 +1403,7 @@ const handleSendMessage = async () => {
         newJuror2 = nhapHT2.trim();
       }
 
-      // 3. Nhập lý do thay đổi
+      // 4. Nhập lý do thay đổi
       const lyDo = window.prompt(
         `📝 Nhập LÝ DO THAY ĐỔI để báo cáo Lãnh đạo:\n` +
         `(Ví dụ: Ông ${item.juror1} báo ốm đột xuất lúc 7h00 sáng)`
@@ -1418,22 +1416,22 @@ const handleSendMessage = async () => {
       const htCuStr = `${item.juror1 || "---"} & ${item.juror2 || "---"}`;
       const htMoiStr = `${newJuror1} & ${newJuror2}`;
 
-      // 4. Lưu tên mới vào hồ sơ (để tính đúng thành tích) + Lưu vết người cũ + Bắn Webhook
+      // 5. Lưu tên mới vào hồ sơ + Bắn Webhook
       try {
         const { doc, updateDoc } = await import('firebase/firestore');
         await updateDoc(doc(db, "schedule", item.id), {
           status: 'completed',
           completedAt: moment().toISOString(),
-          juror1: newJuror1, // ✅ Cập nhật tên người mới để cộng đúng số vụ đã xử
-          juror2: newJuror2, // ✅ Cập nhật tên người mới để cộng đúng số vụ đã xử
-          htGocTruocKhiDoi: htCuStr, // Lưu lại cặp HTND gốc
+          juror1: newJuror1, 
+          juror2: newJuror2, 
+          htGocTruocKhiDoi: htCuStr, 
           ghiChuQuyTrinh: (item.ghiChuQuyTrinh ? item.ghiChuQuyTrinh + " | " : "") + 
             `⚠️ Đổi HT lúc xét xử: Từ [${htCuStr}] sang [${htMoiStr}] - Lý do: ${lyDo.trim()}`,
           updatedBy: user.email,
           updatedAt: moment().toISOString()
         });
 
-        // Bắn dữ liệu sang Google Sheets & Email cho Lãnh đạo
+        // Bắn dữ liệu sang Google Sheets
         try {
           const GOOGLE_SHEET_WEBHOOK = "https://script.google.com/macros/s/AKfycbywnfl2GRRamSRRCD-nzOWCcZJhkRv_N5RZcWxEqKWy3J3fmzzn5tccbrwieDNHbqrp/exec";
           fetch(GOOGLE_SHEET_WEBHOOK, {
