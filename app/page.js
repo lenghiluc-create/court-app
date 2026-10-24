@@ -867,29 +867,47 @@ useEffect(() => {
       return;
     }
 
-    // Tìm vụ án được chọn trong danh sách danh sách án
+    // Tìm vụ án được chọn trong danh sách
     const selectedCase = schedule.find(item => item.id === caseId);
     
     if (selectedCase) {
-      // Đổ hết dữ liệu cũ vào Form, chừa ngày giờ và phòng xử ra cho thư ký chọn
+      // 1. Lấy loại án từ Database. Nếu hồ sơ cũ không có, thử đọc tên án để nhận diện tự động
+      let loaiAn = selectedCase.caseType;
+      if (!loaiAn || loaiAn === "Civil" || loaiAn === "Hình sự") {
+          const ten = (selectedCase.caseName || "").toLowerCase();
+          if (ten.includes("ly hôn")) loaiAn = "Hôn nhân & GĐ";
+          else if (ten.includes("khiếu kiện")) loaiAn = "Hành chính";
+          else if (ten.includes("cai nghiện")) loaiAn = "Áp dụng biện pháp xử lý hành chính";
+          else if (ten.includes("tranh chấp")) loaiAn = "Dân sự";
+          else loaiAn = selectedCase.caseType || "Hình sự"; // Phán đoán cuối cùng
+      }
+
+      // 2. Tự động chỉnh thời lượng xử án tương ứng với loại án
+      let thoiLuong = 60;
+      if (loaiAn === 'Hình sự') thoiLuong = 120;
+      if (selectedCase.room === "Dự phòng") thoiLuong = 30;
+      if (selectedCase.room === "Trực tuyến") thoiLuong = 240;
+
+      // 3. Đổ hết dữ liệu cũ vào Form
       setForm({
-        ...initialForm, // Reset form trước
+        ...initialForm, 
         caseName: selectedCase.caseName || "",
-        caseType: selectedCase.caseType || "Civil", // Hoặc Dân sự/Hình sự tùy database của Ní
+        caseType: loaiAn, // 👈 Đã cập nhật loại án chuẩn và tự động
+        duration: thoiLuong, // 👈 Đã cập nhật thời gian chuẩn
         plaintiff: selectedCase.plaintiff || "",
         defendant: selectedCase.defendant || "",
         judge: selectedCase.judge || "---",
         clerk: selectedCase.clerk || "---",
+        juror1: selectedCase.juror1 || "---",
+        juror2: selectedCase.juror2 || "---",
         prosecutor: selectedCase.prosecutor || "---",
         trialCount: selectedCase.trialCount || "Lần 1",
+        room: selectedCase.room || "Trụ sở",
       });
-      
-      // Gán editingId bằng ID của vụ án này luôn để khi bấm "Lưu" nó sẽ UPDATE đè lên vụ án cũ 
-      // chứ không tạo ra vụ án mới tinh bị trùng!
       setEditingId(selectedCase.id);
-      
       showToast("⚡ Đã tự động điền thông tin vụ án!", "success");
       setSearchChonNhanh("");
+      setCanhBaoTrungLap([]); // Ẩn luôn bảng cảnh báo nếu đang mở
     }
   };
   // =========================================================
