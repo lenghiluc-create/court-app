@@ -892,8 +892,8 @@ useEffect(() => {
       setForm({
         ...initialForm, 
         caseName: selectedCase.caseName || "",
-        caseType: loaiAn, // 👈 Đã cập nhật loại án chuẩn và tự động
-        duration: thoiLuong, // 👈 Đã cập nhật thời gian chuẩn
+        caseType: loaiAn, 
+        duration: thoiLuong, 
         plaintiff: selectedCase.plaintiff || "",
         defendant: selectedCase.defendant || "",
         judge: selectedCase.judge || "---",
@@ -902,8 +902,11 @@ useEffect(() => {
         juror2: selectedCase.juror2 || "---",
         prosecutor: selectedCase.prosecutor || "---",
         trialCount: selectedCase.trialCount || "Lần 1",
-        room: selectedCase.room || "Trụ sở",
+        
+        // ⚡ DÁN ĐÈ DÒNG NÀY ĐỂ ÉP VỀ TRỤ SỞ NẾU CHƯA PHÂN PHÒNG ⚡
+        room: (!selectedCase.room || selectedCase.room === "Chưa phân phòng") ? "Trụ sở" : selectedCase.room,
       });
+      
       setEditingId(selectedCase.id);
       showToast("⚡ Đã tự động điền thông tin vụ án!", "success");
       setSearchChonNhanh("");
