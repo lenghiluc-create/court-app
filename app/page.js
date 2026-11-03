@@ -1256,13 +1256,23 @@ const handleSendMessage = async () => {
              try {
                const GOOGLE_SHEET_WEBHOOK = "https://script.google.com/macros/s/AKfycbywnfl2GRRamSRRCD-nzOWCcZJhkRv_N5RZcWxEqKWy3J3fmzzn5tccbrwieDNHbqrp/exec";
                
+               let duongSuStr = "";
+               if (form.caseType?.includes("Hình sự")) {
+                 duongSuStr = `Bị cáo: ${form.defendant || "---"} | Bị hại: ${form.plaintiff || "---"}`;
+               } else if (form.caseType === "cainghien" || form.caseType?.includes("Cai nghiện") || form.caseType?.includes("xử lý hành chính") || form.caseType === "Hành chính") {
+                 duongSuStr = `Người bị ĐN/Kiện: ${form.defendant || "---"} | CQ ĐN/Khởi kiện: ${form.plaintiff || "---"}`;
+               } else {
+                 duongSuStr = `NĐ: ${form.plaintiff || "---"} | BĐ: ${form.defendant || "---"}`;
+               }
+
+               // 2. Gửi đi
                fetch(GOOGLE_SHEET_WEBHOOK, {
                  method: 'POST',
-                 mode: 'no-cors', // Bắt buộc dùng no-cors để không bị chặn chéo trình duyệt
+                 mode: 'no-cors', 
                  headers: { 'Content-Type': 'application/json' },
                  body: JSON.stringify({
                    thuKy: user?.email || "Chưa rõ",
-                   tenVuAn: form.caseName,
+                   tenVuAn: `${form.caseName}\n(${duongSuStr})`, // 👈 Ghép đương sự vào đây
                    htCu: `${oldItem.juror1 || "---"} & ${oldItem.juror2 || "---"}`,
                    htMoi: `${form.juror1 || "---"} & ${form.juror2 || "---"}`,
                    lyDo: lyDo
@@ -1455,13 +1465,24 @@ const handleSendMessage = async () => {
         // Bắn dữ liệu sang Google Sheets
         try {
           const GOOGLE_SHEET_WEBHOOK = "https://script.google.com/macros/s/AKfycbywnfl2GRRamSRRCD-nzOWCcZJhkRv_N5RZcWxEqKWy3J3fmzzn5tccbrwieDNHbqrp/exec";
+          // 1. Tạo chuỗi đương sự tùy theo loại án trước khi gửi
+          let duongSuStr = "";
+          if (item.caseType?.includes("Hình sự")) {
+            duongSuStr = `Bị cáo: ${item.defendant || "---"} | Bị hại: ${item.plaintiff || "---"}`;
+          } else if (item.caseType === "cainghien" || item.caseType?.includes("Cai nghiện") || item.caseType?.includes("xử lý hành chính") || item.caseType === "Hành chính") {
+            duongSuStr = `Người bị ĐN/Kiện: ${item.defendant || "---"} | CQ ĐN/Khởi kiện: ${item.plaintiff || "---"}`;
+          } else {
+            duongSuStr = `NĐ: ${item.plaintiff || "---"} | BĐ: ${item.defendant || "---"}`;
+          }
+
+          // 2. Gửi đi với dữ liệu đã ghép
           fetch(GOOGLE_SHEET_WEBHOOK, {
             method: 'POST',
             mode: 'no-cors',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               thuKy: user?.email || "Chưa rõ",
-              tenVuAn: item.caseName,
+              tenVuAn: `${item.caseName}\n(${duongSuStr})`, // 👈 Ghép đương sự vào dòng dưới của Tên vụ án
               htCu: htCuStr,
               htMoi: htMoiStr,
               lyDo: `(Đổi lúc chốt án) - ${lyDo.trim()}`
