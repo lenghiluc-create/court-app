@@ -125,6 +125,15 @@ export default function PremiumCourtApp() {
   const [userRoles, setUserRoles] = useState([]);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
   const [canhBaoTrungLap, setCanhBaoTrungLap] = useState([]);
+  const [workSchedules, setWorkSchedules] = useState([]);
+  const [workForm, setWorkForm] = useState({ 
+    date: moment().format("YYYY-MM-DD"), 
+    time: "07:30", 
+    content: "", 
+    host: "", 
+    participants: "Toàn thể cơ quan", 
+    location: "Phòng họp" 
+  });
   
   // States
   const [loginEmail, setLoginEmail] = useState("");
@@ -806,6 +815,13 @@ useEffect(() => {
   }, []);
   useEffect(() => {
   if (!showTVMode) return; // Chỉ chạy khi mở Tivi
+  // 4. Lắng nghe Lịch công tác hàng tuần
+      const qWork = query(collection(db, "work_schedules"), orderBy("date", "asc"), orderBy("time", "asc"));
+      const unsubscribeWork = onSnapshot(qWork, (snapshot) => {
+        setWorkSchedules(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+
+      // Nhớ thêm unsubscribeWork() vào chỗ return dọn dẹp (cleanup function) ở cuối useEffect nha anh!
 
   const scrollContainer = tvScrollRef.current;
   if (!scrollContainer) return;
@@ -1167,6 +1183,66 @@ const handleSendMessage = async () => {
     }
   };
   
+  // ==============================================================
+  // 📊 XUẤT EXCEL LỊCH CÔNG TÁC TUẦN (CHỈ LẤY LỊCH ĐÃ DUYỆT)
+  // ==============================================================
+  const handleExportWorkSchedule = async () => {
+    try {
+      // 1. Lọc dữ liệu: Từ tuần này trở đi & ĐÃ DUYỆT
+      const dataToExport = workSchedules.filter(item => 
+        moment(item.date).isSameOrAfter(moment().startOf('isoWeek')) &&
+        item.status === 'approved'
+      );
+
+      if (dataToExport.length === 0) {
+        return showToast("❌ Tuần này chưa có lịch nào được Lãnh đạo duyệt để xuất!", "error");
+      }
+
+      // 2. Sắp xếp lại theo Ngày và Giờ cho chuẩn
+      dataToExport.sort((a, b) => {
+        if (a.date === b.date) return a.time.localeCompare(b.time);
+        return a.date.localeCompare(b.date);
+      });
+
+      // 3. Format dữ liệu thành các cột Excel đẹp mắt
+      const excelData = dataToExport.map((item, index) => ({
+        "STT": index + 1,
+        "Ngày": moment(item.date).format("DD/MM/YYYY"),
+        "Thứ": moment(item.date).format("dddd"),
+        "Giờ": item.time,
+        "Nội dung công việc": item.content,
+        "Chủ trì": item.host || "",
+        "Thành phần tham dự": item.participants || "",
+        "Địa điểm": item.location || ""
+      }));
+
+      // 4. Gọi thư viện XLSX tạo file
+      const XLSX = await import('xlsx');
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      
+      // Chỉnh độ rộng các cột cho file Excel bung ra là đẹp ngay không cần kéo tay
+      worksheet['!cols'] = [
+        { wch: 5 },  // STT
+        { wch: 12 }, // Ngày
+        { wch: 10 }, // Thứ
+        { wch: 10 }, // Giờ
+        { wch: 45 }, // Nội dung
+        { wch: 20 }, // Chủ trì
+        { wch: 25 }, // Tham dự
+        { wch: 20 }  // Địa điểm
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Lịch Công Tác");
+      
+      const fileName = `Lich_Cong_Tac_Tuan_${moment().format("DD_MM_YYYY")}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+      showToast("✅ Đã tải file Excel Lịch công tác thành công!", "success");
+    } catch (error) {
+      showToast("Lỗi khi xuất Excel: " + error.message, "error");
+    }
+  };
+
   const handleSubmit = async () => {
     if (!canEditSchedule) return showToast("Không có quyền!", "error");
     if (!form.datetime || !form.caseName || !form.room) return showToast("Vui lòng nhập đủ thông tin!", "error");
@@ -2983,6 +3059,13 @@ const handleSendMessage = async () => {
               <span className="text-[17px]">🌍</span>{!isCollapsed && <span className="ml-3 text-[14px]">Lịch thẩm định</span>}
             </div>
           )}
+        
+          {/* LỊCH CÔNG TÁC ĐƠN VỊ */}
+          {(!isPublicView || userRole === 'thuky' || userRole === 'admin' || userRole === 'chanhan') && (
+            <div onClick={() => { setActiveTab("work_schedule"); setViewMode("app"); }} className={`flex items-center px-3 py-3 rounded-lg cursor-pointer transition-colors ${activeTab === 'work_schedule' ? 'bg-indigo-50 text-indigo-800 font-extrabold border-l-4 border-indigo-600' : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950 font-semibold'}`}>
+              <span className="text-[17px]">🗓️</span>{!isCollapsed && <span className="ml-3 text-[14px]">Lịch công tác</span>}
+            </div>
+          )}
 
           {/* 💡 BỔ SUNG: BÁO CÁO */}
           {(!isPublicView || userRole === 'thuky' || userRole === 'admin' || userRole === 'chanhan') && (
@@ -4062,6 +4145,188 @@ const handleSendMessage = async () => {
     {activeTab === "config_judges" && (
   <QuanLyThamPhan db={db} showToast={showToast} />
 )}
+
+{activeTab === "work_schedule" && (
+  <div className="animate-fadeIn space-y-8 max-w-7xl mx-auto">
+    <div className="bg-indigo-800 p-8 rounded-2xl text-white shadow-xl flex justify-between items-center">
+      <div>
+        <h2 className="text-3xl font-black uppercase tracking-widest text-indigo-100">Lịch Công Tác Đơn Vị</h2>
+        <p className="opacity-80 font-bold uppercase text-[11px] mt-1 tracking-[0.2em]">Quy trình: Thư ký đăng ký ➔ Lãnh đạo phê duyệt</p>
+      </div>
+      <div className="text-5xl">🗓️</div>
+    </div>
+
+    {/* KHU VỰC NHẬP LỊCH (Mở cho tất cả Thư ký) */}
+    <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
+      <h3 className="font-black text-indigo-900 uppercase mb-4 border-b pb-2 flex items-center gap-2">✍️ Đăng ký lịch công tác mới</h3>
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+        
+        <div className="md:col-span-2">
+          <label className="block text-xs font-black uppercase text-gray-500 mb-2">Ngày</label>
+          <input type="date" value={workForm.date} onChange={e => setWorkForm({...workForm, date: e.target.value})} className={inputBase} />
+        </div>
+        
+        <div className="md:col-span-2">
+          <label className="block text-xs font-black uppercase text-gray-500 mb-2">Giờ</label>
+          <input type="time" value={workForm.time} onChange={e => setWorkForm({...workForm, time: e.target.value})} className={inputBase} />
+        </div>
+
+        <div className="md:col-span-8">
+          <label className="block text-xs font-black uppercase text-gray-500 mb-2">Nội dung công việc <span className="text-red-500">*</span></label>
+          <input type="text" placeholder="VD: Họp giao ban cơ quan tuần..." value={workForm.content} onChange={e => setWorkForm({...workForm, content: e.target.value})} className={inputBase} />
+        </div>
+
+        <div className="md:col-span-4">
+          <label className="block text-xs font-black uppercase text-gray-500 mb-2">Chủ trì</label>
+          <input type="text" placeholder="VD: Đ/c Nhung - Chánh án" value={workForm.host} onChange={e => setWorkForm({...workForm, host: e.target.value})} className={inputBase} />
+        </div>
+
+        <div className="md:col-span-4">
+          <label className="block text-xs font-black uppercase text-gray-500 mb-2">Thành phần tham dự</label>
+          <input type="text" placeholder="VD: Toàn thể đơn vị" value={workForm.participants} onChange={e => setWorkForm({...workForm, participants: e.target.value})} className={inputBase} />
+        </div>
+
+        <div className="md:col-span-4">
+          <label className="block text-xs font-black uppercase text-gray-500 mb-2">Địa điểm</label>
+          <input type="text" placeholder="VD: Phòng họp lầu 1" value={workForm.location} onChange={e => setWorkForm({...workForm, location: e.target.value})} className={inputBase} />
+        </div>
+
+        <div className="md:col-span-12 mt-2">
+          <button 
+            onClick={async () => {
+              if (!workForm.content) return showToast("Vui lòng nhập nội dung công việc!", "error");
+              try {
+                const { collection, addDoc } = await import('firebase/firestore');
+                // Nếu là Admin/Chánh án nhập thì Duyệt luôn, nếu là Thư ký thì Chờ duyệt
+                const isAutoApprove = isAdmin || isChanHan; 
+                await addDoc(collection(db, "work_schedules"), {
+                  ...workForm,
+                  status: isAutoApprove ? 'approved' : 'pending',
+                  createdAt: moment().toISOString(),
+                  createdBy: user?.email
+                });
+                showToast(isAutoApprove ? "✅ Đã lưu lịch (Đã duyệt)!" : "⏳ Đã gửi đăng ký, chờ Lãnh đạo duyệt!", "success");
+                setWorkForm({ ...workForm, content: "", host: "" }); 
+              } catch(e) {
+                showToast("Lỗi đăng ký lịch: " + e.message, "error");
+              }
+            }} 
+            className={`w-full text-white font-black py-4 rounded-xl uppercase shadow-md active:scale-95 transition-all text-sm tracking-widest ${(isAdmin || isChanHan) ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-amber-600 hover:bg-amber-700'}`}
+          >
+            {(isAdmin || isChanHan) ? "LƯU LỊCH (TỰ ĐỘNG DUYỆT)" : "ĐĂNG KÝ LỊCH (CHỜ PHÊ DUYỆT)"}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {/* BẢNG HIỂN THỊ LỊCH CÔNG TÁC */}
+    <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+      <div className="bg-indigo-50 p-4 border-b border-indigo-100 flex justify-between items-center">
+        <h3 className="font-black uppercase text-indigo-900">Danh sách lịch công tác</h3>
+        
+        {/* NÚT XUẤT EXCEL THẦN THÁNH */}
+        <button 
+          onClick={handleExportWorkSchedule}
+          className="bg-green-600 hover:bg-green-700 text-white font-black py-2 px-4 rounded-lg shadow-sm hover:shadow-md transition-all text-[11px] uppercase flex items-center gap-2 active:scale-95"
+        >
+          <span className="text-sm">📊</span> XUẤT LỊCH TUẦN (EXCEL)
+        </button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse text-[12px]">
+          <thead>
+            <tr className="bg-gray-100 text-gray-500 uppercase font-black">
+              <th className="p-3 border-b text-center w-[12%]">Ngày / Giờ</th>
+              <th className="p-3 border-b w-[33%]">Nội dung</th>
+              <th className="p-3 border-b w-[20%]">Chủ trì / Tham dự</th>
+              <th className="p-3 border-b w-[20%]">Địa điểm</th>
+              <th className="p-3 border-b text-center w-[15%]">Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {workSchedules
+              .filter(item => moment(item.date).isSameOrAfter(moment().startOf('isoWeek')))
+              .map(item => (
+              <tr key={item.id} className={`transition-colors group ${item.status === 'pending' ? 'bg-amber-50/30' : 'hover:bg-indigo-50/30'}`}>
+                <td className="p-3 text-center align-top border-r border-gray-100">
+                  <p className="font-black text-indigo-700 text-[13px]">{moment(item.date).format("DD/MM/YYYY")}</p>
+                  <p className="text-gray-500 font-bold mt-1 text-[11px] uppercase bg-gray-100 rounded inline-block px-2">{moment(item.date).format("dddd")}</p>
+                  <p className="text-red-600 font-black mt-2 text-lg">{item.time}</p>
+                </td>
+                <td className="p-3 align-top">
+                  <p className={`font-black text-[14px] leading-tight mb-2 uppercase ${item.status === 'pending' ? 'text-amber-800' : 'text-gray-800'}`}>{item.content}</p>
+                  <p className="text-[10px] text-gray-400 italic">Đăng ký bởi: {item.createdBy?.split('@')[0]}</p>
+                </td>
+                <td className="p-3 align-top space-y-2">
+                  <div>
+                    <span className="text-[9px] font-black text-gray-400 uppercase block mb-0.5">Chủ trì</span>
+                    <span className="font-bold text-indigo-900">{item.host || "---"}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black text-gray-400 uppercase block mb-0.5">Tham dự</span>
+                    <span className="font-bold text-emerald-700">{item.participants || "---"}</span>
+                  </div>
+                </td>
+                <td className="p-3 align-top">
+                  <span className="bg-indigo-50 text-indigo-800 border border-indigo-100 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase">
+                    📍 {item.location || "---"}
+                  </span>
+                </td>
+                <td className="p-3 text-center align-top">
+                  
+                  {/* HUY HIỆU TRẠNG THÁI */}
+                  {item.status === 'pending' ? (
+                    <span className="bg-amber-100 text-amber-700 border border-amber-300 font-black px-2 py-1 rounded text-[10px] uppercase block mb-2 shadow-sm">⏳ Chờ duyệt</span>
+                  ) : (
+                    <span className="bg-emerald-100 text-emerald-700 border border-emerald-300 font-black px-2 py-1 rounded text-[10px] uppercase block mb-2 shadow-sm">✅ Đã duyệt</span>
+                  )}
+
+                  {/* NÚT DUYỆT (Chỉ Admin/Chánh án mới thấy) */}
+                  {(isAdmin || isChanHan) && item.status === 'pending' && (
+                    <button 
+                      onClick={async () => {
+                        const { doc, updateDoc } = await import('firebase/firestore');
+                        await updateDoc(doc(db, "work_schedules", item.id), { status: 'approved' });
+                        showToast("✅ Đã phê duyệt lịch!", "success");
+                      }}
+                      className="bg-emerald-500 hover:bg-emerald-600 text-white w-full text-[10px] font-bold py-1.5 rounded mb-1 shadow transition-colors"
+                    >
+                      PHÊ DUYỆT
+                    </button>
+                  )}
+
+                  {/* NÚT XÓA (Admin luôn thấy. Thư ký chỉ thấy nếu là lịch do mình tạo VÀ chưa được duyệt) */}
+                  {(isAdmin || isChanHan || (item.createdBy === user?.email && item.status === 'pending')) && (
+                    <button 
+                      onClick={async () => {
+                        if(confirm("⚠️ Xác nhận xóa lịch công tác này?")) {
+                          const { doc, deleteDoc } = await import('firebase/firestore');
+                          await deleteDoc(doc(db, "work_schedules", item.id));
+                          showToast("Đã xóa lịch!", "success");
+                        }
+                      }}
+                      className="text-red-600 hover:text-white bg-red-50 hover:bg-red-500 border border-red-200 w-full text-[10px] font-bold py-1.5 rounded transition-colors"
+                    >
+                      XÓA
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {workSchedules.filter(item => moment(item.date).isSameOrAfter(moment().startOf('isoWeek'))).length === 0 && (
+              <tr>
+                <td colSpan="5" className="p-10 text-center text-gray-400 font-bold italic uppercase">
+                  Tuần này chưa có lịch công tác nào
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+)}
+
 {activeTab === "dashboard" && (
   <div className="bg-white p-8 rounded-2xl shadow-xl border-t-8 border-blue-600 max-w-6xl mx-auto animate-fadeIn relative overflow-hidden">
     
