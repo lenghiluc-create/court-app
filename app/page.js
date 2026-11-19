@@ -134,7 +134,42 @@ export default function PremiumCourtApp() {
     participants: "Toàn thể cơ quan", 
     location: "Phòng họp" 
   });
-  
+  // 🔄 TẢI LỊCH CÔNG TÁC ĐỘC LẬP
+  useEffect(() => {
+    let active = true;
+    let unsubscribeWork = () => {};
+
+    const loadWorkSchedules = async () => {
+      try {
+        const { collection, onSnapshot } = await import('firebase/firestore');
+        if (!active) return;
+
+        unsubscribeWork = onSnapshot(
+          collection(db, "work_schedules"),
+          (snapshot) => {
+            const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            list.sort((a, b) => {
+              if (a.date === b.date) return (a.time || "").localeCompare(b.time || "");
+              return (a.date || "").localeCompare(b.date || "");
+            });
+            console.log("✅ Đã tải work_schedules:", list);
+            setWorkSchedules(list);
+          },
+          (error) => {
+            console.error("❌ Lỗi đọc work_schedules:", error);
+          }
+        );
+      } catch (err) {
+        console.error("❌ Lỗi khởi tạo work_schedules:", err);
+      }
+    };
+
+    loadWorkSchedules();
+    return () => {
+      active = false;
+      unsubscribeWork();
+    };
+  }, []);
   // States
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPass, setLoginPass] = useState("");
@@ -815,21 +850,6 @@ useEffect(() => {
   }, []);
   useEffect(() => {
   if (!showTVMode) return; // Chỉ chạy khi mở Tivi
-
-  // 4. Lắng nghe Lịch công tác hàng tuần (Bỏ orderBy kép, sắp xếp bằng JS)
-const qWork = query(collection(db, "work_schedules"));
-const unsubscribeWork = onSnapshot(qWork, (snapshot) => {
-  const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-  list.sort((a, b) => {
-    if (a.date === b.date) return (a.time || "").localeCompare(b.time || "");
-    return (a.date || "").localeCompare(b.date || "");
-  });
-  setWorkSchedules(list);
-}, (error) => {
-  console.error("Lỗi tải lịch công tác:", error);
-});
-
-      // Nhớ thêm unsubscribeWork() vào chỗ return dọn dẹp (cleanup function) ở cuối useEffect nha anh!
 
   const scrollContainer = tvScrollRef.current;
   if (!scrollContainer) return;
