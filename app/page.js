@@ -135,6 +135,8 @@ export default function PremiumCourtApp() {
     location: "Phòng họp" 
   });
   // 🔄 TẢI LỊCH CÔNG TÁC ĐỘC LẬP
+  const [exportStartDate, setExportStartDate] = useState(moment().startOf('isoWeek').format("YYYY-MM-DD"));
+  const [exportEndDate, setExportEndDate] = useState(moment().endOf('isoWeek').format("YYYY-MM-DD"));
   useEffect(() => {
     let active = true;
     let unsubscribeWork = () => {};
@@ -1212,60 +1214,142 @@ const handleSendMessage = async () => {
   };
   
   // ==============================================================
-  // 📊 XUẤT EXCEL LỊCH CÔNG TÁC TUẦN (CHỈ LẤY LỊCH ĐÃ DUYỆT)
+  // 📊 XUẤT EXCEL LỊCH CÔNG TÁC TUẦN (CHUẨN QUỐC HIỆU & KÝ DUYỆT)
   // ==============================================================
   const handleExportWorkSchedule = async () => {
     try {
-      // 1. Lọc dữ liệu: Từ tuần này trở đi & ĐÃ DUYỆT
-      const dataToExport = workSchedules.filter(item => 
-        moment(item.date).isSameOrAfter(moment().startOf('isoWeek')) &&
-        item.status === 'approved'
+      if (!exportStartDate || !exportEndDate) {
+        return showToast("❌ Vui lòng chọn đầy đủ Từ ngày và Đến ngày!", "error");
+      }
+      if (exportStartDate > exportEndDate) {
+        return showToast("❌ Ngày bắt đầu không được lớn hơn ngày kết thúc!", "error");
+      }
+
+      // 1. Lọc dữ liệu: ĐÃ DUYỆT và nằm trong khoảng Từ ngày -> Đến ngày
+      const dataToExport = workSchedules.filter(item =>
+        item.status === 'approved' &&
+        item.date &&
+        item.date >= exportStartDate &&
+        item.date <= exportEndDate
       );
 
       if (dataToExport.length === 0) {
-        return showToast("❌ Tuần này chưa có lịch nào được Lãnh đạo duyệt để xuất!", "error");
+        return showToast(
+          `❌ Không có lịch nào ĐÃ DUYỆT từ ${moment(exportStartDate).format("DD/MM/YYYY")} đến ${moment(exportEndDate).format("DD/MM/YYYY")}!`,
+          "error"
+        );
       }
 
-      // 2. Sắp xếp lại theo Ngày và Giờ cho chuẩn
+      // 2. Sắp xếp theo Ngày và Giờ tăng dần
       dataToExport.sort((a, b) => {
-        if (a.date === b.date) return a.time.localeCompare(b.time);
-        return a.date.localeCompare(b.date);
+        if (a.date === b.date) return (a.time || "").localeCompare(b.time || "");
+        return (a.date || "").localeCompare(b.date || "");
       });
 
-      // 3. Format dữ liệu thành các cột Excel đẹp mắt
-      const excelData = dataToExport.map((item, index) => ({
-        "STT": index + 1,
-        "Ngày": moment(item.date).format("DD/MM/YYYY"),
-        "Thứ": moment(item.date).format("dddd"),
-        "Giờ": item.time,
-        "Nội dung công việc": item.content,
-        "Chủ trì": item.host || "",
-        "Thành phần tham dự": item.participants || "",
-        "Địa điểm": item.location || ""
-      }));
+      const fromFull = moment(exportStartDate).format("DD/MM/YYYY");
+      const toFull = moment(exportEndDate).format("DD/MM/YYYY");
+      const todayLine = `Cần Thơ, ngày ${moment().format("DD")} tháng ${moment().format("MM")} năm ${moment().format("YYYY")}`;
 
-      // 4. Gọi thư viện XLSX tạo file
+      // Viết hoa chữ cái đầu cho cột Thứ (VD: "Thứ hai" -> "Thứ Hai")
+      const formatThu = (dateStr) => {
+        const thu = moment(dateStr).format("dddd");
+        return thu ? thu.charAt(0).toUpperCase() + thu.slice(1) : "";
+      };
+
+      // 3. Dựng phần đầu văn bản (8 cột: 0..4 bên trái, 5..7 bên phải)
+      const headerRows = [
+        ["TÒA ÁN NHÂN DÂN TP. CẦN THƠ", "", "", "", "", "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM", "", ""],
+        ["TÒA ÁN NHÂN DÂN KHU VỰC 9 - CẦN THƠ", "", "", "", "", "Độc lập - Tự do - Hạnh phúc", "", ""],
+        ["Số:       /LCT-TA", "", "", "", "", todayLine, "", ""],
+        [],
+        ["LỊCH CÔNG TÁC TUẦN", "", "", "", "", "", "", ""],
+        [`(Từ ngày ${fromFull} đến ngày ${toFull})`, "", "", "", "", "", "", ""],
+        [],
+        ["STT", "Ngày", "Thứ", "Giờ", "Nội dung công việc", "Chủ trì", "Thành phần tham dự", "Địa điểm"]
+      ];
+
+      // 4. Dựng các dòng dữ liệu lịch công tác
+      const bodyRows = dataToExport.map((item, index) => [
+        index + 1,
+        moment(item.date).format("DD/MM/YYYY"),
+        formatThu(item.date),
+        item.time || "",
+        item.content || "",
+        item.host || "",
+        item.participants || "",
+        item.location || ""
+      ]);
+
+      // 5. Dựng phần Nơi nhận & Ký duyệt cuối file
+      const footerRows = [
+        [],
+        ["Nơi nhận:", "", "", "", "", "CHÁNH ÁN", "", ""], // Có thể đổi thành "TL. CHÁNH ÁN"
+        ["- TAND TP. Cần Thơ (để b/c);", "", "", "", "", "(Ký tên, đóng dấu)", "", ""], // Hoặc "CHÁNH VĂN PHÒNG"
+        ["- Lãnh đạo đơn vị;", "", "", "", "", "", "", ""],
+        ["- Các Thẩm phán, Thư ký, công chức;", "", "", "", "", "", "", ""],
+        ["- Lưu: VP.", "", "", "", "", "", "", ""]
+      ];
+
+      const sheetData = [...headerRows, ...bodyRows, ...footerRows];
+
+      // 6. Tạo Sheet, gộp ô (merges) và căn chỉnh độ rộng cột
       const XLSX = await import('xlsx');
-      const worksheet = XLSX.utils.json_to_sheet(excelData);
-      
-      // Chỉnh độ rộng các cột cho file Excel bung ra là đẹp ngay không cần kéo tay
+      const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+
+      const footerStart = headerRows.length + bodyRows.length + 1; // Dòng chứa "Nơi nhận" & "CHÁNH ÁN"
+
+      worksheet['!merges'] = [
+        // Quốc hiệu & Tên cơ quan (Trái: cột A-E, Phải: cột F-H)
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
+        { s: { r: 0, c: 5 }, e: { r: 0, c: 7 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 4 } },
+        { s: { r: 1, c: 5 }, e: { r: 1, c: 7 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 4 } },
+        { s: { r: 2, c: 5 }, e: { r: 2, c: 7 } },
+        // Tiêu đề LỊCH CÔNG TÁC TUẦN & Khung ngày (Gộp ngang cả 8 cột A-H)
+        { s: { r: 4, c: 0 }, e: { r: 4, c: 7 } },
+        { s: { r: 5, c: 0 }, e: { r: 5, c: 7 } },
+        // Phần Nơi nhận (Trái: A-E) & Ký duyệt (Phải: F-H)
+        { s: { r: footerStart, c: 0 }, e: { r: footerStart, c: 4 } },
+        { s: { r: footerStart, c: 5 }, e: { r: footerStart, c: 7 } },
+        { s: { r: footerStart + 1, c: 0 }, e: { r: footerStart + 1, c: 4 } },
+        { s: { r: footerStart + 1, c: 5 }, e: { r: footerStart + 1, c: 7 } },
+        { s: { r: footerStart + 2, c: 0 }, e: { r: footerStart + 2, c: 4 } },
+        { s: { r: footerStart + 3, c: 0 }, e: { r: footerStart + 3, c: 4 } },
+        { s: { r: footerStart + 4, c: 0 }, e: { r: footerStart + 4, c: 4 } }
+      ];
+
       worksheet['!cols'] = [
-        { wch: 5 },  // STT
-        { wch: 12 }, // Ngày
-        { wch: 10 }, // Thứ
-        { wch: 10 }, // Giờ
-        { wch: 45 }, // Nội dung
-        { wch: 20 }, // Chủ trì
-        { wch: 25 }, // Tham dự
-        { wch: 20 }  // Địa điểm
+        { wch: 6 },  // A: STT
+        { wch: 13 }, // B: Ngày
+        { wch: 12 }, // C: Thứ
+        { wch: 10 }, // D: Giờ
+        { wch: 44 }, // E: Nội dung công việc
+        { wch: 22 }, // F: Chủ trì
+        { wch: 25 }, // G: Thành phần tham dự
+        { wch: 24 }  // H: Địa điểm
+      ];
+
+      worksheet['!rows'] = [
+        { hpt: 20 }, // Dòng 1: Tên cơ quan cấp trên / Quốc hiệu
+        { hpt: 20 }, // Dòng 2: Tên đơn vị / Tiêu ngữ
+        { hpt: 20 }, // Dòng 3: Số hiệu / Ngày tháng
+        { hpt: 10 }, // Dòng trống
+        { hpt: 26 }, // Dòng 5: LỊCH CÔNG TÁC TUẦN
+        { hpt: 20 }, // Dòng 6: Từ ngày ... đến ngày ...
+        { hpt: 10 }, // Dòng trống
+        { hpt: 24 }  // Dòng 8: Tiêu đề cột bảng
       ];
 
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Lịch Công Tác");
-      
-      const fileName = `Lich_Cong_Tac_Tuan_${moment().format("DD_MM_YYYY")}.xlsx`;
+
+      const fromStr = moment(exportStartDate).format("DD-MM");
+      const toStr = moment(exportEndDate).format("DD-MM-YYYY");
+      const fileName = `Lich_Cong_Tac_TANDKV9_${fromStr}_den_${toStr}.xlsx`;
       XLSX.writeFile(workbook, fileName);
-      showToast("✅ Đã tải file Excel Lịch công tác thành công!", "success");
+
+      showToast(`✅ Đã xuất ${dataToExport.length} lịch công tác (${fromFull} - ${toFull})!`, "success");
     } catch (error) {
       showToast("Lỗi khi xuất Excel: " + error.message, "error");
     }
@@ -4255,16 +4339,59 @@ const canApproveWork =
 
     {/* BẢNG HIỂN THỊ LỊCH CÔNG TÁC */}
     <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
-      <div className="bg-indigo-50 p-4 border-b border-indigo-100 flex justify-between items-center">
+      <div className="bg-indigo-50 p-4 border-b border-indigo-100 flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3">
         <h3 className="font-black uppercase text-indigo-900">Danh sách lịch công tác</h3>
-        
-        {/* NÚT XUẤT EXCEL THẦN THÁNH */}
-        <button 
-          onClick={handleExportWorkSchedule}
-          className="bg-green-600 hover:bg-green-700 text-white font-black py-2 px-4 rounded-lg shadow-sm hover:shadow-md transition-all text-[11px] uppercase flex items-center gap-2 active:scale-95"
-        >
-          <span className="text-sm">📊</span> XUẤT LỊCH TUẦN (EXCEL)
-        </button>
+
+        {/* BỘ CHỌN KHUNG THỜI GIAN + NÚT XUẤT EXCEL */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Nút chọn nhanh Tuần này / Tuần sau */}
+          <button
+            type="button"
+            onClick={() => {
+              setExportStartDate(moment().startOf('isoWeek').format("YYYY-MM-DD"));
+              setExportEndDate(moment().endOf('isoWeek').format("YYYY-MM-DD"));
+            }}
+            className="bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold py-1.5 px-2.5 rounded-lg text-[11px] transition-colors"
+          >
+            Tuần này
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setExportStartDate(moment().add(1, 'weeks').startOf('isoWeek').format("YYYY-MM-DD"));
+              setExportEndDate(moment().add(1, 'weeks').endOf('isoWeek').format("YYYY-MM-DD"));
+            }}
+            className="bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold py-1.5 px-2.5 rounded-lg text-[11px] transition-colors"
+          >
+            Tuần sau
+          </button>
+
+          {/* Ô chọn Từ ngày - Đến ngày */}
+          <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-indigo-200">
+            <span className="text-[10px] font-black text-gray-500 uppercase">Từ:</span>
+            <input
+              type="date"
+              value={exportStartDate}
+              onChange={e => setExportStartDate(e.target.value)}
+              className="text-[11px] font-bold text-gray-700 outline-none cursor-pointer"
+            />
+            <span className="text-[10px] font-black text-gray-500 uppercase ml-1">Đến:</span>
+            <input
+              type="date"
+              value={exportEndDate}
+              onChange={e => setExportEndDate(e.target.value)}
+              className="text-[11px] font-bold text-gray-700 outline-none cursor-pointer"
+            />
+          </div>
+
+          {/* Nút Xuất Excel */}
+          <button
+            onClick={handleExportWorkSchedule}
+            className="bg-green-600 hover:bg-green-700 text-white font-black py-2 px-4 rounded-lg shadow-sm hover:shadow-md transition-all text-[11px] uppercase flex items-center gap-2 active:scale-95"
+          >
+            <span className="text-sm">📊</span> XUẤT EXCEL
+          </button>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse text-[12px]">
