@@ -2969,6 +2969,12 @@ const handleSendMessage = async () => {
   const canManagePortal = isAdmin || isChanHan; // Đăng tin tức, văn bản pháp luật
   const canManageUsers = isAdmin; // Phân quyền cán bộ, cấu hình hệ thống
   const canViewReports = isAdmin || isChanHan || isThamPhan || isThuKy; // Xem thống kê
+ // Quyền duyệt Lịch công tác (Admin, Chánh án, Chánh văn phòng)
+const canApproveWork =
+  isAdmin ||
+  isChanHan ||
+  userRole === 'chanhvanphong' ||
+  ['ttsthe@thamphan.vn'].includes((user?.email || '').toLowerCase());
   
   const canEdit = canEditSchedule; // Khai báo thêm dòng này để tránh lỗi canEdit is not defined
   // =========================================================
@@ -3089,7 +3095,7 @@ const handleSendMessage = async () => {
           )}
         
           {/* LỊCH CÔNG TÁC ĐƠN VỊ */}
-          {(!isPublicView || userRole === 'thuky' || userRole === 'admin' || userRole === 'chanhan') && (
+          {(!isPublicView || userRole === 'thuky' || userRole === 'admin' || userRole === 'chanhan'|| canApproveWork) && (
             <div onClick={() => { setActiveTab("work_schedule"); setViewMode("app"); }} className={`flex items-center px-3 py-3 rounded-lg cursor-pointer transition-colors ${activeTab === 'work_schedule' ? 'bg-indigo-50 text-indigo-800 font-extrabold border-l-4 border-indigo-600' : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950 font-semibold'}`}>
               <span className="text-[17px]">🗓️</span>{!isCollapsed && <span className="ml-3 text-[14px]">Lịch công tác</span>}
             </div>
@@ -4226,7 +4232,7 @@ const handleSendMessage = async () => {
               try {
                 const { collection, addDoc } = await import('firebase/firestore');
                 // Nếu là Admin/Chánh án nhập thì Duyệt luôn, nếu là Thư ký thì Chờ duyệt
-                const isAutoApprove = isAdmin || isChanHan; 
+                const isAutoApprove = canApproveWork; 
                 await addDoc(collection(db, "work_schedules"), {
                   ...workForm,
                   status: isAutoApprove ? 'approved' : 'pending',
@@ -4239,9 +4245,9 @@ const handleSendMessage = async () => {
                 showToast("Lỗi đăng ký lịch: " + e.message, "error");
               }
             }} 
-            className={`w-full text-white font-black py-4 rounded-xl uppercase shadow-md active:scale-95 transition-all text-sm tracking-widest ${(isAdmin || isChanHan) ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-amber-600 hover:bg-amber-700'}`}
-          >
-            {(isAdmin || isChanHan) ? "LƯU LỊCH (TỰ ĐỘNG DUYỆT)" : "ĐĂNG KÝ LỊCH (CHỜ PHÊ DUYỆT)"}
+            className={`w-full text-white font-black py-4 rounded-xl uppercase shadow-md active:scale-95 transition-all text-sm tracking-widest ${canApproveWork ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-amber-600 hover:bg-amber-700'}`}
+>
+  {canApproveWork ? "LƯU LỊCH (TỰ ĐỘNG DUYỆT)" : "ĐĂNG KÝ LỊCH (CHỜ PHÊ DUYỆT)"}
           </button>
         </div>
       </div>
@@ -4284,6 +4290,11 @@ const handleSendMessage = async () => {
                 <td className="p-3 align-top">
                   <p className={`font-black text-[14px] leading-tight mb-2 uppercase ${item.status === 'pending' ? 'text-amber-800' : 'text-gray-800'}`}>{item.content}</p>
                   <p className="text-[10px] text-gray-400 italic">Đăng ký bởi: {item.createdBy?.split('@')[0]}</p>
+                  {item.approvedBy && (
+    <p className="text-[10px] text-emerald-600 italic">
+      Đã duyệt bởi: {item.approvedBy.split('@')[0]}
+    </p>
+  )}
                 </td>
                 <td className="p-3 align-top space-y-2">
                   <div>
@@ -4310,21 +4321,25 @@ const handleSendMessage = async () => {
                   )}
 
                   {/* NÚT DUYỆT (Chỉ Admin/Chánh án mới thấy) */}
-                  {(isAdmin || isChanHan) && item.status === 'pending' && (
-                    <button 
-                      onClick={async () => {
-                        const { doc, updateDoc } = await import('firebase/firestore');
-                        await updateDoc(doc(db, "work_schedules", item.id), { status: 'approved' });
-                        showToast("✅ Đã phê duyệt lịch!", "success");
-                      }}
-                      className="bg-emerald-500 hover:bg-emerald-600 text-white w-full text-[10px] font-bold py-1.5 rounded mb-1 shadow transition-colors"
-                    >
-                      PHÊ DUYỆT
-                    </button>
-                  )}
+                  {canApproveWork && item.status === 'pending' && (
+  <button 
+    onClick={async () => {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      await updateDoc(doc(db, "work_schedules", item.id), {
+        status: 'approved',
+        approvedBy: user?.email,
+        approvedAt: moment().toISOString()
+      });
+      showToast("✅ Đã phê duyệt lịch!", "success");
+    }}
+    className="bg-emerald-500 hover:bg-emerald-600 text-white w-full text-[10px] font-bold py-1.5 rounded mb-1 shadow transition-colors"
+  >
+    PHÊ DUYỆT
+  </button>
+)}
 
                   {/* NÚT XÓA (Admin luôn thấy. Thư ký chỉ thấy nếu là lịch do mình tạo VÀ chưa được duyệt) */}
-                  {(isAdmin || isChanHan || (item.createdBy === user?.email && item.status === 'pending')) && (
+                  {(canApproveWork || (item.createdBy === user?.email && item.status === 'pending')) && (
                     <button 
                       onClick={async () => {
                         if(confirm("⚠️ Xác nhận xóa lịch công tác này?")) {
